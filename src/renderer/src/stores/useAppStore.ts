@@ -73,13 +73,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   selectProject: async (project) => {
-    set({ currentProject: project, currentChapter: null })
+    set({ currentProject: project, currentChapter: null, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null })
     await get().loadChapters(project.id)
   },
 
   createProject: async (name) => {
     const project = await window.api.createProject(name)
-    set(s => ({ projects: [project, ...s.projects], currentProject: project }))
+    set(s => ({ projects: [project, ...s.projects], currentProject: project, currentChapter: null, versions: [], undoStack: [] }))
     await get().loadChapters(project.id)
   },
 
@@ -127,7 +127,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { currentProject } = get()
     if (!currentProject) return
     const chapter = await window.api.createChapter(currentProject.id, title)
-    set(s => ({ chapters: [...s.chapters, chapter], currentChapter: chapter }))
+    set(s => ({ chapters: [...s.chapters, chapter], currentChapter: chapter, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null }))
   },
 
   renameChapter: async (id, title) => {
@@ -157,7 +157,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     await window.api.deleteChapter(id)
     const { currentChapter } = get()
     if (currentChapter?.id === id) {
-      set({ currentChapter: null })
+      set({ currentChapter: null, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null })
     }
     const { currentProject } = get()
     if (currentProject) {

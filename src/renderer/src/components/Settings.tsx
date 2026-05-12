@@ -24,6 +24,10 @@ export default function Settings() {
 
   const handleChangePath = async () => {
     if (!customPath.trim()) return
+    const confirmed = window.confirm(
+      `确认将数据存储位置更改为：\n${customPath.trim()}\n\n数据将被复制到新位置，但旧位置的数据不会自动删除。请在确认迁移成功后手动清理旧数据。`
+    )
+    if (!confirmed) return
     try {
       await window.api.setDataPath(customPath.trim())
       const newPath = await window.api.getDataPath()
@@ -35,6 +39,10 @@ export default function Settings() {
   }
 
   const handleResetPath = async () => {
+    const confirmed = window.confirm(
+      `确认将数据存储位置恢复为默认路径：\n${defaultPath}\n\n数据将被复制到默认位置，但当前自定义位置的数据不会自动删除。`
+    )
+    if (!confirmed) return
     await window.api.setDataPath(defaultPath)
     setDataPath(defaultPath)
   }

@@ -36,6 +36,7 @@ interface AppState {
   versions: VersionSnapshot[]
   showHistory: boolean
   toggleHistory: () => void
+  createVersion: () => void
 
   // Auto Polish
   isAnalyzing: boolean
@@ -207,6 +208,17 @@ export const useAppStore = create<AppState>((set, get) => {
     versions: [],
     showHistory: false,
     toggleHistory: () => set(s => ({ showHistory: !s.showHistory })),
+
+    createVersion: () => {
+      const { currentChapter, versions } = get()
+      if (!currentChapter) return
+      const snap: VersionSnapshot = {
+        content: currentChapter.content,
+        polishingMarks: [...(currentChapter.polishingMarks || [])],
+        timestamp: new Date().toISOString()
+      }
+      set({ versions: [...versions, snap] })
+    },
 
     // Auto Polish
     isAnalyzing: false,

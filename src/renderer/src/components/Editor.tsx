@@ -2,6 +2,43 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import FormatPanel from './FormatPanel'
 
+function ToolBtn({
+  onClick,
+  disabled,
+  active,
+  title,
+  children,
+  variant = 'default'
+}: {
+  onClick?: () => void
+  disabled?: boolean
+  active?: boolean
+  title: string
+  children: React.ReactNode
+  variant?: 'default' | 'primary'
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`px-2 py-1 text-xs rounded transition-colors inline-flex items-center gap-1 ${
+        variant === 'primary'
+          ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600'
+          : active
+            ? 'bg-gray-600 text-white'
+            : 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white disabled:opacity-40'
+      } disabled:cursor-not-allowed`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function Divider() {
+  return <div className="w-px h-4 bg-gray-700/60" />
+}
+
 export default function Editor() {
   const {
     currentChapter,
@@ -32,14 +69,12 @@ export default function Editor() {
     }, 1000)
   }, [updateChapterContent, saveChapter])
 
-  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault()
         undo()
       }
-      // Ctrl+S manual save
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         saveChapter()
@@ -72,17 +107,11 @@ export default function Editor() {
   return (
     <div className="flex-1 flex flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700 bg-gray-800/50">
-        <h2 className="text-sm font-medium text-gray-300">{currentChapter.title}</h2>
-        <div className="flex items-center gap-2">
-          {isPreviewing && (
-            <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded">
-              预览中
-            </span>
-          )}
-
-          {/* Save status */}
-          <span className={`text-xs px-2 py-0.5 rounded ${
+      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-700/60 bg-gray-800/40">
+        {/* Left: chapter title + status */}
+        <div className="flex items-center gap-3 min-w-0">
+          <h2 className="text-sm font-medium text-gray-300 truncate">{currentChapter.title}</h2>
+          <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${
             saveStatus === 'saved' ? 'text-green-500/70' :
             saveStatus === 'saving' ? 'text-blue-400' :
             'text-gray-500'
@@ -91,58 +120,60 @@ export default function Editor() {
              saveStatus === 'saving' ? '保存中...' :
              '未保存'}
           </span>
-
-          {markCount > 0 && (
-            <span className="text-xs text-yellow-500/80">{markCount} 处润色</span>
+          {isPreviewing && (
+            <span className="text-[11px] text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded shrink-0">
+              润色预览中
+            </span>
           )}
-          <span className="text-xs text-gray-500">{wordCount} 字</span>
+        </div>
 
-          <div className="w-px h-4 bg-gray-700 mx-1" />
+        {/* Right: tool groups */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {/* Stats */}
+          <span className="text-[11px] text-gray-500 mr-1">
+            {wordCount} 字{markCount > 0 ? ` · ${markCount} 处润色` : ''}
+          </span>
 
-          <button
+          <Divider />
+
+          {/* Edit group */}
+          <ToolBtn
             onClick={undo}
             disabled={undoStack.length === 0}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-colors"
             title="撤销 (Ctrl+Z)"
           >
-            撤销
-          </button>
+            ↩ 撤销
+          </ToolBtn>
 
-          <button
-            onClick={createVersion}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-            title="手动保存为一个版本节点"
-          >
-            存为版本
-          </button>
+          <Divider />
 
-          <button
-            onClick={toggleHistory}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-          >
-            历史
-          </button>
+          {/* Version group */}
+          <ToolBtn onClick={createVersion} title="创建版本快照">
+            ☆ 存版本
+          </ToolBtn>
+          <ToolBtn onClick={toggleHistory} title="查看版本历史">
+            ◷ 历史
+          </ToolBtn>
 
-          <button
-            onClick={exportTxt}
-            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-          >
-            导出
-          </button>
+          <Divider />
 
-          <div className="w-px h-4 bg-gray-700 mx-1" />
-
+          {/* Tools group */}
           <FormatPanel />
+          <ToolBtn onClick={exportTxt} title="导出为 txt 文件">
+            ↓ 导出
+          </ToolBtn>
 
-          <div className="w-px h-4 bg-gray-700 mx-1" />
+          <Divider />
 
-          <button
+          {/* AI group */}
+          <ToolBtn
             onClick={autoAnalyze}
             disabled={isAnalyzing}
-            className="px-3 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded transition-colors"
+            variant="primary"
+            title="AI 自动分析并润色"
           >
-            {isAnalyzing ? '分析中...' : 'AI 润色分析'}
-          </button>
+            {isAnalyzing ? '◎ 分析中...' : '◎ AI 润色'}
+          </ToolBtn>
         </div>
       </div>
 

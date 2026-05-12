@@ -24,22 +24,22 @@ export default function App() {
   return (
     <div className="h-screen flex flex-col">
       {/* Title bar */}
-      <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700 select-none">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800/80 border-b border-gray-700/60 select-none">
         <div className="flex items-center gap-2">
           <button
             onClick={toggleSidebar}
-            className="text-gray-400 hover:text-gray-200 text-sm"
-            title="切换侧栏"
+            className="text-gray-500 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded hover:bg-gray-700 transition-colors"
+            title={showSidebar ? '隐藏侧栏' : '显示侧栏'}
           >
-            {showSidebar ? '<<' : '>>'}
+            {showSidebar ? '◀' : '▶'}
           </button>
-          <h1 className="text-sm font-semibold text-gray-200">网文写作助手</h1>
+          <h1 className="text-xs font-medium text-gray-400">网文写作助手</h1>
         </div>
         <button
           onClick={toggleSettings}
-          className="text-xs text-gray-400 hover:text-gray-200 px-2 py-1 rounded hover:bg-gray-700 transition-colors"
+          className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded hover:bg-gray-700 transition-colors"
         >
-          设置
+          ⚙ 设置
         </button>
       </div>
 

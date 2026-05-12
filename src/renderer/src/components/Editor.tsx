@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
+import FormatPanel from './FormatPanel'
 
 export default function Editor() {
   const {
@@ -128,6 +129,10 @@ export default function Editor() {
           >
             导出
           </button>
+
+          <div className="w-px h-4 bg-gray-700 mx-1" />
+
+          <FormatPanel />
 
           <div className="w-px h-4 bg-gray-700 mx-1" />
 

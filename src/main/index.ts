@@ -50,6 +50,7 @@ function registerIPC(): void {
   // Config
   ipcMain.handle('get-llm-config', () => getLLMConfig())
   ipcMain.handle('save-llm-config', (_e, config) => saveLLMConfig(config))
+  ipcMain.handle('get-data-path', () => app.getPath('userData'))
 
   // Projects
   ipcMain.handle('get-projects', () => getProjects())

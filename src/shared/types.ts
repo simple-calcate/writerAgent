@@ -55,6 +55,7 @@ export interface IPCAPI {
   polishText: (original: string, context: string) => Promise<PolishResult>
   getLLMConfig: () => Promise<LLMConfig>
   saveLLMConfig: (config: LLMConfig) => Promise<void>
+  getDataPath: () => Promise<string>
   getProjects: () => Promise<Project[]>
   createProject: (name: string) => Promise<Project>
   renameProject: (id: string, name: string) => Promise<void>

@@ -14,6 +14,9 @@ const api: IPCAPI = {
   saveLLMConfig: (config) =>
     ipcRenderer.invoke('save-llm-config', config),
 
+  getDataPath: () =>
+    ipcRenderer.invoke('get-data-path'),
+
   getProjects: () =>
     ipcRenderer.invoke('get-projects'),
 

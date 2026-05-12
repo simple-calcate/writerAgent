@@ -4,9 +4,11 @@ import { useAppStore } from '../stores/useAppStore'
 export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
   const [form, setForm] = useState(llmConfig)
+  const [dataPath, setDataPath] = useState('')
 
   useEffect(() => {
     setForm(llmConfig)
+    window.api.getDataPath().then(setDataPath)
   }, [llmConfig])
 
   const handleSave = () => {
@@ -16,7 +18,7 @@ export default function Settings() {
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg p-6 w-full max-w-md shadow-xl">
-        <h2 className="text-xl font-semibold mb-4">API 设置</h2>
+        <h2 className="text-xl font-semibold mb-4">设置</h2>
 
         <div className="space-y-4">
           <div>
@@ -50,6 +52,17 @@ export default function Settings() {
               placeholder="gpt-4o-mini"
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
+          </div>
+
+          {/* Data path info */}
+          <div className="border-t border-gray-700 pt-4 mt-4">
+            <p className="text-xs text-gray-500 mb-1">本地数据存储位置</p>
+            <p className="text-xs text-gray-300 bg-gray-900 rounded px-3 py-2 font-mono break-all">
+              {dataPath || '加载中...'}
+            </p>
+            <p className="text-xs text-gray-600 mt-1">
+              配置和版本历史保存在此目录下的 data/store.json
+            </p>
           </div>
         </div>
 

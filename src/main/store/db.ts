@@ -133,6 +133,10 @@ export function renameProject(id: string, name: string): void {
 }
 
 export function deleteProject(id: string): void {
+  const chapterIds = store.chapters.filter(c => c.projectId === id).map(c => c.id)
+  for (const cid of chapterIds) {
+    delete store.versions[cid]
+  }
   store.chapters = store.chapters.filter(c => c.projectId !== id)
   store.projects = store.projects.filter(p => p.id !== id)
   save()

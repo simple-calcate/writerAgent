@@ -16,6 +16,14 @@ export default function HistoryPanel() {
     updateChapterContent(version.content)
   }
 
+  const handleDelete = async (index: number) => {
+    if (!currentChapter) return
+    await window.api.deleteVersion(currentChapter.id, index)
+    // Reload versions
+    const updated = await window.api.getVersions(currentChapter.id)
+    useAppStore.setState({ versions: updated })
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
       <div className="bg-gray-800 rounded-lg w-full max-w-lg max-h-[70vh] flex flex-col shadow-xl">
@@ -30,16 +38,22 @@ export default function HistoryPanel() {
           ) : (
             <div className="space-y-2">
               {versions.map((v, i) => (
-                <div key={i} className="bg-gray-750 border border-gray-700 rounded p-3">
+                <div key={i} className="bg-gray-750 border border-gray-700 rounded p-3 group">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-xs text-gray-400">{formatTime(v.timestamp)}</span>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <span className="text-xs text-gray-500">{v.content.replace(/\s/g, '').length} 字</span>
                       <button
                         onClick={() => handleRestore(v)}
                         className="text-xs text-blue-400 hover:text-blue-300"
                       >
-                        恢复此版本
+                        恢复
+                      </button>
+                      <button
+                        onClick={() => handleDelete(i)}
+                        className="text-xs text-red-400 hover:text-red-300 opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        删除
                       </button>
                     </div>
                   </div>

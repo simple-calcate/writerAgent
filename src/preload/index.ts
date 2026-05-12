@@ -17,6 +17,15 @@ const api: IPCAPI = {
   getDataPath: () =>
     ipcRenderer.invoke('get-data-path'),
 
+  getDataPathDefault: () =>
+    ipcRenderer.invoke('get-data-path-default'),
+
+  setDataPath: (newPath: string) =>
+    ipcRenderer.invoke('set-data-path', newPath),
+
+  openDataFolder: () =>
+    ipcRenderer.invoke('open-data-folder'),
+
   getProjects: () =>
     ipcRenderer.invoke('get-projects'),
 
@@ -49,6 +58,9 @@ const api: IPCAPI = {
 
   saveVersion: (chapterId: string, version) =>
     ipcRenderer.invoke('save-version', chapterId, version),
+
+  deleteVersion: (chapterId: string, index: number) =>
+    ipcRenderer.invoke('delete-version', chapterId, index),
 
   summarizeChapter: (content: string) =>
     ipcRenderer.invoke('summarize-chapter', content)

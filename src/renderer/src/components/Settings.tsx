@@ -5,14 +5,38 @@ export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
   const [form, setForm] = useState(llmConfig)
   const [dataPath, setDataPath] = useState('')
+  const [defaultPath, setDefaultPath] = useState('')
+  const [customPath, setCustomPath] = useState('')
 
   useEffect(() => {
     setForm(llmConfig)
     window.api.getDataPath().then(setDataPath)
+    window.api.getDataPathDefault().then(setDefaultPath)
   }, [llmConfig])
 
   const handleSave = () => {
     saveLLMConfig(form)
+  }
+
+  const handleOpenFolder = () => {
+    window.api.openDataFolder()
+  }
+
+  const handleChangePath = async () => {
+    if (!customPath.trim()) return
+    try {
+      await window.api.setDataPath(customPath.trim())
+      const newPath = await window.api.getDataPath()
+      setDataPath(newPath)
+      setCustomPath('')
+    } catch (e: any) {
+      alert('路径无效: ' + e.message)
+    }
+  }
+
+  const handleResetPath = async () => {
+    await window.api.setDataPath(defaultPath)
+    setDataPath(defaultPath)
   }
 
   return (
@@ -54,15 +78,45 @@ export default function Settings() {
             />
           </div>
 
-          {/* Data path info */}
+          {/* Data path */}
           <div className="border-t border-gray-700 pt-4 mt-4">
             <p className="text-xs text-gray-500 mb-1">本地数据存储位置</p>
-            <p className="text-xs text-gray-300 bg-gray-900 rounded px-3 py-2 font-mono break-all">
-              {dataPath || '加载中...'}
-            </p>
-            <p className="text-xs text-gray-600 mt-1">
-              配置和版本历史保存在此目录下的 data/store.json
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-xs text-gray-300 bg-gray-900 rounded px-3 py-2 font-mono break-all flex-1">
+                {dataPath || '加载中...'}
+              </p>
+              <button
+                onClick={handleOpenFolder}
+                className="shrink-0 px-3 py-2 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                title="在文件管理器中打开"
+              >
+                打开
+              </button>
+            </div>
+
+            <div className="flex gap-2 mt-2">
+              <input
+                value={customPath}
+                onChange={e => setCustomPath(e.target.value)}
+                placeholder="输入新路径..."
+                className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={handleChangePath}
+                disabled={!customPath.trim()}
+                className="px-2 py-1 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded transition-colors"
+              >
+                修改
+              </button>
+              {dataPath !== defaultPath && (
+                <button
+                  onClick={handleResetPath}
+                  className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                >
+                  恢复默认
+                </button>
+              )}
+            </div>
           </div>
         </div>
 

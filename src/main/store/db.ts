@@ -1,4 +1,4 @@
-import { app } from 'electron'
+import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
@@ -8,7 +8,7 @@ interface Store {
   projects: Project[]
   chapters: Chapter[]
   llmConfig: LLMConfig
-  versions: Record<string, VersionSnapshot[]> // chapterId -> versions
+  versions: Record<string, VersionSnapshot[]>
 }
 
 const defaultStore: Store = {
@@ -18,15 +18,87 @@ const defaultStore: Store = {
   versions: {}
 }
 
+// App-level config (data path setting)
+interface AppConfig {
+  dataPath: string | null // null = use default
+}
+
+const appConfigFile = join(app.getPath('userData'), 'app-config.json')
+
+function loadAppConfig(): AppConfig {
+  if (existsSync(appConfigFile)) {
+    try {
+      return JSON.parse(readFileSync(appConfigFile, 'utf-8'))
+    } catch { /* ignore */ }
+  }
+  return { dataPath: null }
+}
+
+function saveAppConfig(config: AppConfig): void {
+  writeFileSync(appConfigFile, JSON.stringify(config, null, 2), 'utf-8')
+}
+
 let store: Store
-const dataDir = join(app.getPath('userData'), 'data')
-const dataFile = join(dataDir, 'store.json')
+let currentDataDir: string
+let currentDataFile: string
+
+function resolveDataDir(): string {
+  const config = loadAppConfig()
+  if (config.dataPath && existsSync(config.dataPath)) {
+    return config.dataPath
+  }
+  return join(app.getPath('userData'), 'data')
+}
+
+export function getDataPath(): string {
+  return currentDataDir
+}
+
+export function getDataPathDefault(): string {
+  return join(app.getPath('userData'), 'data')
+}
+
+export function setDataPath(newPath: string): void {
+  // Copy existing data to new location
+  if (existsSync(currentDataFile)) {
+    if (!existsSync(newPath)) mkdirSync(newPath, { recursive: true })
+    const newFile = join(newPath, 'store.json')
+    writeFileSync(newFile, readFileSync(currentDataFile, 'utf-8'), 'utf-8')
+  }
+
+  // Save the new path in app config
+  saveAppConfig({ dataPath: newPath })
+
+  // Update current paths and reload
+  currentDataDir = newPath
+  currentDataFile = join(newPath, 'store.json')
+
+  if (existsSync(currentDataFile)) {
+    try {
+      store = { ...defaultStore, ...JSON.parse(readFileSync(currentDataFile, 'utf-8')) }
+    } catch {
+      store = { ...defaultStore }
+    }
+  } else {
+    store = { ...defaultStore }
+    save()
+  }
+}
+
+export function openDataFolder(): void {
+  if (existsSync(currentDataDir)) {
+    shell.openPath(currentDataDir)
+  }
+}
 
 export function initDB(): void {
-  if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
-  if (existsSync(dataFile)) {
+  currentDataDir = resolveDataDir()
+  currentDataFile = join(currentDataDir, 'store.json')
+
+  if (!existsSync(currentDataDir)) mkdirSync(currentDataDir, { recursive: true })
+  if (existsSync(currentDataFile)) {
     try {
-      store = { ...defaultStore, ...JSON.parse(readFileSync(dataFile, 'utf-8')) }
+      store = { ...defaultStore, ...JSON.parse(readFileSync(currentDataFile, 'utf-8')) }
     } catch {
       store = { ...defaultStore }
     }
@@ -36,7 +108,7 @@ export function initDB(): void {
 }
 
 function save(): void {
-  writeFileSync(dataFile, JSON.stringify(store, null, 2), 'utf-8')
+  writeFileSync(currentDataFile, JSON.stringify(store, null, 2), 'utf-8')
 }
 
 // Projects
@@ -113,6 +185,7 @@ export function updateChapter(id: string, data: Partial<Chapter>): void {
 
 export function deleteChapter(id: string): void {
   store.chapters = store.chapters.filter(c => c.id !== id)
+  delete store.versions[id]
   save()
 }
 
@@ -124,6 +197,12 @@ export function getVersions(chapterId: string): VersionSnapshot[] {
 export function saveVersion(chapterId: string, version: VersionSnapshot): void {
   if (!store.versions[chapterId]) store.versions[chapterId] = []
   store.versions[chapterId].push(version)
+  save()
+}
+
+export function deleteVersion(chapterId: string, index: number): void {
+  if (!store.versions[chapterId]) return
+  store.versions[chapterId].splice(index, 1)
   save()
 }
 

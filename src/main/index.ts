@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
-import { initDB, getProjects, createProject, renameProject, deleteProject, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, getVersions, saveVersion, getLLMConfig, saveLLMConfig } from './store/db'
+import { initDB, getProjects, createProject, renameProject, deleteProject, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, getDataPath, getDataPathDefault, setDataPath, openDataFolder } from './store/db'
 import { autoPolish, polishText, summarizeChapter } from './llm/client'
 
 let mainWindow: BrowserWindow | null = null
@@ -68,6 +68,13 @@ function registerIPC(): void {
   // Versions
   ipcMain.handle('get-versions', (_e, chapterId: string) => getVersions(chapterId))
   ipcMain.handle('save-version', (_e, chapterId: string, version) => saveVersion(chapterId, version))
+  ipcMain.handle('delete-version', (_e, chapterId: string, index: number) => deleteVersion(chapterId, index))
+
+  // Data path
+  ipcMain.handle('get-data-path', () => getDataPath())
+  ipcMain.handle('get-data-path-default', () => getDataPathDefault())
+  ipcMain.handle('set-data-path', (_e, newPath: string) => setDataPath(newPath))
+  ipcMain.handle('open-data-folder', () => openDataFolder())
 }
 
 app.whenReady().then(() => {

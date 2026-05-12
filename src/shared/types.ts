@@ -62,6 +62,9 @@ export interface IPCAPI {
   getLLMConfig: () => Promise<LLMConfig>
   saveLLMConfig: (config: LLMConfig) => Promise<void>
   getDataPath: () => Promise<string>
+  getDataPathDefault: () => Promise<string>
+  setDataPath: (newPath: string) => Promise<void>
+  openDataFolder: () => Promise<void>
   getProjects: () => Promise<Project[]>
   createProject: (name: string) => Promise<Project>
   renameProject: (id: string, name: string) => Promise<void>
@@ -73,5 +76,6 @@ export interface IPCAPI {
   deleteChapter: (id: string) => Promise<void>
   getVersions: (chapterId: string) => Promise<VersionSnapshot[]>
   saveVersion: (chapterId: string, version: VersionSnapshot) => Promise<void>
+  deleteVersion: (chapterId: string, index: number) => Promise<void>
   summarizeChapter: (content: string) => Promise<string>
 }

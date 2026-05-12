@@ -44,6 +44,12 @@ const api: IPCAPI = {
   deleteChapter: (id: string) =>
     ipcRenderer.invoke('delete-chapter', id),
 
+  getVersions: (chapterId: string) =>
+    ipcRenderer.invoke('get-versions', chapterId),
+
+  saveVersion: (chapterId: string, version) =>
+    ipcRenderer.invoke('save-version', chapterId, version),
+
   summarizeChapter: (content: string) =>
     ipcRenderer.invoke('summarize-chapter', content)
 }

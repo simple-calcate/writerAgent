@@ -78,13 +78,14 @@ const FORMAT_RULES: FormatRule[] = [
 ]
 
 export default function FormatPanel() {
-  const { currentChapter, updateChapterContent, saveChapter } = useAppStore()
+  const { currentChapter, updateChapterContent, saveChapter, pushUndo } = useAppStore()
   const [showPanel, setShowPanel] = useState(false)
   const [lastApplied, setLastApplied] = useState<string | null>(null)
 
   if (!currentChapter) return null
 
   const apply = (rule: FormatRule) => {
+    pushUndo()
     const formatted = rule.fn(currentChapter.content)
     updateChapterContent(formatted)
     saveChapter()

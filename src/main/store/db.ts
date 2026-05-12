@@ -2,18 +2,20 @@ import { app } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, LLMConfig } from '../../shared/types'
+import type { Project, Chapter, LLMConfig, VersionSnapshot } from '../../shared/types'
 
 interface Store {
   projects: Project[]
   chapters: Chapter[]
   llmConfig: LLMConfig
+  versions: Record<string, VersionSnapshot[]> // chapterId -> versions
 }
 
 const defaultStore: Store = {
   projects: [],
   chapters: [],
-  llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }
+  llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+  versions: {}
 }
 
 let store: Store
@@ -111,6 +113,17 @@ export function updateChapter(id: string, data: Partial<Chapter>): void {
 
 export function deleteChapter(id: string): void {
   store.chapters = store.chapters.filter(c => c.id !== id)
+  save()
+}
+
+// Versions
+export function getVersions(chapterId: string): VersionSnapshot[] {
+  return store.versions[chapterId] || []
+}
+
+export function saveVersion(chapterId: string, version: VersionSnapshot): void {
+  if (!store.versions[chapterId]) store.versions[chapterId] = []
+  store.versions[chapterId].push(version)
   save()
 }
 

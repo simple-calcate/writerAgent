@@ -50,6 +50,12 @@ export interface AutoPolishResult {
   suggestions: PolishResult[]
 }
 
+export interface VersionSnapshot {
+  content: string
+  polishingMarks: PolishMark[]
+  timestamp: string
+}
+
 export interface IPCAPI {
   autoPolish: (content: string) => Promise<AutoPolishResult>
   polishText: (original: string, context: string) => Promise<PolishResult>
@@ -65,5 +71,7 @@ export interface IPCAPI {
   renameChapter: (id: string, title: string) => Promise<void>
   updateChapter: (id: string, data: Partial<Chapter>) => Promise<void>
   deleteChapter: (id: string) => Promise<void>
+  getVersions: (chapterId: string) => Promise<VersionSnapshot[]>
+  saveVersion: (chapterId: string, version: VersionSnapshot) => Promise<void>
   summarizeChapter: (content: string) => Promise<string>
 }

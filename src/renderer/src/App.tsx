@@ -4,6 +4,7 @@ import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import PolishPanel from './components/PolishPanel'
 import Settings from './components/Settings'
+import HistoryPanel from './components/HistoryPanel'
 
 export default function App() {
   const {
@@ -49,8 +50,9 @@ export default function App() {
         <PolishPanel />
       </div>
 
-      {/* Settings modal */}
+      {/* Modals */}
       {showSettings && <Settings />}
+      <HistoryPanel />
     </div>
   )
 }

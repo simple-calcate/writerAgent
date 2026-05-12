@@ -8,7 +8,11 @@ export default function Editor() {
     saveChapter,
     autoAnalyze,
     isAnalyzing,
-    previewOriginalContent
+    previewOriginalContent,
+    undo,
+    undoStack,
+    exportTxt,
+    toggleHistory
   } = useAppStore()
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -19,6 +23,18 @@ export default function Editor() {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(() => saveChapter(), 1000)
   }, [updateChapterContent, saveChapter])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+        e.preventDefault()
+        undo()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [undo])
 
   useEffect(() => {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
@@ -44,16 +60,40 @@ export default function Editor() {
       {/* Toolbar */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-gray-700 bg-gray-800/50">
         <h2 className="text-sm font-medium text-gray-300">{currentChapter.title}</h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           {isPreviewing && (
-            <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded">
-              预览润色效果中 · 右侧点击「采纳」或「忽略」
+            <span className="text-xs text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded mr-2">
+              预览中
             </span>
           )}
           {markCount > 0 && (
-            <span className="text-xs text-yellow-500/80">{markCount} 处 AI 润色</span>
+            <span className="text-xs text-yellow-500/80">{markCount} 处润色</span>
           )}
           <span className="text-xs text-gray-500">{wordCount} 字</span>
+
+          <button
+            onClick={undo}
+            disabled={undoStack.length === 0}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 disabled:opacity-40 disabled:cursor-not-allowed rounded transition-colors"
+            title="撤销 (Ctrl+Z)"
+          >
+            撤销
+          </button>
+
+          <button
+            onClick={toggleHistory}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+          >
+            历史
+          </button>
+
+          <button
+            onClick={exportTxt}
+            className="px-2 py-1 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+          >
+            导出
+          </button>
+
           <button
             onClick={autoAnalyze}
             disabled={isAnalyzing}

@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import type { Project, Chapter, LLMConfig, PolishResult, PolishMark } from '../../../shared/types'
 
+interface VersionSnapshot {
+  content: string
+  polishingMarks: PolishMark[]
+  timestamp: string
+}
+
 interface AppState {
   // Projects
   projects: Project[]
@@ -22,6 +28,15 @@ interface AppState {
   saveChapter: () => Promise<void>
   deleteChapter: (id: string) => Promise<void>
 
+  // Undo
+  undoStack: { content: string; polishingMarks: PolishMark[] }[]
+  undo: () => void
+
+  // Version History
+  versions: VersionSnapshot[]
+  showHistory: boolean
+  toggleHistory: () => void
+
   // Auto Polish
   isAnalyzing: boolean
   polishSuggestions: PolishResult[]
@@ -35,6 +50,9 @@ interface AppState {
   previewOriginalContent: string | null
   setActiveSuggestion: (id: string | null) => void
 
+  // Export
+  exportTxt: () => void
+
   // Settings
   showSettings: boolean
   toggleSettings: () => void
@@ -47,274 +65,327 @@ interface AppState {
   toggleSidebar: () => void
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
-  // Projects
-  projects: [],
-  currentProject: null,
-
-  loadProjects: async () => {
-    const projects = await window.api.getProjects()
-    set({ projects })
-  },
-
-  selectProject: async (project) => {
-    set({ currentProject: project, currentChapter: null })
-    await get().loadChapters(project.id)
-  },
-
-  createProject: async (name) => {
-    const project = await window.api.createProject(name)
-    set(s => ({ projects: [project, ...s.projects], currentProject: project }))
-    await get().loadChapters(project.id)
-  },
-
-  renameProject: async (id, name) => {
-    await window.api.renameProject(id, name)
-    set(s => ({
-      projects: s.projects.map(p => p.id === id ? { ...p, name } : p),
-      currentProject: s.currentProject?.id === id ? { ...s.currentProject, name } : s.currentProject
-    }))
-  },
-
-  deleteProject: async (id) => {
-    await window.api.deleteProject(id)
-    const { currentProject } = get()
-    if (currentProject?.id === id) {
-      set({ currentProject: null, chapters: [], currentChapter: null })
-    }
-    await get().loadProjects()
-  },
-
-  // Chapters
-  chapters: [],
-  currentChapter: null,
-
-  loadChapters: async (projectId) => {
-    const chapters = await window.api.getChapters(projectId)
-    set({ chapters })
-  },
-
-  selectChapter: (chapter) => {
-    set({
-      currentChapter: chapter,
-      polishSuggestions: [],
-      activeSuggestionId: null,
-      previewOriginalContent: null
-    })
-  },
-
-  createChapter: async (title) => {
-    const { currentProject } = get()
-    if (!currentProject) return
-    const chapter = await window.api.createChapter(currentProject.id, title)
-    set(s => ({ chapters: [...s.chapters, chapter], currentChapter: chapter }))
-  },
-
-  renameChapter: async (id, title) => {
-    await window.api.renameChapter(id, title)
-    set(s => ({
-      chapters: s.chapters.map(ch => ch.id === id ? { ...ch, title } : ch),
-      currentChapter: s.currentChapter?.id === id ? { ...s.currentChapter, title } : s.currentChapter
-    }))
-  },
-
-  updateChapterContent: (content) => {
-    const { currentChapter } = get()
+export const useAppStore = create<AppState>((set, get) => {
+  // Helper: push current content to undo stack
+  const pushUndo = () => {
+    const { currentChapter, undoStack } = get()
     if (!currentChapter) return
-    set({ currentChapter: { ...currentChapter, content } })
-  },
-
-  saveChapter: async () => {
-    const { currentChapter } = get()
-    if (!currentChapter) return
-    await window.api.updateChapter(currentChapter.id, {
+    const snapshot = {
       content: currentChapter.content,
-      polishingMarks: currentChapter.polishingMarks
-    })
-  },
-
-  deleteChapter: async (id) => {
-    await window.api.deleteChapter(id)
-    const { currentChapter } = get()
-    if (currentChapter?.id === id) {
-      set({ currentChapter: null })
+      polishingMarks: [...(currentChapter.polishingMarks || [])]
     }
-    const { currentProject } = get()
-    if (currentProject) {
-      await get().loadChapters(currentProject.id)
-    }
-  },
+    set({ undoStack: [...undoStack.slice(-30), snapshot] }) // keep last 30
+  }
 
-  // Auto Polish
-  isAnalyzing: false,
-  polishSuggestions: [],
-  analyzeError: null,
-  activeSuggestionId: null,
-  previewOriginalContent: null,
-
-  autoAnalyze: async () => {
-    const { currentChapter } = get()
-    if (!currentChapter || !currentChapter.content.trim()) return
-
-    set({ isAnalyzing: true, analyzeError: null, polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null })
-    try {
-      const result = await window.api.autoPolish(currentChapter.content)
-      set({ polishSuggestions: result.suggestions, isAnalyzing: false })
-    } catch (e: any) {
-      set({ analyzeError: e.message, isAnalyzing: false })
-    }
-  },
-
-  // Click a suggestion: preview polished text in editor
-  setActiveSuggestion: (id) => {
-    const { currentChapter, polishSuggestions, previewOriginalContent } = get()
+  // Helper: save version snapshot
+  const saveVersion = () => {
+    const { currentChapter, versions } = get()
     if (!currentChapter) return
-
-    // If clicking the same suggestion, toggle off
-    if (id === activeSuggestionId) {
-      // Revert to original
-      if (previewOriginalContent !== null) {
-        set(s => ({
-          currentChapter: s.currentChapter ? { ...s.currentChapter, content: previewOriginalContent } : null,
-          activeSuggestionId: null,
-          previewOriginalContent: null
-        }))
-      } else {
-        set({ activeSuggestionId: null })
-      }
-      return
+    const snap: VersionSnapshot = {
+      content: currentChapter.content,
+      polishingMarks: [...(currentChapter.polishingMarks || [])],
+      timestamp: new Date().toISOString()
     }
+    set({ versions: [...versions, snap] })
+  }
 
-    const suggestion = polishSuggestions.find(s => s.id === id)
-    if (!suggestion) return
+  return {
+    // Projects
+    projects: [],
+    currentProject: null,
 
-    // Save original if not already previewing
-    let original = previewOriginalContent
-    if (original === null) {
-      original = currentChapter.content
-    } else {
-      // Revert previous preview first
+    loadProjects: async () => {
+      const projects = await window.api.getProjects()
+      set({ projects })
+    },
+
+    selectProject: async (project) => {
+      set({ currentProject: project, currentChapter: null })
+      await get().loadChapters(project.id)
+    },
+
+    createProject: async (name) => {
+      const project = await window.api.createProject(name)
+      set(s => ({ projects: [project, ...s.projects], currentProject: project }))
+      await get().loadChapters(project.id)
+    },
+
+    renameProject: async (id, name) => {
+      await window.api.renameProject(id, name)
       set(s => ({
-        currentChapter: s.currentChapter ? { ...s.currentChapter, content: original! } : null
+        projects: s.projects.map(p => p.id === id ? { ...p, name } : p),
+        currentProject: s.currentProject?.id === id ? { ...s.currentProject, name } : s.currentProject
       }))
-    }
+    },
 
-    // Replace with polished text
-    const newContent = currentChapter.content.replace(suggestion.original, suggestion.polished)
+    deleteProject: async (id) => {
+      await window.api.deleteProject(id)
+      const { currentProject } = get()
+      if (currentProject?.id === id) {
+        set({ currentProject: null, chapters: [], currentChapter: null })
+      }
+      await get().loadProjects()
+    },
 
-    set(s => ({
-      currentChapter: s.currentChapter ? { ...s.currentChapter, content: newContent } : null,
-      activeSuggestionId: id,
-      previewOriginalContent: original
-    }))
-  },
+    // Chapters
+    chapters: [],
+    currentChapter: null,
 
-  // Accept: keep polished text, add mark, clear preview
-  acceptSuggestion: (id) => {
-    const { currentChapter, polishSuggestions, previewOriginalContent } = get()
-    if (!currentChapter) return
+    loadChapters: async (projectId) => {
+      const chapters = await window.api.getChapters(projectId)
+      set({ chapters })
+    },
 
-    const suggestion = polishSuggestions.find(s => s.id === id)
-    if (!suggestion) return
+    selectChapter: (chapter) => {
+      set({
+        currentChapter: chapter,
+        polishSuggestions: [],
+        activeSuggestionId: null,
+        previewOriginalContent: null,
+        undoStack: [],
+        versions: []
+      })
+    },
 
-    const mark: PolishMark = {
-      id: suggestion.id,
-      original: suggestion.original,
-      polished: suggestion.polished,
-      reason: suggestion.reason,
-      position: suggestion.position,
-      length: suggestion.polished.length
-    }
+    createChapter: async (title) => {
+      const { currentProject } = get()
+      if (!currentProject) return
+      const chapter = await window.api.createChapter(currentProject.id, title)
+      set(s => ({ chapters: [...s.chapters, chapter], currentChapter: chapter }))
+    },
 
-    const marks = [...(currentChapter.polishingMarks || []), mark]
-
-    set({
-      currentChapter: { ...currentChapter, polishingMarks: marks },
-      polishSuggestions: polishSuggestions.filter(s => s.id !== id),
-      activeSuggestionId: null,
-      previewOriginalContent: null
-    })
-  },
-
-  // Dismiss: revert to original, remove suggestion
-  dismissSuggestion: (id) => {
-    const { previewOriginalContent } = get()
-
-    if (previewOriginalContent !== null) {
+    renameChapter: async (id, title) => {
+      await window.api.renameChapter(id, title)
       set(s => ({
-        currentChapter: s.currentChapter ? { ...s.currentChapter, content: previewOriginalContent } : null,
-        polishSuggestions: s.polishSuggestions.filter(sug => sug.id !== id),
+        chapters: s.chapters.map(ch => ch.id === id ? { ...ch, title } : ch),
+        currentChapter: s.currentChapter?.id === id ? { ...s.currentChapter, title } : s.currentChapter
+      }))
+    },
+
+    updateChapterContent: (content) => {
+      const { currentChapter } = get()
+      if (!currentChapter) return
+      set({ currentChapter: { ...currentChapter, content } })
+    },
+
+    saveChapter: async () => {
+      const { currentChapter } = get()
+      if (!currentChapter) return
+      saveVersion()
+      await window.api.updateChapter(currentChapter.id, {
+        content: currentChapter.content,
+        polishingMarks: currentChapter.polishingMarks
+      })
+    },
+
+    deleteChapter: async (id) => {
+      await window.api.deleteChapter(id)
+      const { currentChapter } = get()
+      if (currentChapter?.id === id) {
+        set({ currentChapter: null })
+      }
+      const { currentProject } = get()
+      if (currentProject) {
+        await get().loadChapters(currentProject.id)
+      }
+    },
+
+    // Undo
+    undoStack: [],
+
+    undo: () => {
+      const { undoStack, currentChapter } = get()
+      if (undoStack.length === 0 || !currentChapter) return
+      const prev = undoStack[undoStack.length - 1]
+      set({
+        currentChapter: { ...currentChapter, content: prev.content, polishingMarks: prev.polishingMarks },
+        undoStack: undoStack.slice(0, -1)
+      })
+    },
+
+    // Version History
+    versions: [],
+    showHistory: false,
+    toggleHistory: () => set(s => ({ showHistory: !s.showHistory })),
+
+    // Auto Polish
+    isAnalyzing: false,
+    polishSuggestions: [],
+    analyzeError: null,
+    activeSuggestionId: null,
+    previewOriginalContent: null,
+
+    autoAnalyze: async () => {
+      const { currentChapter } = get()
+      if (!currentChapter || !currentChapter.content.trim()) return
+
+      set({ isAnalyzing: true, analyzeError: null, polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null })
+      try {
+        const result = await window.api.autoPolish(currentChapter.content)
+        set({ polishSuggestions: result.suggestions, isAnalyzing: false })
+      } catch (e: any) {
+        set({ analyzeError: e.message, isAnalyzing: false })
+      }
+    },
+
+    // Preview: click suggestion → show polished text in editor
+    setActiveSuggestion: (id) => {
+      const state = get()
+      const { currentChapter, polishSuggestions, previewOriginalContent } = state
+      if (!currentChapter) return
+
+      // Clicking the same suggestion → toggle off, revert
+      if (id === state.activeSuggestionId) {
+        if (previewOriginalContent !== null) {
+          pushUndo()
+          set({
+            currentChapter: { ...currentChapter, content: previewOriginalContent },
+            activeSuggestionId: null,
+            previewOriginalContent: null
+          })
+        } else {
+          set({ activeSuggestionId: null })
+        }
+        return
+      }
+
+      const suggestion = polishSuggestions.find(s => s.id === id)
+      if (!suggestion) return
+
+      // Save original if not already previewing
+      const original = previewOriginalContent ?? currentChapter.content
+
+      // If switching from another preview, revert first
+      let baseContent = currentChapter.content
+      if (previewOriginalContent !== null) {
+        baseContent = previewOriginalContent
+      }
+
+      const newContent = baseContent.replace(suggestion.original, suggestion.polished)
+
+      pushUndo()
+      set({
+        currentChapter: { ...currentChapter, content: newContent },
+        activeSuggestionId: id,
+        previewOriginalContent: original
+      })
+    },
+
+    acceptSuggestion: (id) => {
+      const { currentChapter, polishSuggestions, previewOriginalContent } = get()
+      if (!currentChapter) return
+
+      const suggestion = polishSuggestions.find(s => s.id === id)
+      if (!suggestion) return
+
+      const mark: PolishMark = {
+        id: suggestion.id,
+        original: suggestion.original,
+        polished: suggestion.polished,
+        reason: suggestion.reason,
+        position: suggestion.position,
+        length: suggestion.polished.length
+      }
+      const marks = [...(currentChapter.polishingMarks || []), mark]
+
+      set({
+        currentChapter: { ...currentChapter, polishingMarks: marks },
+        polishSuggestions: polishSuggestions.filter(s => s.id !== id),
         activeSuggestionId: null,
         previewOriginalContent: null
-      }))
-    } else {
-      set(s => ({
-        polishSuggestions: s.polishSuggestions.filter(sug => sug.id !== id),
-        activeSuggestionId: null
-      }))
-    }
-  },
-
-  acceptAllSuggestions: async () => {
-    const { currentChapter, polishSuggestions, previewOriginalContent } = get()
-    if (!currentChapter || polishSuggestions.length === 0) return
-
-    let newContent = previewOriginalContent || currentChapter.content
-    const newMarks = [...(currentChapter.polishingMarks || [])]
-
-    const sorted = [...polishSuggestions].sort((a, b) => b.position - a.position)
-
-    for (const s of sorted) {
-      newContent = newContent.replace(s.original, s.polished)
-      newMarks.push({
-        id: s.id,
-        original: s.original,
-        polished: s.polished,
-        reason: s.reason,
-        position: s.position,
-        length: s.polished.length
       })
-    }
+    },
 
-    set({
-      currentChapter: { ...currentChapter, content: newContent, polishingMarks: newMarks },
-      polishSuggestions: [],
-      activeSuggestionId: null,
-      previewOriginalContent: null
-    })
-  },
+    dismissSuggestion: (id) => {
+      const { currentChapter, previewOriginalContent } = get()
 
-  dismissAllSuggestions: () => {
-    const { previewOriginalContent } = get()
-    if (previewOriginalContent !== null) {
-      set(s => ({
-        currentChapter: s.currentChapter ? { ...s.currentChapter, content: previewOriginalContent } : null,
+      if (previewOriginalContent !== null && currentChapter) {
+        pushUndo()
+        set({
+          currentChapter: { ...currentChapter, content: previewOriginalContent },
+          polishSuggestions: get().polishSuggestions.filter(s => s.id !== id),
+          activeSuggestionId: null,
+          previewOriginalContent: null
+        })
+      } else {
+        set(s => ({
+          polishSuggestions: s.polishSuggestions.filter(s => s.id !== id),
+          activeSuggestionId: null
+        }))
+      }
+    },
+
+    acceptAllSuggestions: async () => {
+      const { currentChapter, polishSuggestions, previewOriginalContent } = get()
+      if (!currentChapter || polishSuggestions.length === 0) return
+
+      let newContent = previewOriginalContent || currentChapter.content
+      const newMarks = [...(currentChapter.polishingMarks || [])]
+
+      const sorted = [...polishSuggestions].sort((a, b) => b.position - a.position)
+      for (const s of sorted) {
+        newContent = newContent.replace(s.original, s.polished)
+        newMarks.push({
+          id: s.id, original: s.original, polished: s.polished,
+          reason: s.reason, position: s.position, length: s.polished.length
+        })
+      }
+
+      pushUndo()
+      set({
+        currentChapter: { ...currentChapter, content: newContent, polishingMarks: newMarks },
         polishSuggestions: [],
         activeSuggestionId: null,
         previewOriginalContent: null
-      }))
-    } else {
-      set({ polishSuggestions: [], activeSuggestionId: null })
-    }
-  },
+      })
+    },
 
-  // Settings
-  showSettings: false,
-  toggleSettings: () => set(s => ({ showSettings: !s.showSettings })),
+    dismissAllSuggestions: () => {
+      const { previewOriginalContent, currentChapter } = get()
+      if (previewOriginalContent !== null && currentChapter) {
+        pushUndo()
+        set({
+          currentChapter: { ...currentChapter, content: previewOriginalContent },
+          polishSuggestions: [],
+          activeSuggestionId: null,
+          previewOriginalContent: null
+        })
+      } else {
+        set({ polishSuggestions: [], activeSuggestionId: null })
+      }
+    },
 
-  llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
+    // Export
+    exportTxt: () => {
+      const { currentChapter } = get()
+      if (!currentChapter) return
+      const blob = new Blob([currentChapter.content], { type: 'text/plain;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${currentChapter.title || '章节'}.txt`
+      a.click()
+      URL.revokeObjectURL(url)
+    },
 
-  loadLLMConfig: async () => {
-    const config = await window.api.getLLMConfig()
-    set({ llmConfig: config })
-  },
+    // Settings
+    showSettings: false,
+    toggleSettings: () => set(s => ({ showSettings: !s.showSettings })),
 
-  saveLLMConfig: async (config) => {
-    await window.api.saveLLMConfig(config)
-    set({ llmConfig: config, showSettings: false })
-  },
+    llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' },
 
-  // UI
-  showSidebar: true,
-  toggleSidebar: () => set(s => ({ showSidebar: !s.showSidebar }))
-}))
+    loadLLMConfig: async () => {
+      const config = await window.api.getLLMConfig()
+      set({ llmConfig: config })
+    },
+
+    saveLLMConfig: async (config) => {
+      await window.api.saveLLMConfig(config)
+      set({ llmConfig: config, showSettings: false })
+    },
+
+    // UI
+    showSidebar: true,
+    toggleSidebar: () => set(s => ({ showSidebar: !s.showSidebar }))
+  }
+})

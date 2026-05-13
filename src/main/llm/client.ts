@@ -1,6 +1,6 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
-import type { LLMConfig, PolishResult, AutoPolishResult, DiffItem } from '../../shared/types'
+import type { LLMConfig, PolishResult, AutoPolishResult, DiffItem, BookAIConfig } from '../../shared/types'
 
 export function createClient(config: LLMConfig): OpenAI {
   return new OpenAI({
@@ -66,7 +66,8 @@ export async function polishText(
 // Auto-detect weak segments and polish them
 export async function autoPolish(
   config: LLMConfig,
-  content: string
+  content: string,
+  aiConfig?: Partial<BookAIConfig>
 ): Promise<AutoPolishResult> {
   const client = createClient(config)
 
@@ -83,6 +84,8 @@ export async function autoPolish(
 - 描写空洞、缺少画面感的片段
 - 情感表达不够到位的地方
 - 过于口语化或不够凝练的表述
+${aiConfig?.polishStandard ? '\n润色标准：' + aiConfig.polishStandard : ''}
+${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 
 规则：
 - 只选择确实需要改进的片段，不要改动已经很好的部分
@@ -133,7 +136,8 @@ export async function autoPolish(
 
 export async function summarizeChapter(
   config: LLMConfig,
-  content: string
+  content: string,
+  aiConfig?: Partial<BookAIConfig>
 ): Promise<string> {
   const client = createClient(config)
 
@@ -142,13 +146,26 @@ export async function summarizeChapter(
     messages: [
       {
         role: 'system',
-        content: `你是网文写作分析助手。请对章节内容进行结构化总结，提取：
-1. 主要人物及其状态
-2. 关键事件/情节
-3. 伏笔/线索
-4. 场景/环境
-5. 情感基调
-用简洁的条目式输出，不要展开论述。`
+        content: `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
+
+1. 主要人物
+- 人物名：状态/作用
+
+2. 关键事件
+- 事件描述
+
+3. 伏笔
+- 伏笔内容
+
+4. 场景
+- 场景描述
+
+5. 情感
+- 情感基调描述
+${aiConfig?.summaryStandard ? '\n摘要标准：' + aiConfig.summaryStandard : ''}
+${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
+
+要求：条目简洁，每个条目一行，不要展开论述。`
       },
       { role: 'user', content }
     ],

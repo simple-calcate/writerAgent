@@ -1,10 +1,27 @@
-import { useEffect } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from './stores/useAppStore'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
-import PolishPanel from './components/PolishPanel'
+import RightPanel from './components/RightPanel'
 import Settings from './components/Settings'
 import HistoryPanel from './components/HistoryPanel'
+import ResizeHandle from './components/ResizeHandle'
+
+const MIN_SIDEBAR = 160
+const MAX_SIDEBAR = 400
+const MIN_RIGHT = 240
+const MAX_RIGHT = 480
+
+function loadWidth(key: string, fallback: number): number {
+  try {
+    const v = localStorage.getItem(key)
+    if (v) {
+      const n = parseInt(v, 10)
+      if (!isNaN(n)) return n
+    }
+  } catch { /* ignore */ }
+  return fallback
+}
 
 export default function App() {
   const {
@@ -13,13 +30,32 @@ export default function App() {
     showSettings,
     toggleSettings,
     showSidebar,
-    toggleSidebar
+    rightPanel
   } = useAppStore()
+
+  const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth('nw-sidebar-w', 256))
+  const [rightWidth, setRightWidth] = useState(() => loadWidth('nw-right-w', 320))
 
   useEffect(() => {
     loadProjects()
     loadLLMConfig()
   }, [loadProjects, loadLLMConfig])
+
+  const handleSidebarResize = useCallback((delta: number) => {
+    setSidebarWidth(prev => {
+      const next = Math.max(MIN_SIDEBAR, Math.min(MAX_SIDEBAR, prev + delta))
+      localStorage.setItem('nw-sidebar-w', String(next))
+      return next
+    })
+  }, [])
+
+  const handleRightResize = useCallback((delta: number) => {
+    setRightWidth(prev => {
+      const next = Math.max(MIN_RIGHT, Math.min(MAX_RIGHT, prev - delta))
+      localStorage.setItem('nw-right-w', String(next))
+      return next
+    })
+  }, [])
 
   return (
     <div className="h-screen flex flex-col">
@@ -27,7 +63,7 @@ export default function App() {
       <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800/80 border-b border-gray-700/60 select-none">
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleSidebar}
+            onClick={() => useAppStore.getState().toggleSidebar()}
             className="text-gray-500 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded hover:bg-gray-700 transition-colors"
             title={showSidebar ? '隐藏侧栏' : '显示侧栏'}
           >
@@ -45,9 +81,15 @@ export default function App() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden">
-        {showSidebar && <Sidebar />}
+        {showSidebar && (
+          <>
+            <Sidebar width={sidebarWidth} />
+            <ResizeHandle onResize={handleSidebarResize} />
+          </>
+        )}
         <Editor />
-        <PolishPanel />
+        {rightPanel && <ResizeHandle onResize={handleRightResize} />}
+        <RightPanel width={rightWidth} />
       </div>
 
       {/* Modals */}

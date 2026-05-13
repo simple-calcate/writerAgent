@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import FormatPanel from './FormatPanel'
+import ExportPanel from './ExportPanel'
 
 function ToolBtn({
   onClick,
@@ -39,19 +40,59 @@ function Divider() {
   return <div className="w-px h-4 bg-gray-700/60" />
 }
 
+function ExportMenu({
+  onExportCurrent,
+  onBatchExport
+}: {
+  onExportCurrent: () => void
+  onBatchExport: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const { currentProject } = useAppStore()
+
+  return (
+    <div className="relative">
+      <ToolBtn onClick={() => setOpen(!open)} title="导出">
+        ↓ 导出
+      </ToolBtn>
+      {open && (
+        <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 w-40 z-50">
+          <button
+            onClick={() => { onExportCurrent(); setOpen(false) }}
+            className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+          >
+            导出当前章节
+          </button>
+          {currentProject && (
+            <button
+              onClick={() => { onBatchExport(); setOpen(false) }}
+              className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            >
+              批量导出项目
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Editor() {
   const {
     currentChapter,
     updateChapterContent,
     saveChapter,
-    autoAnalyze,
-    isAnalyzing,
     previewOriginalContent,
     undo,
     undoStack,
     exportTxt,
+    toggleExport,
     toggleHistory,
-    createVersion
+    createVersion,
+    scrollToPosition,
+    clearScrollToPosition,
+    polishSuggestions,
+    activeSuggestionId
   } = useAppStore()
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -88,6 +129,29 @@ export default function Editor() {
   useEffect(() => {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
   }, [])
+
+  // Scroll to suggestion position
+  useEffect(() => {
+    if (scrollToPosition === null || !textareaRef.current) return
+    const textarea = textareaRef.current
+    const content = textarea.value
+
+    // Find the active suggestion to get the original text length
+    const activeSuggestion = polishSuggestions.find(s => s.id === activeSuggestionId)
+    const selectLength = activeSuggestion ? activeSuggestion.polished.length : 0
+
+    // Calculate line number from character position
+    const textBefore = content.substring(0, scrollToPosition)
+    const lineNumber = textBefore.split('\n').length - 1
+    const lineHeight = 28 // approximate line height for text-base leading-relaxed
+    const scrollTarget = lineNumber * lineHeight - textarea.clientHeight / 3
+
+    textarea.scrollTop = Math.max(0, scrollTarget)
+    textarea.setSelectionRange(scrollToPosition, scrollToPosition + selectLength)
+    textarea.focus()
+
+    clearScrollToPosition()
+  }, [scrollToPosition, activeSuggestionId, polishSuggestions, clearScrollToPosition])
 
   if (!currentChapter) {
     return (
@@ -159,21 +223,7 @@ export default function Editor() {
 
           {/* Tools group */}
           <FormatPanel />
-          <ToolBtn onClick={exportTxt} title="导出为 txt 文件">
-            ↓ 导出
-          </ToolBtn>
-
-          <Divider />
-
-          {/* AI group */}
-          <ToolBtn
-            onClick={autoAnalyze}
-            disabled={isAnalyzing}
-            variant="primary"
-            title="AI 自动分析并润色"
-          >
-            {isAnalyzing ? '◎ 分析中...' : '◎ AI 润色'}
-          </ToolBtn>
+          <ExportMenu onExportCurrent={exportTxt} onBatchExport={toggleExport} />
         </div>
       </div>
 
@@ -186,6 +236,8 @@ export default function Editor() {
         className="flex-1 resize-none bg-transparent p-6 text-base leading-relaxed focus:outline-none placeholder-gray-600"
         spellCheck={false}
       />
+
+      <ExportPanel />
     </div>
   )
 }

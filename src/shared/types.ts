@@ -97,8 +97,70 @@ export interface ExportOptions {
 export interface AIFeatureConfig {
   polish: boolean
   summary: boolean
+  dialogue: boolean
   [key: string]: boolean
 }
+
+// ─── AI Dialogue ───
+
+export interface ToolCallInfo {
+  id: string
+  toolName: string       // 'summarize_chapter' | 'refine_summary' | 'polish_text'
+  displayName: string    // '章节摘要' | '精炼总结' | '文本润色'
+  args: Record<string, string>
+  status: 'running' | 'done'
+  result?: string
+}
+
+export interface ConversationMessage {
+  id: string
+  role: 'user' | 'assistant'
+  content: string
+  timestamp: string
+  toolCalls?: ToolCallInfo[]
+}
+
+export interface Conversation {
+  id: string
+  projectId: string | null
+  volumeId: string | null
+  chapterId: string | null
+  level: 'book' | 'volume' | 'chapter'
+  messages: ConversationMessage[]
+  createdAt: string
+  updatedAt: string
+}
+
+export interface DialogueStreamChunk {
+  streamId: string
+  chunk: string
+}
+
+export interface DialogueStreamDone {
+  streamId: string
+  fullText: string
+}
+
+export interface DialogueStreamError {
+  streamId: string
+  error: string
+}
+
+export interface DialogueToolStart {
+  streamId: string
+  toolCallId: string
+  toolName: string
+  args: Record<string, string>
+}
+
+export interface DialogueToolDone {
+  streamId: string
+  toolCallId: string
+  toolName: string
+  result: string
+}
+
+export type DialogueLevel = 'book' | 'volume' | 'chapter'
 
 export interface IPCAPI {
   // AI
@@ -143,4 +205,16 @@ export interface IPCAPI {
 
   // Export
   exportFiles: (options: ExportOptions) => Promise<boolean>
+
+  // Dialogue
+  dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) => Promise<{ streamId: string }>
+  dialogueCancel: (streamId: string) => Promise<void>
+  getConversation: (level: DialogueLevel, entityId: string) => Promise<Conversation | undefined>
+  saveConversation: (conversation: Conversation) => Promise<void>
+  deleteConversation: (level: DialogueLevel, entityId: string) => Promise<void>
+  onDialogueChunk: (callback: (data: DialogueStreamChunk) => void) => () => void
+  onDialogueDone: (callback: (data: DialogueStreamDone) => void) => () => void
+  onDialogueError: (callback: (data: DialogueStreamError) => void) => () => void
+  onDialogueToolStart: (callback: (data: DialogueToolStart) => void) => () => void
+  onDialogueToolDone: (callback: (data: DialogueToolDone) => void) => () => void
 }

@@ -4,6 +4,48 @@ import { getGenreList } from '../../../shared/novel-knowledge'
 import type { BookAIConfig } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../../shared/types'
 
+// ─── Context Menu ───
+
+interface MenuItem {
+  label: string
+  action: () => void
+  danger?: boolean
+}
+
+function ContextMenu({ x, y, items, onClose }: { x: number; y: number; items: MenuItem[]; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) onClose()
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [onClose])
+
+  return (
+    <div
+      ref={ref}
+      className="fixed z-50 bg-gray-800 border border-gray-600 rounded-lg shadow-xl py-1 min-w-[100px]"
+      style={{ left: x, top: y }}
+    >
+      {items.map((item, i) => (
+        <button
+          key={i}
+          onClick={() => { item.action(); onClose() }}
+          className={`w-full text-left px-3 py-1.5 text-xs transition-colors ${
+            item.danger
+              ? 'text-red-400 hover:bg-red-600/20'
+              : 'text-gray-300 hover:bg-gray-700'
+          }`}
+        >
+          {item.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 // ─── Rename Input ───
 
 function RenameInput({ value, onConfirm, onCancel }: { value: string; onConfirm: (v: string) => void; onCancel: () => void }) {
@@ -62,6 +104,7 @@ function ProjectsLevel() {
   const [newName, setNewName] = useState('')
   const [newGenre, setNewGenre] = useState<string | null>(null)
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
   const genreList = getGenreList()
 
   const handleCreate = () => {
@@ -70,6 +113,18 @@ function ProjectsLevel() {
     setNewName('')
     setNewGenre(null)
     setShowNew(false)
+  }
+
+  const handleContextMenu = (e: React.MouseEvent, p: { id: string; name: string }) => {
+    e.preventDefault()
+    setContextMenu({
+      x: e.clientX,
+      y: e.clientY,
+      items: [
+        { label: '重命名', action: () => setRenamingId(p.id) },
+        { label: '删除', action: () => deleteProject(p.id), danger: true }
+      ]
+    })
   }
 
   return (
@@ -110,6 +165,7 @@ function ProjectsLevel() {
             className={`flex items-center justify-between px-3 py-2 text-sm cursor-pointer group transition-colors ${
               currentProject?.id === p.id ? 'bg-blue-600/20 text-blue-300' : 'hover:bg-gray-700/50 text-gray-300'
             }`}
+            onContextMenu={e => handleContextMenu(e, p)}
           >
             {renamingId === p.id ? (
               <RenameInput
@@ -122,7 +178,6 @@ function ProjectsLevel() {
                 <span
                   className="truncate flex-1"
                   onClick={() => selectProject(p)}
-                  onDoubleClick={() => setRenamingId(p.id)}
                 >
                   {p.name}
                 </span>
@@ -140,6 +195,15 @@ function ProjectsLevel() {
           <p className="px-3 py-4 text-xs text-gray-600 text-center">暂无项目</p>
         )}
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -147,10 +211,11 @@ function ProjectsLevel() {
 // ─── Level 2: Project Contents ───
 
 function ProjectLevel() {
-  const { currentProject, volumes, chapters, navTo, navBack, createVolume, deleteVolume, renameVolume, setEditingAIConfig } = useAppStore()
+  const { currentProject, volumes, chapters, navTo, navBack, createVolume, deleteVolume, renameVolume, setEditingAIConfig, openDialogue } = useAppStore()
   const [showNewVolume, setShowNewVolume] = useState(false)
   const [newVolumeName, setNewVolumeName] = useState('')
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
 
   const unassignedChapters = chapters.filter(c => !c.volumeId)
 
@@ -177,12 +242,32 @@ function ProjectLevel() {
           <span>书籍 AI 配置</span>
         </button>
 
+        {/* Book-level dialogue */}
+        <button
+          onClick={() => openDialogue('book')}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-blue-400 hover:bg-blue-600/10 transition-colors border-b border-gray-700/50"
+        >
+          <span className="text-[11px]">💬</span>
+          <span>AI 对话</span>
+        </button>
+
         {/* Volumes */}
         <div className="py-1">
           {volumes.map(vol => (
             <div
               key={vol.id}
               className="flex items-center justify-between px-3 py-2 text-sm cursor-pointer group hover:bg-gray-700/50 text-gray-300 transition-colors"
+              onContextMenu={e => {
+                e.preventDefault()
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  items: [
+                    { label: '重命名', action: () => setRenamingId(vol.id) },
+                    { label: '删除', action: () => deleteVolume(vol.id), danger: true }
+                  ]
+                })
+              }}
             >
               {renamingId === vol.id ? (
                 <RenameInput
@@ -195,7 +280,6 @@ function ProjectLevel() {
                   <span
                     className="truncate flex-1"
                     onClick={() => navTo('volume', vol.id)}
-                    onDoubleClick={() => setRenamingId(vol.id)}
                   >
                     📖 {vol.name}
                   </span>
@@ -246,6 +330,15 @@ function ProjectLevel() {
           )}
         </div>
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -253,10 +346,11 @@ function ProjectLevel() {
 // ─── Level 3: Volume Contents ───
 
 function VolumeLevel() {
-  const { currentVolumeId, volumes, chapters, navTo, navBack, createChapter, deleteChapter, renameChapter, setEditingAIConfig } = useAppStore()
+  const { currentVolumeId, volumes, chapters, navTo, navBack, createChapter, deleteChapter, renameChapter, setEditingAIConfig, openDialogue } = useAppStore()
   const [showNewChapter, setShowNewChapter] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [renamingId, setRenamingId] = useState<string | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
 
   const isUnassigned = currentVolumeId === '__unassigned__'
   const volume = isUnassigned ? null : volumes.find(v => v.id === currentVolumeId)
@@ -289,12 +383,32 @@ function VolumeLevel() {
           </button>
         )}
 
+        {/* Volume dialogue */}
+        <button
+          onClick={() => openDialogue('volume')}
+          className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-blue-400 hover:bg-blue-600/10 transition-colors border-b border-gray-700/50"
+        >
+          <span className="text-[11px]">💬</span>
+          <span>AI 对话</span>
+        </button>
+
         {/* Chapters */}
         <div className="py-1">
           {volumeChapters.map(ch => (
             <div
               key={ch.id}
               className="flex items-center justify-between px-3 py-2 text-sm cursor-pointer group hover:bg-gray-700/50 text-gray-300 transition-colors"
+              onContextMenu={e => {
+                e.preventDefault()
+                setContextMenu({
+                  x: e.clientX,
+                  y: e.clientY,
+                  items: [
+                    { label: '重命名', action: () => setRenamingId(ch.id) },
+                    { label: '删除', action: () => deleteChapter(ch.id), danger: true }
+                  ]
+                })
+              }}
             >
               {renamingId === ch.id ? (
                 <RenameInput
@@ -307,7 +421,6 @@ function VolumeLevel() {
                   <span
                     className="truncate flex-1"
                     onClick={() => useAppStore.getState().selectChapter(ch)}
-                    onDoubleClick={() => setRenamingId(ch.id)}
                   >
                     {ch.title}
                   </span>
@@ -350,6 +463,15 @@ function VolumeLevel() {
           )}
         </div>
       </div>
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   )
 }
@@ -357,7 +479,7 @@ function VolumeLevel() {
 // ─── Level 4: Chapter ───
 
 function ChapterLevel() {
-  const { currentChapter, navBack, setRightPanel, autoAnalyze, summarizeChapter, isAnalyzing, isSummarizing, llmConfig } = useAppStore()
+  const { currentChapter, navBack, setRightPanel, autoAnalyze, summarizeChapter, isAnalyzing, isSummarizing, llmConfig, openDialogue } = useAppStore()
 
   if (!currentChapter) return null
 
@@ -411,6 +533,15 @@ function ChapterLevel() {
             >
               <span className="text-[11px]">◉</span>
               <span>{isSummarizing ? '正在生成...' : '生成摘要'}</span>
+            </button>
+          )}
+          {features.dialogue && (
+            <button
+              onClick={() => openDialogue('chapter')}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-green-400 hover:bg-green-600/10 transition-colors"
+            >
+              <span className="text-[11px]">💬</span>
+              <span>AI 对话</span>
             </button>
           )}
         </div>

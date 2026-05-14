@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -94,7 +94,53 @@ const api: IPCAPI = {
 
   // Export
   exportFiles: (options: ExportOptions) =>
-    ipcRenderer.invoke('export-files', options)
+    ipcRenderer.invoke('export-files', options),
+
+  // Dialogue
+  dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) =>
+    ipcRenderer.invoke('dialogue:send', level, entityId, messages),
+
+  dialogueCancel: (streamId: string) =>
+    ipcRenderer.invoke('dialogue:cancel', streamId),
+
+  getConversation: (level: DialogueLevel, entityId: string) =>
+    ipcRenderer.invoke('get-conversation', level, entityId),
+
+  saveConversation: (conversation: Conversation) =>
+    ipcRenderer.invoke('save-conversation', conversation),
+
+  deleteConversation: (level: DialogueLevel, entityId: string) =>
+    ipcRenderer.invoke('delete-conversation', level, entityId),
+
+  onDialogueChunk: (callback: (data: DialogueStreamChunk) => void) => {
+    const handler = (_event: any, data: DialogueStreamChunk) => callback(data)
+    ipcRenderer.on('dialogue:chunk', handler)
+    return () => { ipcRenderer.removeListener('dialogue:chunk', handler) }
+  },
+
+  onDialogueDone: (callback: (data: DialogueStreamDone) => void) => {
+    const handler = (_event: any, data: DialogueStreamDone) => callback(data)
+    ipcRenderer.on('dialogue:done', handler)
+    return () => { ipcRenderer.removeListener('dialogue:done', handler) }
+  },
+
+  onDialogueError: (callback: (data: DialogueStreamError) => void) => {
+    const handler = (_event: any, data: DialogueStreamError) => callback(data)
+    ipcRenderer.on('dialogue:error', handler)
+    return () => { ipcRenderer.removeListener('dialogue:error', handler) }
+  },
+
+  onDialogueToolStart: (callback: (data: DialogueToolStart) => void) => {
+    const handler = (_event: any, data: DialogueToolStart) => callback(data)
+    ipcRenderer.on('dialogue:tool-start', handler)
+    return () => { ipcRenderer.removeListener('dialogue:tool-start', handler) }
+  },
+
+  onDialogueToolDone: (callback: (data: DialogueToolDone) => void) => {
+    const handler = (_event: any, data: DialogueToolDone) => callback(data)
+    ipcRenderer.on('dialogue:tool-done', handler)
+    return () => { ipcRenderer.removeListener('dialogue:tool-done', handler) }
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

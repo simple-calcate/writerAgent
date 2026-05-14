@@ -1,8 +1,8 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../../shared/types'
 
-type RightPanelType = 'polish' | 'summary' | null
+type RightPanelType = 'polish' | 'summary' | 'dialogue' | null
 type NavLevel = 'projects' | 'project' | 'volume' | 'chapter' | 'ai-config'
 
 interface AppState {
@@ -101,6 +101,26 @@ interface AppState {
   // UI
   showSidebar: boolean
   toggleSidebar: () => void
+
+  // Dialogue
+  dialogueLevel: DialogueLevel | null
+  dialogueEntityId: string | null
+  dialogueMessages: ConversationMessage[]
+  isStreaming: boolean
+  streamingText: string
+  activeStreamId: string | null
+  dialogueError: string | null
+  streamingToolCalls: ToolCallInfo[]
+  openDialogue: (level: DialogueLevel) => Promise<void>
+  closeDialogue: () => void
+  sendDialogueMessage: (content: string) => Promise<void>
+  cancelDialogueStream: () => void
+  clearDialogue: () => Promise<void>
+  _handleStreamChunk: (data: DialogueStreamChunk) => void
+  _handleStreamDone: (data: DialogueStreamDone) => void
+  _handleStreamError: (data: DialogueStreamError) => void
+  _handleToolStart: (data: DialogueToolStart) => void
+  _handleToolDone: (data: DialogueToolDone) => void
 }
 
 // 获取当前章节所属卷的 AI 配置
@@ -583,7 +603,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   showSettings: false,
   toggleSettings: () => set(s => ({ showSettings: !s.showSettings })),
 
-  llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', aiFeatures: { polish: true, summary: true } },
+  llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', aiFeatures: { polish: true, summary: true, dialogue: true } },
 
   loadLLMConfig: async () => {
     const config = await window.api.getLLMConfig()
@@ -597,5 +617,215 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // UI
   showSidebar: true,
-  toggleSidebar: () => set(s => ({ showSidebar: !s.showSidebar }))
+  toggleSidebar: () => set(s => ({ showSidebar: !s.showSidebar })),
+
+  // Dialogue
+  dialogueLevel: null,
+  dialogueEntityId: null,
+  dialogueMessages: [],
+  isStreaming: false,
+  streamingText: '',
+  activeStreamId: null,
+  dialogueError: null,
+  streamingToolCalls: [],
+  _unsubscribeChunk: null as (() => void) | null,
+  _unsubscribeDone: null as (() => void) | null,
+  _unsubscribeError: null as (() => void) | null,
+  _unsubscribeToolStart: null as (() => void) | null,
+  _unsubscribeToolDone: null as (() => void) | null,
+
+  openDialogue: async (level) => {
+    const state = get()
+    // Determine entity ID based on level
+    let entityId: string | null = null
+    if (level === 'book') {
+      entityId = state.currentProject?.id || null
+    } else if (level === 'volume') {
+      entityId = state.currentVolumeId || null
+    } else if (level === 'chapter') {
+      entityId = state.currentChapter?.id || null
+    }
+    if (!entityId) return
+
+    // Clean up previous listeners
+    state._unsubscribeChunk?.()
+    state._unsubscribeDone?.()
+    state._unsubscribeError?.()
+    state._unsubscribeToolStart?.()
+    state._unsubscribeToolDone?.()
+
+    // Load existing conversation
+    const conversation = await window.api.getConversation(level, entityId)
+
+    // Register stream listeners
+    const unsubChunk = window.api.onDialogueChunk((data) => get()._handleStreamChunk(data))
+    const unsubDone = window.api.onDialogueDone((data) => get()._handleStreamDone(data))
+    const unsubError = window.api.onDialogueError((data) => get()._handleStreamError(data))
+    const unsubToolStart = window.api.onDialogueToolStart((data) => get()._handleToolStart(data))
+    const unsubToolDone = window.api.onDialogueToolDone((data) => get()._handleToolDone(data))
+
+    set({
+      dialogueLevel: level,
+      dialogueEntityId: entityId,
+      dialogueMessages: conversation?.messages || [],
+      isStreaming: false,
+      streamingText: '',
+      activeStreamId: null,
+      dialogueError: null,
+      streamingToolCalls: [],
+      rightPanel: 'dialogue',
+      _unsubscribeChunk: unsubChunk,
+      _unsubscribeDone: unsubDone,
+      _unsubscribeError: unsubError,
+      _unsubscribeToolStart: unsubToolStart,
+      _unsubscribeToolDone: unsubToolDone
+    })
+  },
+
+  closeDialogue: () => {
+    const state = get()
+    state._unsubscribeChunk?.()
+    state._unsubscribeDone?.()
+    state._unsubscribeError?.()
+    state._unsubscribeToolStart?.()
+    state._unsubscribeToolDone?.()
+    set({
+      dialogueLevel: null,
+      dialogueEntityId: null,
+      dialogueMessages: [],
+      isStreaming: false,
+      streamingText: '',
+      activeStreamId: null,
+      dialogueError: null,
+      streamingToolCalls: [],
+      _unsubscribeChunk: null,
+      _unsubscribeDone: null,
+      _unsubscribeError: null,
+      _unsubscribeToolStart: null,
+      _unsubscribeToolDone: null
+    })
+  },
+
+  sendDialogueMessage: async (content) => {
+    const { dialogueLevel, dialogueEntityId, dialogueMessages } = get()
+    if (!dialogueLevel || !dialogueEntityId) return
+
+    const userMsg: ConversationMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content,
+      timestamp: new Date().toISOString()
+    }
+
+    const updatedMessages = [...dialogueMessages, userMsg]
+    set({ dialogueMessages: updatedMessages, isStreaming: true, streamingText: '', dialogueError: null, streamingToolCalls: [] })
+
+    try {
+      const apiMessages = updatedMessages.map(m => ({ role: m.role, content: m.content }))
+      const { streamId } = await window.api.dialogueSend(dialogueLevel, dialogueEntityId, apiMessages)
+      set({ activeStreamId: streamId })
+    } catch (err: any) {
+      set({ isStreaming: false, dialogueError: err.message })
+    }
+  },
+
+  cancelDialogueStream: () => {
+    const { activeStreamId } = get()
+    if (activeStreamId) {
+      window.api.dialogueCancel(activeStreamId)
+      set({ isStreaming: false, activeStreamId: null })
+    }
+  },
+
+  clearDialogue: async () => {
+    const { dialogueLevel, dialogueEntityId } = get()
+    if (dialogueLevel && dialogueEntityId) {
+      await window.api.deleteConversation(dialogueLevel, dialogueEntityId)
+    }
+    set({ dialogueMessages: [], streamingText: '', dialogueError: null })
+  },
+
+  _handleStreamChunk: (data) => {
+    const { activeStreamId } = get()
+    if (data.streamId !== activeStreamId) return
+    set(s => ({ streamingText: s.streamingText + data.chunk }))
+  },
+
+  _handleToolStart: (data) => {
+    const { activeStreamId } = get()
+    if (data.streamId !== activeStreamId) return
+
+    const TOOL_DISPLAY: Record<string, string> = {
+      summarize_chapter: '章节摘要',
+      refine_summary: '精炼总结',
+      polish_text: '文本润色'
+    }
+
+    const newTool: ToolCallInfo = {
+      id: data.toolCallId,
+      toolName: data.toolName,
+      displayName: TOOL_DISPLAY[data.toolName] || data.toolName,
+      args: data.args,
+      status: 'running'
+    }
+
+    set(s => ({ streamingToolCalls: [...s.streamingToolCalls, newTool] }))
+  },
+
+  _handleToolDone: (data) => {
+    const { activeStreamId } = get()
+    if (data.streamId !== activeStreamId) return
+
+    set(s => ({
+      streamingToolCalls: s.streamingToolCalls.map(tc =>
+        tc.id === data.toolCallId
+          ? { ...tc, status: 'done' as const, result: data.result }
+          : tc
+      )
+    }))
+  },
+
+  _handleStreamDone: async (data) => {
+    const { activeStreamId, dialogueMessages, dialogueLevel, dialogueEntityId, streamingText, streamingToolCalls } = get()
+    if (data.streamId !== activeStreamId) return
+
+    const assistantMsg: ConversationMessage = {
+      id: crypto.randomUUID(),
+      role: 'assistant',
+      content: data.fullText || streamingText,
+      timestamp: new Date().toISOString(),
+      toolCalls: streamingToolCalls.length > 0 ? [...streamingToolCalls] : undefined
+    }
+
+    const allMessages = [...dialogueMessages, assistantMsg]
+
+    set({
+      dialogueMessages: allMessages,
+      isStreaming: false,
+      streamingText: '',
+      activeStreamId: null,
+      streamingToolCalls: []
+    })
+
+    // Persist conversation
+    if (dialogueLevel && dialogueEntityId) {
+      const conversation: Conversation = {
+        id: `${dialogueLevel}-${dialogueEntityId}`,
+        projectId: dialogueLevel === 'book' ? dialogueEntityId : null,
+        volumeId: dialogueLevel === 'volume' ? dialogueEntityId : null,
+        chapterId: dialogueLevel === 'chapter' ? dialogueEntityId : null,
+        level: dialogueLevel,
+        messages: allMessages,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+      await window.api.saveConversation(conversation)
+    }
+  },
+
+  _handleStreamError: (data) => {
+    const { activeStreamId } = get()
+    if (data.streamId !== activeStreamId) return
+    set({ isStreaming: false, dialogueError: data.error, activeStreamId: null })
+  }
 }))

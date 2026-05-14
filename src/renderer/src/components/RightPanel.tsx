@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import type { PolishResult } from '../../../shared/types'
+import DialoguePanel from './DialoguePanel'
 
 // ─── Summary Tab ───
 
@@ -223,16 +224,23 @@ function PolishContent() {
 
 const TABS = [
   { key: 'polish' as const, label: '润色', icon: '◎' },
-  { key: 'summary' as const, label: '摘要', icon: '◉' }
+  { key: 'summary' as const, label: '摘要', icon: '◉' },
+  { key: 'dialogue' as const, label: '对话', icon: '💬' }
 ]
 
 export default function RightPanel({ width }: { width?: number }) {
-  const { rightPanel, setRightPanel, llmConfig } = useAppStore()
+  const { rightPanel, setRightPanel, llmConfig, navLevel } = useAppStore()
 
   if (!rightPanel) return null
 
   const features = llmConfig.aiFeatures
-  const visibleTabs = TABS.filter(t => features[t.key])
+  // Polish/summary only at chapter level, dialogue at all project levels
+  const visibleTabs = TABS.filter(t => {
+    if (!features[t.key]) return false
+    if (t.key === 'polish' || t.key === 'summary') return navLevel === 'chapter'
+    if (t.key === 'dialogue') return navLevel !== 'projects'
+    return true
+  })
 
   return (
     <div className="border-l border-gray-700 bg-gray-800 flex shrink-0" style={{ width: width ?? 320 }}>
@@ -266,6 +274,7 @@ export default function RightPanel({ width }: { width?: number }) {
       <div className="flex-1 flex flex-col overflow-hidden">
         {rightPanel === 'polish' && <PolishContent />}
         {rightPanel === 'summary' && <SummaryContent />}
+        {rightPanel === 'dialogue' && <DialoguePanel />}
       </div>
     </div>
   )

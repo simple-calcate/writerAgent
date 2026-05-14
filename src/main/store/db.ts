@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, VersionSnapshot, BookAIConfig } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../shared/types'
 
 interface Store {
@@ -11,6 +11,7 @@ interface Store {
   chapters: Chapter[]
   llmConfig: LLMConfig
   versions: Record<string, VersionSnapshot[]>
+  conversations: Conversation[]
 }
 
 const defaultStore: Store = {
@@ -21,9 +22,10 @@ const defaultStore: Store = {
     apiKey: '',
     baseUrl: 'https://api.openai.com/v1',
     model: 'gpt-4o-mini',
-    aiFeatures: { polish: true, summary: true }
+    aiFeatures: { polish: true, summary: true, dialogue: true }
   },
-  versions: {}
+  versions: {},
+  conversations: []
 }
 
 // App-level config (data path setting)
@@ -100,7 +102,8 @@ function migrateStore(saved: any): Store {
     ...defaultStore,
     ...saved,
     llmConfig: { ...defaultStore.llmConfig, ...saved.llmConfig },
-    volumes: saved.volumes || []
+    volumes: saved.volumes || [],
+    conversations: saved.conversations || []
   }
   // 给旧项目添加 aiConfig
   for (const p of migrated.projects) {
@@ -330,5 +333,36 @@ export function getLLMConfig(): LLMConfig {
 
 export function saveLLMConfig(config: LLMConfig): void {
   store.llmConfig = config
+  save()
+}
+
+// ─── Conversations ───
+
+function getEntityIdField(level: DialogueLevel): 'projectId' | 'volumeId' | 'chapterId' {
+  if (level === 'book') return 'projectId'
+  if (level === 'volume') return 'volumeId'
+  return 'chapterId'
+}
+
+export function getConversation(level: DialogueLevel, entityId: string): Conversation | undefined {
+  const field = getEntityIdField(level)
+  return store.conversations.find(c => c.level === level && c[field] === entityId)
+}
+
+export function saveConversation(conversation: Conversation): void {
+  const idx = store.conversations.findIndex(c => c.id === conversation.id)
+  if (idx >= 0) {
+    store.conversations[idx] = conversation
+  } else {
+    store.conversations.push(conversation)
+  }
+  save()
+}
+
+export function deleteConversation(level: DialogueLevel, entityId: string): void {
+  const field = getEntityIdField(level)
+  store.conversations = store.conversations.filter(
+    c => !(c.level === level && c[field] === entityId)
+  )
   save()
 }

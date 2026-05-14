@@ -1,9 +1,10 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync } from 'fs'
-import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig } from './store/db'
+import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation } from './store/db'
 import { autoPolish, polishText, summarizeChapter } from './llm/client'
-import type { ExportOptions, BookAIConfig } from '../shared/types'
+import { startDialogueStream, cancelDialogueStream } from './llm/dialogue'
+import type { ExportOptions, BookAIConfig, DialogueLevel } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -130,6 +131,69 @@ function registerIPC(): void {
       }
       return true
     }
+  })
+
+  // Dialogue
+  ipcMain.handle('dialogue:send', async (_e, level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) => {
+    const config = getLLMConfig()
+    if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
+
+    // Resolve context based on level
+    const projects = getProjects()
+    const project = projects.find(p => {
+      if (level === 'book') return p.id === entityId
+      if (level === 'volume') {
+        const volumes = getVolumes(p.id)
+        return volumes.some(v => v.id === entityId)
+      }
+      const chapters = getChapters(p.id)
+      return chapters.some(c => c.id === entityId)
+    })
+    if (!project) throw new Error('找不到对应的项目')
+
+    const allVolumes = getVolumes(project.id)
+    const allChapters = getChapters(project.id)
+
+    let volume = null
+    let chapter = null
+
+    if (level === 'volume') {
+      volume = allVolumes.find(v => v.id === entityId) || null
+    } else if (level === 'chapter') {
+      chapter = allChapters.find(c => c.id === entityId) || null
+      if (chapter?.volumeId) {
+        volume = allVolumes.find(v => v.id === chapter.volumeId) || null
+      }
+    }
+
+    return startDialogueStream({
+      config,
+      mainWindow: mainWindow!,
+      level,
+      project,
+      volume,
+      chapter,
+      allVolumes,
+      allChapters,
+      aiConfig: resolveAIConfig(project.id, volume?.id),
+      messages
+    })
+  })
+
+  ipcMain.handle('dialogue:cancel', (_e, streamId: string) => {
+    cancelDialogueStream(streamId)
+  })
+
+  ipcMain.handle('get-conversation', (_e, level: DialogueLevel, entityId: string) => {
+    return getConversation(level, entityId)
+  })
+
+  ipcMain.handle('save-conversation', (_e, conversation) => {
+    saveConversation(conversation)
+  })
+
+  ipcMain.handle('delete-conversation', (_e, level: DialogueLevel, entityId: string) => {
+    deleteConversation(level, entityId)
   })
 }
 

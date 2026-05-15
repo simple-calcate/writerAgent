@@ -117,7 +117,11 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
         fullMessages.push({
           role: 'assistant',
           content: fullText || '',
-          tool_call_id: undefined
+          tool_calls: toolCalls.filter(tc => tc.functionName).map(tc => ({
+            id: tc.id,
+            type: 'function' as const,
+            function: { name: tc.functionName, arguments: tc.arguments }
+          }))
         } as any)
 
         for (const tc of toolCalls) {

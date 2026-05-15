@@ -6,6 +6,8 @@ export interface ThinkingDepth {
   budgetTokens?: number  // custom 模式下用户自定义的 token 预算
 }
 
+export type APIProvider = 'deepseek' | 'openai' | 'claude' | 'qwen' | 'moonshot' | 'ollama' | 'generic'
+
 // API 配置档案
 export interface APIProfile {
   id: string
@@ -197,6 +199,7 @@ export interface ConversationMessage {
   content: string
   timestamp: string
   toolCalls?: ToolCallInfo[]
+  thinkingContent?: string
 }
 
 export interface Conversation {
@@ -213,6 +216,15 @@ export interface Conversation {
 export interface DialogueStreamChunk {
   streamId: string
   chunk: string
+}
+
+export interface DialogueThinkingChunk {
+  streamId: string
+  chunk: string
+}
+
+export interface DialogueThinkingDone {
+  streamId: string
 }
 
 export interface DialogueStreamDone {
@@ -316,6 +328,8 @@ export interface IPCAPI {
   onDialogueToolStart: (callback: (data: DialogueToolStart) => void) => () => void
   onDialogueToolDone: (callback: (data: DialogueToolDone) => void) => () => void
   onDialogueToolApproval: (callback: (data: DialogueToolApproval) => void) => () => void
+  onDialogueThinkingChunk: (callback: (data: DialogueThinkingChunk) => void) => () => void
+  onDialogueThinkingDone: (callback: (data: DialogueThinkingDone) => void) => () => void
   dialogueApproveTool: (response: DialogueToolApprovalResponse) => Promise<void>
 
   // Outlines

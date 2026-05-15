@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
-import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth } from '../../shared/types'
+import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider } from '../../shared/types'
 
-export function createClient(config: LLMConfigSingleSingle): OpenAI {
+export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseUrl || 'https://api.openai.com/v1'
@@ -16,12 +16,24 @@ const THINKING_BUDGET_PRESETS: Record<string, number> = {
   high: 32768
 }
 
-function isDeepSeek(baseUrl: string): boolean {
-  return baseUrl.includes('deepseek')
-}
+// 检测 API 提供商（URL 优先，模型名兜底）
+export function detectProvider(config: LLMConfigSingle): APIProvider {
+  const baseUrl = (config.baseUrl || '').toLowerCase()
+  const model = (config.model || '').toLowerCase()
 
-function isOpenAI(baseUrl: string): boolean {
-  return baseUrl.includes('openai.com') || baseUrl.includes('openai')
+  if (baseUrl.includes('deepseek')) return 'deepseek'
+  if (baseUrl.includes('anthropic') || baseUrl.includes('claude')) return 'claude'
+  if (baseUrl.includes('moonshot') || baseUrl.includes('kimi')) return 'moonshot'
+  if (baseUrl.includes('qwen') || baseUrl.includes('dashscope') || baseUrl.includes('tongyi')) return 'qwen'
+  if (baseUrl.includes('localhost:11434') || baseUrl.includes('127.0.0.1:11434')) return 'ollama'
+  if (baseUrl.includes('openai.com')) return 'openai'
+
+  if (model.startsWith('deepseek')) return 'deepseek'
+  if (model.startsWith('o1') || model.startsWith('o3')) return 'openai'
+  if (model.startsWith('claude')) return 'claude'
+  if (model.startsWith('qwen')) return 'qwen'
+
+  return 'generic'
 }
 
 // 根据思考深度设置和 API 提供商构建请求参数
@@ -29,31 +41,31 @@ export function buildThinkingParams(config: LLMConfigSingle): Record<string, any
   const td = config.thinkingDepth
   if (!td || td.preset === 'off') return {}
 
-  const baseUrl = config.baseUrl || ''
+  const provider = detectProvider(config)
+  const budget = td.preset === 'custom'
+    ? (td.budgetTokens || 8192)
+    : (THINKING_BUDGET_PRESETS[td.preset] || 8192)
 
-  if (td.preset === 'custom') {
-    const budget = td.budgetTokens || 8192
-    if (isDeepSeek(baseUrl)) {
+  switch (provider) {
+    case 'deepseek':
+    case 'qwen':
       return { enable_thinking: true, max_tokens: budget }
-    }
-    if (isOpenAI(baseUrl)) {
-      return { reasoning_effort: budget <= 2048 ? 'low' : budget <= 8192 ? 'medium' : 'high' }
-    }
-    // Claude 等其他支持 thinking 的模型
-    return { thinking: { type: 'enabled', budget_tokens: budget } }
+    case 'openai':
+      return {
+        reasoning_effort: td.preset === 'custom'
+          ? (budget <= 2048 ? 'low' : budget <= 8192 ? 'medium' : 'high')
+          : td.preset
+      }
+    case 'claude':
+      return { thinking: { type: 'enabled', budget_tokens: budget } }
+    default:
+      return {}
   }
+}
 
-  // 预设模式
-  const budget = THINKING_BUDGET_PRESETS[td.preset] || 8192
-
-  if (isDeepSeek(baseUrl)) {
-    return { enable_thinking: true, max_tokens: budget }
-  }
-  if (isOpenAI(baseUrl)) {
-    return { reasoning_effort: td.preset }
-  }
-  // Claude 等
-  return { thinking: { type: 'enabled', budget_tokens: budget } }
+export function hasThinkingParams(config: LLMConfigSingle): boolean {
+  const td = config.thinkingDepth
+  return !!td && td.preset !== 'off' && Object.keys(buildThinkingParams(config)).length > 0
 }
 
 // Single-segment polish with context

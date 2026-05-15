@@ -267,6 +267,34 @@ function PlanModeBadge() {
   )
 }
 
+function ThinkingIndicator({ text }: { text: string }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
+        <span className="text-xs text-purple-400">思考中...</span>
+        {text.length > 0 && (
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="text-[10px] text-gray-600 hover:text-gray-400 transition-colors ml-auto"
+          >
+            {expanded ? '收起' : '展开思考过程'}
+          </button>
+        )}
+      </div>
+      {expanded && text.length > 0 && (
+        <div className="text-[11px] text-gray-500 leading-relaxed max-h-48 overflow-y-auto border-l-2 border-purple-800/40 pl-2 ml-1.5 space-y-1">
+          {text.split('\n').map((line, i) => (
+            <p key={i}>{line || ' '}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function DialoguePanel() {
   const {
     dialogueLevel,
@@ -277,6 +305,8 @@ export default function DialoguePanel() {
     dialogueError,
     pendingApprovals,
     planModeActive,
+    isThinking,
+    thinkingText,
     sendDialogueMessage,
     cancelDialogueStream,
     clearDialogue,
@@ -290,7 +320,7 @@ export default function DialoguePanel() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [dialogueMessages, streamingText])
+  }, [dialogueMessages, streamingText, thinkingText])
 
   const handleSend = () => {
     const text = input.trim()
@@ -348,6 +378,11 @@ export default function DialoguePanel() {
                   {msg.toolCalls.map(tc => <ToolCallCard key={tc.id} toolCall={tc} onApprove={approveTool} />)}
                 </div>
               )}
+              {msg.role === 'assistant' && msg.thinkingContent && (
+                <div className="mb-2">
+                  <ThinkingIndicator text={msg.thinkingContent} />
+                </div>
+              )}
               {msg.role === 'assistant' ? renderMarkdown(msg.content) : (
                 <p className="text-xs text-gray-200 whitespace-pre-wrap">{msg.content}</p>
               )}
@@ -382,7 +417,9 @@ export default function DialoguePanel() {
                 .map(a => (
                   <PendingApprovalCard key={a.approvalId} approval={a} onApprove={approveTool} />
                 ))}
-              {streamingText ? renderMarkdown(streamingText) : (
+              {streamingText ? renderMarkdown(streamingText) : isThinking ? (
+                <ThinkingIndicator text={thinkingText} />
+              ) : (
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-gray-500 animate-bounce" style={{ animationDelay: '0ms' }} />

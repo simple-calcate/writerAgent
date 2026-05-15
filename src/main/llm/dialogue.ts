@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse } from '../../shared/types'
-import { createClient, buildThinkingParams } from './client'
+import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
 import { getOutline } from '../store/db'
@@ -72,18 +72,36 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
         if (controller.signal.aborted) break
 
         const thinkingParams = buildThinkingParams(config)
-        const stream = await client.chat.completions.create({
-          model: config.model || 'gpt-4o-mini',
-          messages: fullMessages as any,
-          tools,
-          temperature: 0.7,
-          max_tokens: 4096,
-          stream: true,
-          ...thinkingParams
-        }, { signal: controller.signal })
+        let stream: AsyncIterable<any>
+        try {
+          stream = await client.chat.completions.create({
+            model: config.model || 'gpt-4o-mini',
+            messages: fullMessages as any,
+            tools,
+            temperature: 0.7,
+            max_tokens: 4096,
+            stream: true,
+            ...thinkingParams
+          }, { signal: controller.signal })
+        } catch (err: any) {
+          if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+            stream = await client.chat.completions.create({
+              model: config.model || 'gpt-4o-mini',
+              messages: fullMessages as any,
+              tools,
+              temperature: 0.7,
+              max_tokens: 4096,
+              stream: true
+            }, { signal: controller.signal })
+          } else {
+            throw err
+          }
+        }
 
         let fullText = ''
         let reasoningContent = ''
+        let thinkingStarted = false
+        let thinkingDone = false
         const toolCalls: ToolCallAccumulator[] = []
 
         for await (const chunk of stream) {
@@ -91,14 +109,21 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
           const delta = chunk.choices[0]?.delta
 
-          if (delta?.content) {
-            fullText += delta.content
-            mainWindow.webContents.send('dialogue:chunk', { streamId, chunk: delta.content })
+          // Capture reasoning_content and stream to renderer
+          if ((delta as any)?.reasoning_content) {
+            const rc = (delta as any).reasoning_content
+            reasoningContent += rc
+            if (!thinkingStarted) thinkingStarted = true
+            mainWindow.webContents.send('dialogue:thinking-chunk', { streamId, chunk: rc })
           }
 
-          // Capture reasoning_content for reasoning models (DeepSeek, etc.)
-          if ((delta as any)?.reasoning_content) {
-            reasoningContent += (delta as any).reasoning_content
+          if (delta?.content) {
+            if (thinkingStarted && !thinkingDone) {
+              thinkingDone = true
+              mainWindow.webContents.send('dialogue:thinking-done', { streamId })
+            }
+            fullText += delta.content
+            mainWindow.webContents.send('dialogue:chunk', { streamId, chunk: delta.content })
           }
 
           if (delta?.tool_calls) {
@@ -112,6 +137,12 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               if (tc.function?.arguments) toolCalls[index].arguments += tc.function.arguments
             }
           }
+        }
+
+        // Signal thinking done if stream ended during thinking phase
+        if (thinkingStarted && !thinkingDone) {
+          thinkingDone = true
+          mainWindow.webContents.send('dialogue:thinking-done', { streamId })
         }
 
         if (controller.signal.aborted) break

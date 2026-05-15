@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, Outline } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../../shared/types'
 
 type RightPanelType = 'polish' | 'summary' | 'dialogue' | 'outline' | null
@@ -117,6 +117,8 @@ interface AppState {
   activeStreamId: string | null
   dialogueError: string | null
   streamingToolCalls: ToolCallInfo[]
+  isThinking: boolean
+  thinkingText: string
   planModeActive: boolean
   openDialogue: (level: DialogueLevel) => Promise<void>
   closeDialogue: () => void
@@ -129,6 +131,8 @@ interface AppState {
   _handleToolStart: (data: DialogueToolStart) => void
   _handleToolDone: (data: DialogueToolDone) => void
   _handleToolApproval: (data: DialogueToolApproval) => void
+  _handleThinkingChunk: (data: DialogueThinkingChunk) => void
+  _handleThinkingDone: (data: DialogueThinkingDone) => void
 
   // Dialogue approval
   pendingApprovals: DialogueToolApproval[]
@@ -720,6 +724,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeStreamId: null,
   dialogueError: null,
   streamingToolCalls: [],
+  isThinking: false,
+  thinkingText: '',
   pendingApprovals: [],
   planModeActive: false,
   _unsubscribeChunk: null as (() => void) | null,
@@ -728,6 +734,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   _unsubscribeToolStart: null as (() => void) | null,
   _unsubscribeToolDone: null as (() => void) | null,
   _unsubscribeToolApproval: null as (() => void) | null,
+  _unsubscribeThinkingChunk: null as (() => void) | null,
+  _unsubscribeThinkingDone: null as (() => void) | null,
 
   openDialogue: async (level) => {
     const state = get()
@@ -749,6 +757,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     state._unsubscribeToolStart?.()
     state._unsubscribeToolDone?.()
     state._unsubscribeToolApproval?.()
+    state._unsubscribeThinkingChunk?.()
+    state._unsubscribeThinkingDone?.()
 
     // Load existing conversation
     const conversation = await window.api.getConversation(level, entityId)
@@ -760,6 +770,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     const unsubToolStart = window.api.onDialogueToolStart((data) => get()._handleToolStart(data))
     const unsubToolDone = window.api.onDialogueToolDone((data) => get()._handleToolDone(data))
     const unsubToolApproval = window.api.onDialogueToolApproval((data) => get()._handleToolApproval(data))
+    const unsubThinkingChunk = window.api.onDialogueThinkingChunk((data) => get()._handleThinkingChunk(data))
+    const unsubThinkingDone = window.api.onDialogueThinkingDone((data) => get()._handleThinkingDone(data))
 
     set({
       dialogueLevel: level,
@@ -770,6 +782,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeStreamId: null,
       dialogueError: null,
       streamingToolCalls: [],
+      isThinking: false,
+      thinkingText: '',
       pendingApprovals: [],
       rightPanel: 'dialogue',
       _unsubscribeChunk: unsubChunk,
@@ -777,7 +791,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       _unsubscribeError: unsubError,
       _unsubscribeToolStart: unsubToolStart,
       _unsubscribeToolDone: unsubToolDone,
-      _unsubscribeToolApproval: unsubToolApproval
+      _unsubscribeToolApproval: unsubToolApproval,
+      _unsubscribeThinkingChunk: unsubThinkingChunk,
+      _unsubscribeThinkingDone: unsubThinkingDone
     })
   },
 
@@ -789,6 +805,8 @@ export const useAppStore = create<AppState>((set, get) => ({
     state._unsubscribeToolStart?.()
     state._unsubscribeToolDone?.()
     state._unsubscribeToolApproval?.()
+    state._unsubscribeThinkingChunk?.()
+    state._unsubscribeThinkingDone?.()
     set({
       dialogueLevel: null,
       dialogueEntityId: null,
@@ -798,6 +816,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeStreamId: null,
       dialogueError: null,
       streamingToolCalls: [],
+      isThinking: false,
+      thinkingText: '',
       pendingApprovals: [],
       planModeActive: false,
       _unsubscribeChunk: null,
@@ -805,7 +825,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       _unsubscribeError: null,
       _unsubscribeToolStart: null,
       _unsubscribeToolDone: null,
-      _unsubscribeToolApproval: null
+      _unsubscribeToolApproval: null,
+      _unsubscribeThinkingChunk: null,
+      _unsubscribeThinkingDone: null
     })
   },
 
@@ -824,7 +846,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const updatedMessages = [...dialogueMessages, userMsg]
-    set({ dialogueMessages: updatedMessages, isStreaming: true, streamingText: '', dialogueError: null, streamingToolCalls: [], pendingApprovals: [], planModeActive: isPlanMode })
+    set({ dialogueMessages: updatedMessages, isStreaming: true, streamingText: '', isThinking: false, thinkingText: '', dialogueError: null, streamingToolCalls: [], pendingApprovals: [], planModeActive: isPlanMode })
 
     try {
       const apiMessages = updatedMessages.map(m => ({ role: m.role, content: m.content }))
@@ -920,7 +942,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   _handleStreamDone: async (data) => {
-    const { activeStreamId, dialogueMessages, dialogueLevel, dialogueEntityId, streamingText, streamingToolCalls } = get()
+    const { activeStreamId, dialogueMessages, dialogueLevel, dialogueEntityId, streamingText, streamingToolCalls, thinkingText } = get()
     if (data.streamId !== activeStreamId) return
 
     const assistantMsg: ConversationMessage = {
@@ -928,7 +950,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       role: 'assistant',
       content: data.fullText || streamingText,
       timestamp: new Date().toISOString(),
-      toolCalls: streamingToolCalls.length > 0 ? [...streamingToolCalls] : undefined
+      toolCalls: streamingToolCalls.length > 0 ? [...streamingToolCalls] : undefined,
+      thinkingContent: thinkingText || undefined
     }
 
     const allMessages = [...dialogueMessages, assistantMsg]
@@ -937,6 +960,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       dialogueMessages: allMessages,
       isStreaming: false,
       streamingText: '',
+      isThinking: false,
+      thinkingText: '',
       activeStreamId: null,
       streamingToolCalls: [],
       planModeActive: false
@@ -961,7 +986,22 @@ export const useAppStore = create<AppState>((set, get) => ({
   _handleStreamError: (data) => {
     const { activeStreamId } = get()
     if (data.streamId !== activeStreamId) return
-    set({ isStreaming: false, dialogueError: data.error, activeStreamId: null, planModeActive: false })
+    set({ isStreaming: false, isThinking: false, thinkingText: '', dialogueError: data.error, activeStreamId: null, planModeActive: false })
+  },
+
+  _handleThinkingChunk: (data) => {
+    const { activeStreamId } = get()
+    if (data.streamId !== activeStreamId) return
+    set(s => ({
+      isThinking: true,
+      thinkingText: s.thinkingText + data.chunk
+    }))
+  },
+
+  _handleThinkingDone: (data) => {
+    const { activeStreamId } = get()
+    if (data.streamId !== activeStreamId) return
+    set({ isThinking: false })
   },
 
   _handleToolApproval: (data) => {

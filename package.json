@@ -2,6 +2,7 @@
   "name": "novel-writer",
   "version": "0.1.1",
   "description": "网文写作辅助工具 — 文风润色",
+  "license": "AGPL-3.0",
   "main": "./out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",

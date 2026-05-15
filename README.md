@@ -1,5 +1,7 @@
 # 网文写作助手 — AI 驱动的网文创作工具
 
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+
 > **不替你写，只帮你写得更好。** 桌面端全能写作伙伴，从润色到大纲、从摘要到对话，AI 全流程辅助你的网文创作。
 
 ## 为什么选它？
@@ -112,3 +114,7 @@ Electron + React 18 + TypeScript + Zustand + Tailwind CSS + OpenAI SDK
 **内测招募中** — 如果你正在写网文，欢迎试用并反馈。我们关注的是：AI 怎样才能真正帮到你，而不是打扰你。
 
 [下载最新版本](../../releases) · [反馈问题](../../issues)
+
+## 开源协议
+
+本项目基于 [GNU AGPL v3.0](LICENSE) 开源。你可以自由使用、修改和分发，但修改后的代码必须同样开源。

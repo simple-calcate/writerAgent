@@ -1,12 +1,59 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
-import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig } from '../../shared/types'
+import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth } from '../../shared/types'
 
 export function createClient(config: LLMConfigSingleSingle): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseUrl || 'https://api.openai.com/v1'
   })
+}
+
+// 思考深度预设 → token 预算映射
+const THINKING_BUDGET_PRESETS: Record<string, number> = {
+  low: 2048,
+  medium: 8192,
+  high: 32768
+}
+
+function isDeepSeek(baseUrl: string): boolean {
+  return baseUrl.includes('deepseek')
+}
+
+function isOpenAI(baseUrl: string): boolean {
+  return baseUrl.includes('openai.com') || baseUrl.includes('openai')
+}
+
+// 根据思考深度设置和 API 提供商构建请求参数
+export function buildThinkingParams(config: LLMConfigSingle): Record<string, any> {
+  const td = config.thinkingDepth
+  if (!td || td.preset === 'off') return {}
+
+  const baseUrl = config.baseUrl || ''
+
+  if (td.preset === 'custom') {
+    const budget = td.budgetTokens || 8192
+    if (isDeepSeek(baseUrl)) {
+      return { enable_thinking: true, max_tokens: budget }
+    }
+    if (isOpenAI(baseUrl)) {
+      return { reasoning_effort: budget <= 2048 ? 'low' : budget <= 8192 ? 'medium' : 'high' }
+    }
+    // Claude 等其他支持 thinking 的模型
+    return { thinking: { type: 'enabled', budget_tokens: budget } }
+  }
+
+  // 预设模式
+  const budget = THINKING_BUDGET_PRESETS[td.preset] || 8192
+
+  if (isDeepSeek(baseUrl)) {
+    return { enable_thinking: true, max_tokens: budget }
+  }
+  if (isOpenAI(baseUrl)) {
+    return { reasoning_effort: td.preset }
+  }
+  // Claude 等
+  return { thinking: { type: 'enabled', budget_tokens: budget } }
 }
 
 // Single-segment polish with context

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import type { APIProfile, AIFeatureConfig } from '../../../shared/types'
+import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset } from '../../../shared/types'
 
 type TabKey = 'api' | 'ai' | 'data'
 
@@ -16,6 +16,16 @@ const FEATURE_LIST: { key: keyof AIFeatureConfig; label: string; desc: string }[
   { key: 'refineSummary', label: '精炼总结', desc: '用一段话精炼概括章节核心情节' },
   { key: 'dialogue', label: 'AI 对话', desc: '与 AI 进行创作对话、剧情规划' }
 ]
+
+const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; desc: string }[] = [
+  { value: 'off', label: '关闭', desc: '不使用深度思考，响应更快' },
+  { value: 'low', label: '低', desc: '轻度推理，适合简单对话' },
+  { value: 'medium', label: '中', desc: '平衡推理深度和速度' },
+  { value: 'high', label: '高', desc: '深度推理，适合复杂剧情规划' },
+  { value: 'custom', label: '自定义', desc: '手动设置 token 预算' }
+]
+
+const DEFAULT_THINKING: ThinkingDepth = { preset: 'off' }
 
 export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
@@ -75,7 +85,8 @@ export default function Settings() {
       name: '',
       apiKey: '',
       baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4o-mini'
+      model: 'gpt-4o-mini',
+      thinkingDepth: { preset: 'off' }
     }
     setEditingProfile(newProfile)
     setIsAdding(true)
@@ -221,6 +232,48 @@ export default function Settings() {
                         className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                       />
                     </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">思考深度</label>
+                      <select
+                        value={editingProfile.thinkingDepth?.preset || 'off'}
+                        onChange={e => {
+                          const preset = e.target.value as ThinkingDepthPreset | 'custom'
+                          const td: ThinkingDepth = preset === 'custom'
+                            ? { preset: 'custom', budgetTokens: editingProfile.thinkingDepth?.budgetTokens || 8192 }
+                            : { preset }
+                          setEditingProfile({ ...editingProfile, thinkingDepth: td })
+                        }}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      >
+                        {THINKING_PRESETS.map(p => (
+                          <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
+                        ))}
+                      </select>
+                      {(editingProfile.thinkingDepth?.preset || 'off') !== 'off' && (
+                        <p className="text-[10px] text-gray-500 mt-1">
+                          适用于 DeepSeek / OpenAI o1/o3 / Claude 等支持推理的模型
+                        </p>
+                      )}
+                      {editingProfile.thinkingDepth?.preset === 'custom' && (
+                        <div className="mt-2">
+                          <label className="block text-xs text-gray-400 mb-1">Token 预算</label>
+                          <input
+                            type="number"
+                            value={editingProfile.thinkingDepth?.budgetTokens || 8192}
+                            onChange={e => setEditingProfile({
+                              ...editingProfile,
+                              thinkingDepth: { preset: 'custom', budgetTokens: Math.max(1024, parseInt(e.target.value) || 8192) }
+                            })}
+                            min={1024}
+                            step={1024}
+                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                          />
+                          <p className="text-[10px] text-gray-500 mt-1">
+                            建议值：2048（轻量）/ 8192（平衡）/ 32768（深度推理）
+                          </p>
+                        </div>
+                      )}
+                    </div>
                     <button
                       onClick={handleSaveProfile}
                       className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition-colors"
@@ -274,6 +327,11 @@ export default function Settings() {
                         <div className="flex items-center gap-3 mt-1 ml-6">
                           <span className="text-[10px] text-gray-500 truncate">{profile.baseUrl}</span>
                           <span className="text-[10px] text-gray-600">{'*'.repeat(Math.min(profile.apiKey.length, 8))}</span>
+                          {(profile.thinkingDepth?.preset || 'off') !== 'off' && (
+                            <span className="text-[10px] text-purple-400 shrink-0">
+                              思考:{profile.thinkingDepth?.preset === 'custom' ? `${profile.thinkingDepth.budgetTokens}tok` : profile.thinkingDepth?.preset}
+                            </span>
+                          )}
                         </div>
                       </div>
                     ))}

@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse } from '../../shared/types'
-import { createClient } from './client'
+import { createClient, buildThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
 import { getOutline } from '../store/db'
@@ -71,13 +71,15 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
         if (controller.signal.aborted) break
 
+        const thinkingParams = buildThinkingParams(config)
         const stream = await client.chat.completions.create({
           model: config.model || 'gpt-4o-mini',
           messages: fullMessages as any,
           tools,
           temperature: 0.7,
           max_tokens: 4096,
-          stream: true
+          stream: true,
+          ...thinkingParams
         }, { signal: controller.signal })
 
         let fullText = ''

@@ -1,3 +1,11 @@
+// 思考深度
+export type ThinkingDepthPreset = 'off' | 'low' | 'medium' | 'high'
+
+export interface ThinkingDepth {
+  preset: ThinkingDepthPreset | 'custom'
+  budgetTokens?: number  // custom 模式下用户自定义的 token 预算
+}
+
 // API 配置档案
 export interface APIProfile {
   id: string
@@ -5,6 +13,7 @@ export interface APIProfile {
   apiKey: string
   baseUrl: string
   model: string
+  thinkingDepth?: ThinkingDepth  // 可选，向后兼容
 }
 
 // 单个 API 配置（用于实际调用）
@@ -12,6 +21,7 @@ export interface LLMConfigSingle {
   apiKey: string
   baseUrl: string
   model: string
+  thinkingDepth?: ThinkingDepth
 }
 
 // AI 功能开关 + API 绑定

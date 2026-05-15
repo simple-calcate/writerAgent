@@ -419,7 +419,7 @@ export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigS
   const profileId = featureConf.profileId || defaultProfileId
   const profile = profiles.find(p => p.id === profileId) || profiles[0]
   if (!profile) return null
-  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model }
+  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model, thinkingDepth: profile.thinkingDepth }
 }
 
 // ─── Conversations ───

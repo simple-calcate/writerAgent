@@ -98,10 +98,9 @@ function getResultPreview(result: string): string {
 }
 
 function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: ToolCallInfo; approval?: DialogueToolApproval; onApprove: (approvalId: string, approved: boolean, refreshCache?: boolean) => void }) {
-  const [expanded, setExpanded] = useState(false)
   const isWriteTool = WRITE_TOOLS.has(toolCall.toolName)
-  // Auto-expand write tool results so user sees what was written
-  const showResult = toolCall.status === 'done' && toolCall.result && (expanded || isWriteTool)
+  const [expanded, setExpanded] = useState(isWriteTool)
+  const showResult = toolCall.status === 'done' && toolCall.result && expanded
 
   return (
     <div className="border border-gray-600/50 rounded-lg bg-gray-800/60 mb-2 overflow-hidden">

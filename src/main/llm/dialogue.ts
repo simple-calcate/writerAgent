@@ -81,6 +81,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
         }, { signal: controller.signal })
 
         let fullText = ''
+        let reasoningContent = ''
         const toolCalls: ToolCallAccumulator[] = []
 
         for await (const chunk of stream) {
@@ -91,6 +92,11 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
           if (delta?.content) {
             fullText += delta.content
             mainWindow.webContents.send('dialogue:chunk', { streamId, chunk: delta.content })
+          }
+
+          // Capture reasoning_content for reasoning models (DeepSeek, etc.)
+          if ((delta as any)?.reasoning_content) {
+            reasoningContent += (delta as any).reasoning_content
           }
 
           if (delta?.tool_calls) {
@@ -113,8 +119,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
           return
         }
 
-        // Add assistant message with tool_calls
-        fullMessages.push({
+        // Add assistant message with tool_calls (and reasoning_content if present)
+        const assistantMsg: any = {
           role: 'assistant',
           content: fullText || '',
           tool_calls: toolCalls.filter(tc => tc.functionName).map(tc => ({
@@ -122,7 +128,11 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             type: 'function' as const,
             function: { name: tc.functionName, arguments: tc.arguments }
           }))
-        } as any)
+        }
+        if (reasoningContent) {
+          assistantMsg.reasoning_content = reasoningContent
+        }
+        fullMessages.push(assistantMsg)
 
         for (const tc of toolCalls) {
           if (!tc.functionName) continue

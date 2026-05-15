@@ -3,7 +3,7 @@ import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel } fr
 import { summarizeChapter } from './client'
 import { polishText } from './client'
 import { refineSummary } from './refine-summary'
-import { createChapter, renameChapter, updateChapter, saveOutline, getOutline } from '../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline } from '../store/db'
 import { randomUUID } from 'crypto'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
@@ -16,11 +16,12 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   write_volume_outline: '撰写卷纲',
   write_chapter_outline: '撰写章纲',
   read_chapter_content: '查看章节内容',
-  write_chapter_content: '撰写章节内容'
+  write_chapter_content: '撰写章节内容',
+  create_volume: '创建卷'
 }
 
 // Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content'])
+const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content'])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
@@ -36,7 +37,9 @@ export function isCacheable(toolName: string): boolean {
 export function getToolApprovalDescription(toolName: string, args: Record<string, string>): string {
   switch (toolName) {
     case 'create_chapter':
-      return `创建新章节「${args.title || '未命名'}」${args.volumeId ? '' : '（未分卷）'}`
+      return `创建新章节「${args.title || '未命名'}」`
+    case 'create_volume':
+      return `创建新卷「${args.name || '未命名'}」`
     case 'rename_chapter':
       return `将章节重命名为「${args.newTitle}」`
     case 'write_outline':
@@ -128,14 +131,28 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
       type: 'function',
       function: {
         name: 'create_chapter',
-        description: '创建一个新章节。需要用户确认后执行。',
+        description: '创建一个新章节。需要用户确认后执行。注意：必须先有卷才能创建章节，如果当前没有卷，请先使用 create_volume 创建卷。',
         parameters: {
           type: 'object',
           properties: {
             title: { type: 'string', description: '章节标题' },
-            volumeId: { type: 'string', description: '所属卷 ID（可选，不指定则为未分卷）' }
+            volumeId: { type: 'string', description: '所属卷 ID（必填，先用 create_volume 创建卷）' }
           },
-          required: ['title']
+          required: ['title', 'volumeId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'create_volume',
+        description: '创建一个新卷。当还没有卷时，必须先创建卷再创建章节。',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: '卷名称' }
+          },
+          required: ['name']
         }
       }
     },
@@ -281,6 +298,12 @@ export async function executeTool(
       const newChapter = createChapter(projectId, args.title, args.volumeId || null)
       if (!newChapter) return `错误：章节名「${args.title}」在该卷下已存在`
       return `已创建章节「${newChapter.title}」`
+    }
+
+    case 'create_volume': {
+      if (!args.name) return '错误：未提供卷名称'
+      const newVolume = createVolume(projectId, args.name)
+      return `已创建卷「${newVolume.name}」（ID: ${newVolume.id}）`
     }
 
     case 'rename_chapter': {

@@ -906,7 +906,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (toolName === 'create_chapter' || toolName === 'rename_chapter' || toolName === 'write_chapter_content') {
         get().loadChapters(currentProject.id)
       }
-      if (toolName === 'write_volume_outline') {
+      if (toolName === 'create_volume' || toolName === 'write_volume_outline') {
         get().loadVolumes(currentProject.id)
       }
       // Reload current outline if an outline tool was used

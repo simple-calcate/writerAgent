@@ -112,6 +112,7 @@ export function buildDialogueSystemPrompt(params: PromptParams): string {
 - 当用户要求总结、摘要、润色章节内容时，主动调用工具而不是自己编造结果
 - 当你需要查看某个章节的内容来给出建议时，使用 read_chapter_content 工具（会请求用户同意）
 - 写入类工具（创建章节、撰写大纲、撰写内容等）调用前会自动请求用户确认，这是正常流程
+- 【重要】创建章节前必须先有卷。如果当前没有卷，先创建卷，再创建章节
 - 【重要】在计划执行模式下，确认计划后必须连续调用工具完成所有步骤，不要中途停止或总结`)
 
   return parts.join('\n')
@@ -313,9 +314,12 @@ const PLAN_MODE_PROMPT = `\n## 计划模式（规划 → 确认 → 自动执行
 
 ### 阶段三：自动执行
 用户确认后，**立即开始执行**，按以下顺序调用工具：
-1. **create_chapter** — 创建章节（需要用户确认）
-2. **write_chapter_outline** — 撰写章纲（需要用户确认）
-3. **write_chapter_content** — 撰写正文内容（需要用户确认）
+1. **create_volume** — 如果当前没有卷，先创建卷（需要用户确认）
+2. **create_chapter** — 创建章节，必须指定 volumeId（需要用户确认）
+3. **write_chapter_outline** — 撰写章纲（需要用户确认）
+4. **write_chapter_content** — 撰写正文内容（需要用户确认）
+
+**重要**：创建章节前必须先有卷。如果当前项目没有卷，必须先调用 create_volume 创建卷，拿到卷 ID 后再创建章节。
 
 执行规则（严格遵守）：
 - 每个工具调用都会请求用户确认，这是正常流程，不要因此中断
@@ -345,7 +349,8 @@ function buildToolInstructions(chapters: Chapter[], level: DialogueLevel, curren
   parts.push('- **read_chapter_content**(chapterId) — 读取章节完整正文内容。当你需要查看章节内容来给出建议时使用')
   parts.push('')
   parts.push('**创建/编辑类工具（需要用户确认）：**')
-  parts.push('- **create_chapter**(title, volumeId?) — 创建新章节。volumeId 可选，不指定则为未分卷')
+  parts.push('- **create_volume**(name) — 创建新卷。当还没有卷时，必须先创建卷再创建章节')
+  parts.push('- **create_chapter**(title, volumeId) — 创建新章节。volumeId 必填，必须先有卷')
   parts.push('- **rename_chapter**(chapterId, newTitle) — 重命名章节')
   parts.push('- **write_outline**(content) — 撰写或更新书籍大纲（Markdown 格式）')
   parts.push('- **write_volume_outline**(volumeId, content) — 撰写或更新卷纲（Markdown 格式）')

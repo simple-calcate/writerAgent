@@ -909,6 +909,13 @@ export const useAppStore = create<AppState>((set, get) => ({
       if (toolName === 'write_volume_outline') {
         get().loadVolumes(currentProject.id)
       }
+      // Reload current outline if an outline tool was used
+      if (toolName === 'write_outline' || toolName === 'write_volume_outline' || toolName === 'write_chapter_outline') {
+        const { editingOutlineLevel, editingOutlineEntityId, openOutline } = get()
+        if (editingOutlineLevel && editingOutlineEntityId) {
+          openOutline(editingOutlineLevel, editingOutlineEntityId)
+        }
+      }
     }
   },
 

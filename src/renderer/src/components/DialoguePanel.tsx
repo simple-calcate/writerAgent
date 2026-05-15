@@ -89,9 +89,19 @@ function renderInline(text: string): React.ReactNode {
 // ─── Tool Call Card ───
 
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
+const WRITE_TOOLS = new Set(['create_chapter', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'write_chapter_content'])
+
+function getResultPreview(result: string): string {
+  const lines = result.split('\n').filter(l => l.trim())
+  // First line is usually the summary (e.g., "已更新章纲（120 字）")
+  return lines[0] || result.substring(0, 80)
+}
 
 function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: ToolCallInfo; approval?: DialogueToolApproval; onApprove: (approvalId: string, approved: boolean, refreshCache?: boolean) => void }) {
   const [expanded, setExpanded] = useState(false)
+  const isWriteTool = WRITE_TOOLS.has(toolCall.toolName)
+  // Auto-expand write tool results so user sees what was written
+  const showResult = toolCall.status === 'done' && toolCall.result && (expanded || isWriteTool)
 
   return (
     <div className="border border-gray-600/50 rounded-lg bg-gray-800/60 mb-2 overflow-hidden">
@@ -173,10 +183,10 @@ function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: ToolCallInf
         </div>
       )}
 
-      {/* Done: expandable result */}
-      {expanded && toolCall.result && toolCall.status === 'done' && (
+      {/* Done: show result for write tools (auto-expanded), or collapsible for others */}
+      {showResult && toolCall.result && (
         <div className="px-3 pb-3 border-t border-gray-700/40 pt-2">
-          <div className="text-xs text-gray-400 leading-relaxed max-h-48 overflow-y-auto">
+          <div className="text-xs text-gray-400 leading-relaxed max-h-64 overflow-y-auto">
             {renderMarkdown(toolCall.result)}
           </div>
         </div>

@@ -280,7 +280,7 @@ export async function executeTool(
       if (!args.title) return '错误：未提供章节标题'
       const newChapter = createChapter(projectId, args.title, args.volumeId || null)
       if (!newChapter) return `错误：章节名「${args.title}」在该卷下已存在`
-      return `已创建章节「${newChapter.title}」（ID: ${newChapter.id}）`
+      return `已创建章节「${newChapter.title}」`
     }
 
     case 'rename_chapter': {
@@ -304,7 +304,8 @@ export async function executeTool(
         updatedAt: new Date().toISOString()
       }
       saveOutline(outline)
-      return '已更新书籍大纲'
+      const outlinePreview = args.content.length > 300 ? args.content.substring(0, 300) + '...' : args.content
+      return `已更新书籍大纲（${args.content.length} 字）\n\n${outlinePreview}`
     }
 
     case 'write_volume_outline': {
@@ -322,7 +323,8 @@ export async function executeTool(
         updatedAt: new Date().toISOString()
       }
       saveOutline(volOutline)
-      return '已更新卷纲'
+      const volPreview = args.content.length > 300 ? args.content.substring(0, 300) + '...' : args.content
+      return `已更新卷纲（${args.content.length} 字）\n\n${volPreview}`
     }
 
     case 'write_chapter_outline': {
@@ -340,7 +342,8 @@ export async function executeTool(
         updatedAt: new Date().toISOString()
       }
       saveOutline(chOutline)
-      return '已更新章纲'
+      const chPreview = args.content.length > 300 ? args.content.substring(0, 300) + '...' : args.content
+      return `已更新章纲（${args.content.length} 字）\n\n${chPreview}`
     }
 
     case 'read_chapter_content': {
@@ -362,7 +365,8 @@ export async function executeTool(
       const target = allChapters.find(c => c.id === args.chapterId)
       if (!target) return '错误：找不到指定章节'
       updateChapter(args.chapterId, { content: args.content })
-      return `已为章节「${target.title}」写入内容（${args.content.length} 字）`
+      const contentPreview = args.content.length > 500 ? args.content.substring(0, 500) + '...' : args.content
+      return `已为章节「${target.title}」写入内容（${args.content.length} 字）\n\n${contentPreview}`
     }
 
     default:

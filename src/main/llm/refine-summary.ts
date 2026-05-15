@@ -1,8 +1,8 @@
-import type { LLMConfig, BookAIConfig } from '../../shared/types'
+import type { LLMConfigSingle, BookAIConfig } from '../../shared/types'
 import { createClient } from './client'
 
 export async function refineSummary(
-  config: LLMConfig,
+  config: LLMConfigSingle,
   content: string,
   aiConfig?: Partial<BookAIConfig>
 ): Promise<string> {

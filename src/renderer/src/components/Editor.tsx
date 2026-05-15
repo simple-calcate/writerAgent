@@ -233,7 +233,7 @@ export default function Editor() {
         value={currentChapter.content}
         onChange={e => handleChange(e.target.value)}
         placeholder="开始写作..."
-        className="flex-1 resize-none bg-transparent p-6 text-base leading-relaxed focus:outline-none placeholder-gray-600"
+        className="flex-1 resize-none bg-transparent p-6 text-base leading-relaxed focus:outline-none placeholder-gray-600 indent-[2em]"
         spellCheck={false}
       />
 

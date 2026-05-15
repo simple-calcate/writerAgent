@@ -1,9 +1,9 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, Outline } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../../shared/types'
 
-type RightPanelType = 'polish' | 'summary' | 'dialogue' | null
-type NavLevel = 'projects' | 'project' | 'volume' | 'chapter' | 'ai-config'
+type RightPanelType = 'polish' | 'summary' | 'dialogue' | 'outline' | null
+type NavLevel = 'projects' | 'project' | 'volume' | 'chapter' | 'ai-config' | 'outline'
 
 interface AppState {
   // Projects
@@ -85,6 +85,12 @@ interface AppState {
   summarizeChapter: () => Promise<void>
   regenerateSummary: () => Promise<void>
 
+  // Refine Summary
+  isRefining: boolean
+  refineProgress: { current: number; total: number } | null
+  refineSummary: () => Promise<void>
+  refineVolumeSummaries: () => Promise<void>
+
   // Export
   exportTxt: () => void
   showExport: boolean
@@ -111,6 +117,7 @@ interface AppState {
   activeStreamId: string | null
   dialogueError: string | null
   streamingToolCalls: ToolCallInfo[]
+  planModeActive: boolean
   openDialogue: (level: DialogueLevel) => Promise<void>
   closeDialogue: () => void
   sendDialogueMessage: (content: string) => Promise<void>
@@ -121,6 +128,19 @@ interface AppState {
   _handleStreamError: (data: DialogueStreamError) => void
   _handleToolStart: (data: DialogueToolStart) => void
   _handleToolDone: (data: DialogueToolDone) => void
+  _handleToolApproval: (data: DialogueToolApproval) => void
+
+  // Dialogue approval
+  pendingApprovals: DialogueToolApproval[]
+  approveTool: (approvalId: string, approved: boolean, refreshCache?: boolean) => void
+
+  // Outlines
+  currentOutline: Outline | null
+  editingOutlineLevel: DialogueLevel | null
+  editingOutlineEntityId: string | null
+  openOutline: (level: DialogueLevel, entityId: string) => Promise<void>
+  saveOutline: (content: string) => Promise<void>
+  closeOutline: () => void
 }
 
 // 获取当前章节所属卷的 AI 配置
@@ -152,7 +172,6 @@ export const useAppStore = create<AppState>((set, get) => ({
       previewOriginalContent: null,
       summaryResult: null,
       summaryError: null,
-      rightPanel: null,
       navLevel: 'project',
       currentVolumeId: null,
       editingAIConfig: null,
@@ -242,9 +261,11 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   createChapter: async (title, volumeId) => {
     const { currentProject } = get()
-    if (!currentProject) return
+    if (!currentProject) return null
     const chapter = await window.api.createChapter(currentProject.id, title, volumeId)
-    set(s => ({ chapters: [...s.chapters, chapter], currentChapter: chapter, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null, summaryResult: null, rightPanel: null, navLevel: 'chapter' as NavLevel }))
+    if (!chapter) return null
+    set(s => ({ chapters: [...s.chapters, chapter], currentChapter: chapter, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null, summaryResult: null, navLevel: 'chapter' as NavLevel }))
+    return chapter
   },
 
   renameChapter: async (id, title) => {
@@ -274,7 +295,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     await window.api.deleteChapter(id)
     const { currentChapter } = get()
     if (currentChapter?.id === id) {
-      set({ currentChapter: null, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null, summaryResult: null, rightPanel: null })
+      set({ currentChapter: null, versions: [], undoStack: [], polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null, summaryResult: null })
     }
     const { currentProject } = get()
     if (currentProject) {
@@ -432,6 +453,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   summaryResult: null,
   summaryError: null,
 
+  // Refine Summary
+  isRefining: false,
+  refineProgress: null,
+
   summarizeChapter: async () => {
     const { summaryResult } = get()
     if (summaryResult) {
@@ -459,6 +484,64 @@ export const useAppStore = create<AppState>((set, get) => ({
       await window.api.updateChapterSummary(currentChapter.id, result)
     } catch (e: any) {
       set({ summaryError: e.message, isSummarizing: false })
+    }
+  },
+
+  refineSummary: async () => {
+    const { currentChapter } = get()
+    if (!currentChapter || !currentChapter.content.trim()) return
+
+    const state = get()
+    const volumeAI = getVolumeAIConfig(state)
+    const bookAI = state.currentProject?.aiConfig
+    const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
+
+    set({ isRefining: true, refineProgress: null })
+    try {
+      const result = await window.api.refineSummary(currentChapter.content, mergedAI)
+      await window.api.updateChapterSummary(currentChapter.id, result)
+      // Reload chapter to reflect updated summary
+      const updated = { ...currentChapter, summaryResult: result }
+      set(s => ({
+        currentChapter: updated,
+        chapters: s.chapters.map(c => c.id === updated.id ? updated : c),
+        isRefining: false,
+        summaryResult: result,
+        rightPanel: 'summary'
+      }))
+    } catch (e: any) {
+      set({ isRefining: false })
+    }
+  },
+
+  refineVolumeSummaries: async () => {
+    const { currentVolumeId, chapters } = get()
+    if (!currentVolumeId || currentVolumeId === '__unassigned__') return
+
+    const volumeChapters = chapters.filter(c => c.volumeId === currentVolumeId)
+    if (volumeChapters.length === 0) return
+
+    const state = get()
+    const volumeAI = getVolumeAIConfig(state)
+    const bookAI = state.currentProject?.aiConfig
+    const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
+
+    set({ isRefining: true, refineProgress: { current: 0, total: volumeChapters.length } })
+    try {
+      for (let i = 0; i < volumeChapters.length; i++) {
+        const ch = volumeChapters[i]
+        if (!ch.content.trim()) continue
+        set({ refineProgress: { current: i + 1, total: volumeChapters.length } })
+        const result = await window.api.refineSummary(ch.content, mergedAI)
+        await window.api.updateChapterSummary(ch.id, result)
+        // Update chapter in store
+        set(s => ({
+          chapters: s.chapters.map(c => c.id === ch.id ? { ...c, summaryResult: result } : c)
+        }))
+      }
+      set({ isRefining: false, refineProgress: null })
+    } catch (e: any) {
+      set({ isRefining: false, refineProgress: null })
     }
   },
 
@@ -603,7 +686,16 @@ export const useAppStore = create<AppState>((set, get) => ({
   showSettings: false,
   toggleSettings: () => set(s => ({ showSettings: !s.showSettings })),
 
-  llmConfig: { apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', aiFeatures: { polish: true, summary: true, dialogue: true } },
+  llmConfig: {
+    profiles: [{ id: 'default-profile', name: '默认', apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }],
+    defaultProfileId: 'default-profile',
+    aiFeatures: {
+      polish: { enabled: true, profileId: null },
+      summary: { enabled: true, profileId: null },
+      dialogue: { enabled: true, profileId: null },
+      refineSummary: { enabled: true, profileId: null }
+    }
+  },
 
   loadLLMConfig: async () => {
     const config = await window.api.getLLMConfig()
@@ -628,11 +720,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeStreamId: null,
   dialogueError: null,
   streamingToolCalls: [],
+  pendingApprovals: [],
+  planModeActive: false,
   _unsubscribeChunk: null as (() => void) | null,
   _unsubscribeDone: null as (() => void) | null,
   _unsubscribeError: null as (() => void) | null,
   _unsubscribeToolStart: null as (() => void) | null,
   _unsubscribeToolDone: null as (() => void) | null,
+  _unsubscribeToolApproval: null as (() => void) | null,
 
   openDialogue: async (level) => {
     const state = get()
@@ -653,6 +748,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     state._unsubscribeError?.()
     state._unsubscribeToolStart?.()
     state._unsubscribeToolDone?.()
+    state._unsubscribeToolApproval?.()
 
     // Load existing conversation
     const conversation = await window.api.getConversation(level, entityId)
@@ -663,6 +759,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const unsubError = window.api.onDialogueError((data) => get()._handleStreamError(data))
     const unsubToolStart = window.api.onDialogueToolStart((data) => get()._handleToolStart(data))
     const unsubToolDone = window.api.onDialogueToolDone((data) => get()._handleToolDone(data))
+    const unsubToolApproval = window.api.onDialogueToolApproval((data) => get()._handleToolApproval(data))
 
     set({
       dialogueLevel: level,
@@ -673,12 +770,14 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeStreamId: null,
       dialogueError: null,
       streamingToolCalls: [],
+      pendingApprovals: [],
       rightPanel: 'dialogue',
       _unsubscribeChunk: unsubChunk,
       _unsubscribeDone: unsubDone,
       _unsubscribeError: unsubError,
       _unsubscribeToolStart: unsubToolStart,
-      _unsubscribeToolDone: unsubToolDone
+      _unsubscribeToolDone: unsubToolDone,
+      _unsubscribeToolApproval: unsubToolApproval
     })
   },
 
@@ -689,6 +788,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     state._unsubscribeError?.()
     state._unsubscribeToolStart?.()
     state._unsubscribeToolDone?.()
+    state._unsubscribeToolApproval?.()
     set({
       dialogueLevel: null,
       dialogueEntityId: null,
@@ -698,17 +798,23 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeStreamId: null,
       dialogueError: null,
       streamingToolCalls: [],
+      pendingApprovals: [],
+      planModeActive: false,
       _unsubscribeChunk: null,
       _unsubscribeDone: null,
       _unsubscribeError: null,
       _unsubscribeToolStart: null,
-      _unsubscribeToolDone: null
+      _unsubscribeToolDone: null,
+      _unsubscribeToolApproval: null
     })
   },
 
   sendDialogueMessage: async (content) => {
     const { dialogueLevel, dialogueEntityId, dialogueMessages } = get()
     if (!dialogueLevel || !dialogueEntityId) return
+
+    const PLAN_TRIGGERS = ['规划', '计划', '大纲', '接下来怎么写', '剧情走向', '后续发展', '/plan']
+    const isPlanMode = PLAN_TRIGGERS.some(k => content.includes(k))
 
     const userMsg: ConversationMessage = {
       id: crypto.randomUUID(),
@@ -718,7 +824,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     }
 
     const updatedMessages = [...dialogueMessages, userMsg]
-    set({ dialogueMessages: updatedMessages, isStreaming: true, streamingText: '', dialogueError: null, streamingToolCalls: [] })
+    set({ dialogueMessages: updatedMessages, isStreaming: true, streamingText: '', dialogueError: null, streamingToolCalls: [], pendingApprovals: [], planModeActive: isPlanMode })
 
     try {
       const apiMessages = updatedMessages.map(m => ({ role: m.role, content: m.content }))
@@ -758,7 +864,14 @@ export const useAppStore = create<AppState>((set, get) => ({
     const TOOL_DISPLAY: Record<string, string> = {
       summarize_chapter: '章节摘要',
       refine_summary: '精炼总结',
-      polish_text: '文本润色'
+      polish_text: '文本润色',
+      create_chapter: '创建章节',
+      rename_chapter: '重命名章节',
+      write_outline: '撰写书籍大纲',
+      write_volume_outline: '撰写卷纲',
+      write_chapter_outline: '撰写章纲',
+      read_chapter_content: '查看章节内容',
+      write_chapter_content: '撰写章节内容'
     }
 
     const newTool: ToolCallInfo = {
@@ -773,8 +886,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   _handleToolDone: (data) => {
-    const { activeStreamId } = get()
+    const { activeStreamId, currentProject } = get()
     if (data.streamId !== activeStreamId) return
+
+    // Find the tool name before updating state
+    const toolCall = get().streamingToolCalls.find(tc => tc.id === data.toolCallId)
+    const toolName = toolCall?.toolName
 
     set(s => ({
       streamingToolCalls: s.streamingToolCalls.map(tc =>
@@ -783,6 +900,16 @@ export const useAppStore = create<AppState>((set, get) => ({
           : tc
       )
     }))
+
+    // Reload data if a write tool that affects the sidebar completed successfully
+    if (currentProject && data.result && !data.result.startsWith('错误')) {
+      if (toolName === 'create_chapter' || toolName === 'rename_chapter' || toolName === 'write_chapter_content') {
+        get().loadChapters(currentProject.id)
+      }
+      if (toolName === 'write_volume_outline') {
+        get().loadVolumes(currentProject.id)
+      }
+    }
   },
 
   _handleStreamDone: async (data) => {
@@ -804,7 +931,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       isStreaming: false,
       streamingText: '',
       activeStreamId: null,
-      streamingToolCalls: []
+      streamingToolCalls: [],
+      planModeActive: false
     })
 
     // Persist conversation
@@ -826,6 +954,59 @@ export const useAppStore = create<AppState>((set, get) => ({
   _handleStreamError: (data) => {
     const { activeStreamId } = get()
     if (data.streamId !== activeStreamId) return
-    set({ isStreaming: false, dialogueError: data.error, activeStreamId: null })
+    set({ isStreaming: false, dialogueError: data.error, activeStreamId: null, planModeActive: false })
+  },
+
+  _handleToolApproval: (data) => {
+    set(s => ({ pendingApprovals: [...s.pendingApprovals, data] }))
+  },
+
+  approveTool: (approvalId, approved, refreshCache) => {
+    window.api.dialogueApproveTool({ approvalId, approved, refreshCache })
+    set(s => ({ pendingApprovals: s.pendingApprovals.filter(a => a.approvalId !== approvalId) }))
+  },
+
+  // Outlines
+  currentOutline: null,
+  editingOutlineLevel: null,
+  editingOutlineEntityId: null,
+
+  openOutline: async (level, entityId) => {
+    const outline = await window.api.getOutline(level, entityId)
+    set({
+      currentOutline: outline || null,
+      editingOutlineLevel: level,
+      editingOutlineEntityId: entityId,
+      rightPanel: 'outline'
+    })
+  },
+
+  saveOutline: async (content) => {
+    const { editingOutlineLevel, editingOutlineEntityId, currentOutline } = get()
+    if (!editingOutlineLevel || !editingOutlineEntityId) return
+
+    const state = get()
+    const now = new Date().toISOString()
+    const outline: Outline = {
+      id: currentOutline?.id || crypto.randomUUID(),
+      projectId: editingOutlineLevel === 'book' ? editingOutlineEntityId : null,
+      volumeId: editingOutlineLevel === 'volume' ? editingOutlineEntityId : null,
+      chapterId: editingOutlineLevel === 'chapter' ? editingOutlineEntityId : null,
+      level: editingOutlineLevel,
+      content,
+      createdAt: currentOutline?.createdAt || now,
+      updatedAt: now
+    }
+    await window.api.saveOutline(outline)
+    set({ currentOutline: outline })
+  },
+
+  closeOutline: () => {
+    set({
+      currentOutline: null,
+      editingOutlineLevel: null,
+      editingOutlineEntityId: null,
+      rightPanel: null
+    })
   }
 }))

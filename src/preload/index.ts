@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, Outline } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -11,6 +11,9 @@ const api: IPCAPI = {
 
   summarizeChapter: (content: string, aiConfig?: Partial<BookAIConfig>) =>
     ipcRenderer.invoke('summarize-chapter', content, aiConfig),
+
+  refineSummary: (content: string, aiConfig?: Partial<BookAIConfig>) =>
+    ipcRenderer.invoke('refine-summary', content, aiConfig),
 
   // Config
   getLLMConfig: () =>
@@ -140,7 +143,26 @@ const api: IPCAPI = {
     const handler = (_event: any, data: DialogueToolDone) => callback(data)
     ipcRenderer.on('dialogue:tool-done', handler)
     return () => { ipcRenderer.removeListener('dialogue:tool-done', handler) }
-  }
+  },
+
+  onDialogueToolApproval: (callback: (data: DialogueToolApproval) => void) => {
+    const handler = (_event: any, data: DialogueToolApproval) => callback(data)
+    ipcRenderer.on('dialogue:tool-approval', handler)
+    return () => { ipcRenderer.removeListener('dialogue:tool-approval', handler) }
+  },
+
+  dialogueApproveTool: (response: DialogueToolApprovalResponse) =>
+    ipcRenderer.invoke('dialogue:approve-tool', response),
+
+  // Outlines
+  getOutline: (level: DialogueLevel, entityId: string) =>
+    ipcRenderer.invoke('get-outline', level, entityId),
+
+  saveOutline: (outline: Outline) =>
+    ipcRenderer.invoke('save-outline', outline),
+
+  deleteOutline: (level: DialogueLevel, entityId: string) =>
+    ipcRenderer.invoke('delete-outline', level, entityId)
 }
 
 contextBridge.exposeInMainWorld('api', api)

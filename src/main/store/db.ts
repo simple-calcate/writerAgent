@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../shared/types'
 
 interface Store {
@@ -12,20 +12,34 @@ interface Store {
   llmConfig: LLMConfig
   versions: Record<string, VersionSnapshot[]>
   conversations: Conversation[]
+  outlines: Outline[]
 }
+
+const defaultProfileId = 'default-profile'
 
 const defaultStore: Store = {
   projects: [],
   volumes: [],
   chapters: [],
   llmConfig: {
-    apiKey: '',
-    baseUrl: 'https://api.openai.com/v1',
-    model: 'gpt-4o-mini',
-    aiFeatures: { polish: true, summary: true, dialogue: true }
+    profiles: [{
+      id: defaultProfileId,
+      name: '默认',
+      apiKey: '',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o-mini'
+    }],
+    defaultProfileId,
+    aiFeatures: {
+      polish: { enabled: true, profileId: null },
+      summary: { enabled: true, profileId: null },
+      dialogue: { enabled: true, profileId: null },
+      refineSummary: { enabled: true, profileId: null }
+    }
   },
   versions: {},
-  conversations: []
+  conversations: [],
+  outlines: []
 }
 
 // App-level config (data path setting)
@@ -101,10 +115,55 @@ function migrateStore(saved: any): Store {
   const migrated = {
     ...defaultStore,
     ...saved,
-    llmConfig: { ...defaultStore.llmConfig, ...saved.llmConfig },
     volumes: saved.volumes || [],
-    conversations: saved.conversations || []
+    conversations: saved.conversations || [],
+    outlines: saved.outlines || []
   }
+
+  // 迁移 LLMConfig：旧格式 { apiKey, baseUrl, model, aiFeatures } → 新格式 { profiles, defaultProfileId, aiFeatures }
+  if (saved.llmConfig && saved.llmConfig.profiles) {
+    // 已经是新格式，合并默认值
+    migrated.llmConfig = {
+      ...defaultStore.llmConfig,
+      ...saved.llmConfig,
+      aiFeatures: {
+        ...defaultStore.llmConfig.aiFeatures,
+        ...Object.fromEntries(
+          Object.entries(saved.llmConfig.aiFeatures || {}).map(([k, v]: [string, any]) => {
+            if (typeof v === 'boolean') {
+              return [k, { enabled: v, profileId: null }]
+            }
+            return [k, { ...{ enabled: true, profileId: null }, ...v }]
+          })
+        )
+      }
+    }
+  } else if (saved.llmConfig) {
+    // 旧格式迁移
+    const oldConfig = saved.llmConfig
+    const profileId = defaultProfileId
+    const profile: APIProfile = {
+      id: profileId,
+      name: '默认',
+      apiKey: oldConfig.apiKey || '',
+      baseUrl: oldConfig.baseUrl || 'https://api.openai.com/v1',
+      model: oldConfig.model || 'gpt-4o-mini'
+    }
+    const oldFeatures = oldConfig.aiFeatures || {}
+    migrated.llmConfig = {
+      profiles: [profile],
+      defaultProfileId: profileId,
+      aiFeatures: {
+        polish: { enabled: oldFeatures.polish !== false, profileId: null },
+        summary: { enabled: oldFeatures.summary !== false, profileId: null },
+        dialogue: { enabled: oldFeatures.dialogue !== false, profileId: null },
+        refineSummary: { enabled: true, profileId: null }
+      }
+    }
+  } else {
+    migrated.llmConfig = { ...defaultStore.llmConfig }
+  }
+
   // 给旧项目添加 aiConfig
   for (const p of migrated.projects) {
     if (!p.aiConfig) {
@@ -177,6 +236,8 @@ export function deleteProject(id: string): void {
   }
   store.chapters = store.chapters.filter(c => c.projectId !== id)
   store.volumes = store.volumes.filter(v => v.projectId !== id)
+  store.outlines = store.outlines.filter(o => o.projectId !== id)
+  store.conversations = store.conversations.filter(c => c.projectId !== id)
   store.projects = store.projects.filter(p => p.id !== id)
   save()
 }
@@ -239,6 +300,8 @@ export function deleteVolume(id: string): void {
   for (const ch of store.chapters) {
     if (ch.volumeId === id) ch.volumeId = null
   }
+  store.outlines = store.outlines.filter(o => o.volumeId !== id)
+  store.conversations = store.conversations.filter(c => c.volumeId !== id)
   store.volumes = store.volumes.filter(v => v.id !== id)
   save()
 }
@@ -251,7 +314,13 @@ export function getChapters(projectId: string): Chapter[] {
     .sort((a, b) => a.orderIndex - b.orderIndex)
 }
 
-export function createChapter(projectId: string, title: string, volumeId?: string | null): Chapter {
+export function createChapter(projectId: string, title: string, volumeId?: string | null): Chapter | null {
+  // 检查同卷下是否有同名章节
+  const duplicate = store.chapters.find(
+    c => c.projectId === projectId && c.volumeId === (volumeId || null) && c.title === title
+  )
+  if (duplicate) return null
+
   const now = new Date().toISOString()
   const maxOrder = store.chapters
     .filter(c => c.projectId === projectId)
@@ -296,6 +365,8 @@ export function updateChapter(id: string, data: Partial<Chapter>): void {
 export function deleteChapter(id: string): void {
   store.chapters = store.chapters.filter(c => c.id !== id)
   delete store.versions[id]
+  store.outlines = store.outlines.filter(o => o.chapterId !== id)
+  store.conversations = store.conversations.filter(c => c.chapterId !== id)
   save()
 }
 
@@ -336,6 +407,21 @@ export function saveLLMConfig(config: LLMConfig): void {
   save()
 }
 
+export function getDefaultProfile(): APIProfile | null {
+  const { profiles, defaultProfileId } = store.llmConfig
+  return profiles.find(p => p.id === defaultProfileId) || profiles[0] || null
+}
+
+export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigSingle | null {
+  const { profiles, defaultProfileId, aiFeatures } = store.llmConfig
+  const featureConf = aiFeatures[feature]
+  if (!featureConf || !featureConf.enabled) return null
+  const profileId = featureConf.profileId || defaultProfileId
+  const profile = profiles.find(p => p.id === profileId) || profiles[0]
+  if (!profile) return null
+  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model }
+}
+
 // ─── Conversations ───
 
 function getEntityIdField(level: DialogueLevel): 'projectId' | 'volumeId' | 'chapterId' {
@@ -363,6 +449,31 @@ export function deleteConversation(level: DialogueLevel, entityId: string): void
   const field = getEntityIdField(level)
   store.conversations = store.conversations.filter(
     c => !(c.level === level && c[field] === entityId)
+  )
+  save()
+}
+
+// ─── Outlines ───
+
+export function getOutline(level: DialogueLevel, entityId: string): Outline | undefined {
+  const field = getEntityIdField(level)
+  return store.outlines.find(o => o.level === level && o[field] === entityId)
+}
+
+export function saveOutline(outline: Outline): void {
+  const idx = store.outlines.findIndex(o => o.id === outline.id)
+  if (idx >= 0) {
+    store.outlines[idx] = outline
+  } else {
+    store.outlines.push(outline)
+  }
+  save()
+}
+
+export function deleteOutline(level: DialogueLevel, entityId: string): void {
+  const field = getEntityIdField(level)
+  store.outlines = store.outlines.filter(
+    o => !(o.level === level && o[field] === entityId)
   )
   save()
 }

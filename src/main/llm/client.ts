@@ -1,8 +1,8 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
-import type { LLMConfig, PolishResult, AutoPolishResult, DiffItem, BookAIConfig } from '../../shared/types'
+import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig } from '../../shared/types'
 
-export function createClient(config: LLMConfig): OpenAI {
+export function createClient(config: LLMConfigSingleSingle): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey,
     baseURL: config.baseUrl || 'https://api.openai.com/v1'
@@ -11,7 +11,7 @@ export function createClient(config: LLMConfig): OpenAI {
 
 // Single-segment polish with context
 export async function polishText(
-  config: LLMConfig,
+  config: LLMConfigSingle,
   original: string,
   context: string
 ): Promise<PolishResult> {
@@ -65,7 +65,7 @@ export async function polishText(
 
 // Auto-detect weak segments and polish them
 export async function autoPolish(
-  config: LLMConfig,
+  config: LLMConfigSingle,
   content: string,
   aiConfig?: Partial<BookAIConfig>
 ): Promise<AutoPolishResult> {
@@ -135,7 +135,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 }
 
 export async function summarizeChapter(
-  config: LLMConfig,
+  config: LLMConfigSingle,
   content: string,
   aiConfig?: Partial<BookAIConfig>
 ): Promise<string> {

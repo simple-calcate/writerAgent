@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { getGenreList } from '../../../shared/novel-knowledge'
-import type { BookAIConfig } from '../../../shared/types'
-import { DEFAULT_BOOK_AI_CONFIG } from '../../../shared/types'
+import type { BookAIConfig, WritingGuidance } from '../../../shared/types'
+import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_WRITING_GUIDANCE } from '../../../shared/types'
 
 // ─── Context Menu ───
 
@@ -211,7 +211,7 @@ function ProjectsLevel() {
 // ─── Level 2: Project Contents ───
 
 function ProjectLevel() {
-  const { currentProject, volumes, chapters, navTo, navBack, createVolume, deleteVolume, renameVolume, setEditingAIConfig, openDialogue } = useAppStore()
+  const { currentProject, volumes, chapters, navTo, navBack, createVolume, deleteVolume, renameVolume, setEditingAIConfig, openDialogue, openOutline } = useAppStore()
   const [showNewVolume, setShowNewVolume] = useState(false)
   const [newVolumeName, setNewVolumeName] = useState('')
   const [renamingId, setRenamingId] = useState<string | null>(null)
@@ -250,6 +250,17 @@ function ProjectLevel() {
           <span className="text-[11px]">💬</span>
           <span>AI 对话</span>
         </button>
+
+        {/* Book outline */}
+        {currentProject && (
+          <button
+            onClick={() => openOutline('book', currentProject.id)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-600/10 transition-colors border-b border-gray-700/50"
+          >
+            <span className="text-[11px]">📋</span>
+            <span>书籍大纲</span>
+          </button>
+        )}
 
         {/* Volumes */}
         <div className="py-1">
@@ -346,9 +357,10 @@ function ProjectLevel() {
 // ─── Level 3: Volume Contents ───
 
 function VolumeLevel() {
-  const { currentVolumeId, volumes, chapters, navTo, navBack, createChapter, deleteChapter, renameChapter, setEditingAIConfig, openDialogue } = useAppStore()
+  const { currentVolumeId, volumes, chapters, navTo, navBack, createChapter, deleteChapter, renameChapter, setEditingAIConfig, openDialogue, openOutline, refineVolumeSummaries, isRefining, refineProgress } = useAppStore()
   const [showNewChapter, setShowNewChapter] = useState(false)
   const [newTitle, setNewTitle] = useState('')
+  const [createError, setCreateError] = useState('')
   const [renamingId, setRenamingId] = useState<string | null>(null)
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: MenuItem[] } | null>(null)
 
@@ -360,6 +372,12 @@ function VolumeLevel() {
 
   const handleCreate = () => {
     if (!newTitle.trim()) return
+    setCreateError('')
+    const duplicate = volumeChapters.some(c => c.title === newTitle.trim())
+    if (duplicate) {
+      setCreateError('该卷下已存在同名章节')
+      return
+    }
     createChapter(newTitle.trim(), isUnassigned ? null : currentVolumeId)
     setNewTitle('')
     setShowNewChapter(false)
@@ -391,6 +409,29 @@ function VolumeLevel() {
           <span className="text-[11px]">💬</span>
           <span>AI 对话</span>
         </button>
+
+        {/* Volume outline (not for unassigned) */}
+        {!isUnassigned && volume && (
+          <button
+            onClick={() => openOutline('volume', volume.id)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-600/10 transition-colors border-b border-gray-700/50"
+          >
+            <span className="text-[11px]">📋</span>
+            <span>卷纲</span>
+          </button>
+        )}
+
+        {/* Batch refine summaries (not for unassigned) */}
+        {!isUnassigned && volumeChapters.length > 0 && (
+          <button
+            onClick={refineVolumeSummaries}
+            disabled={isRefining}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-orange-400 hover:bg-orange-600/10 transition-colors border-b border-gray-700/50 disabled:opacity-50"
+          >
+            <span className="text-[11px]">📝</span>
+            <span>{isRefining && refineProgress ? `精炼中 ${refineProgress.current}/${refineProgress.total}` : '批量精炼总结'}</span>
+          </button>
+        )}
 
         {/* Chapters */}
         <div className="py-1">
@@ -442,16 +483,21 @@ function VolumeLevel() {
         {/* New chapter */}
         <div className="border-t border-gray-700/50">
           {showNewChapter ? (
-            <div className="flex gap-1 px-3 py-2">
-              <input
-                value={newTitle}
-                onChange={e => setNewTitle(e.target.value)}
-                onKeyDown={e => e.key === 'Enter' && handleCreate()}
-                placeholder="章节标题"
-                className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
-                autoFocus
-              />
-              <button onClick={handleCreate} className="text-xs bg-blue-600 px-2 py-1 rounded">OK</button>
+            <div className="px-3 py-2">
+              <div className="flex gap-1">
+                <input
+                  value={newTitle}
+                  onChange={e => { setNewTitle(e.target.value); setCreateError('') }}
+                  onKeyDown={e => e.key === 'Enter' && handleCreate()}
+                  placeholder="章节标题"
+                  className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500"
+                  autoFocus
+                />
+                <button onClick={handleCreate} className="text-xs bg-blue-600 px-2 py-1 rounded">OK</button>
+              </div>
+              {createError && (
+                <p className="text-[10px] text-red-400 mt-1">{createError}</p>
+              )}
             </div>
           ) : (
             <button
@@ -479,7 +525,7 @@ function VolumeLevel() {
 // ─── Level 4: Chapter ───
 
 function ChapterLevel() {
-  const { currentChapter, navBack, setRightPanel, autoAnalyze, summarizeChapter, isAnalyzing, isSummarizing, llmConfig, openDialogue } = useAppStore()
+  const { currentChapter, navBack, setRightPanel, autoAnalyze, summarizeChapter, refineSummary, isAnalyzing, isSummarizing, isRefining, llmConfig, openDialogue, openOutline } = useAppStore()
 
   if (!currentChapter) return null
 
@@ -515,7 +561,7 @@ function ChapterLevel() {
 
         {/* AI actions */}
         <div className="border-t border-gray-700/50 mt-1 pt-1">
-          {features.polish && (
+          {features.polish.enabled && (
             <button
               onClick={autoAnalyze}
               disabled={isAnalyzing}
@@ -525,7 +571,7 @@ function ChapterLevel() {
               <span>{isAnalyzing ? '正在润色...' : '开始润色'}</span>
             </button>
           )}
-          {features.summary && (
+          {features.summary.enabled && (
             <button
               onClick={summarizeChapter}
               disabled={isSummarizing}
@@ -535,7 +581,17 @@ function ChapterLevel() {
               <span>{isSummarizing ? '正在生成...' : '生成摘要'}</span>
             </button>
           )}
-          {features.dialogue && (
+          {features.summary.enabled && (
+            <button
+              onClick={refineSummary}
+              disabled={isRefining}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-orange-400 hover:bg-orange-600/10 transition-colors disabled:opacity-50"
+            >
+              <span className="text-[11px]">📝</span>
+              <span>{isRefining ? '正在精炼...' : '精炼总结'}</span>
+            </button>
+          )}
+          {features.dialogue.enabled && (
             <button
               onClick={() => openDialogue('chapter')}
               className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-green-400 hover:bg-green-600/10 transition-colors"
@@ -544,6 +600,13 @@ function ChapterLevel() {
               <span>AI 对话</span>
             </button>
           )}
+          <button
+            onClick={() => openOutline('chapter', currentChapter.id)}
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-600/10 transition-colors"
+          >
+            <span className="text-[11px]">📋</span>
+            <span>章纲</span>
+          </button>
         </div>
       </div>
     </div>
@@ -568,18 +631,35 @@ function AIConfigLevel() {
   const [polishStandard, setPolishStandard] = useState(existingConfig.polishStandard || '')
   const [summaryStandard, setSummaryStandard] = useState(existingConfig.summaryStandard || '')
   const [customPrompt, setCustomPrompt] = useState(existingConfig.customPrompt || '')
+  const [writingGuidance, setWritingGuidance] = useState<WritingGuidance>(
+    existingConfig.writingGuidance || { ...DEFAULT_WRITING_GUIDANCE }
+  )
+  const [showWritingGuidance, setShowWritingGuidance] = useState(true)
 
   useEffect(() => {
     setPolishStandard(existingConfig.polishStandard || '')
     setSummaryStandard(existingConfig.summaryStandard || '')
     setCustomPrompt(existingConfig.customPrompt || '')
+    setWritingGuidance(existingConfig.writingGuidance || { ...DEFAULT_WRITING_GUIDANCE })
   }, [isBookLevel, editingVolumeId])
+
+  const updateGuidance = (key: keyof WritingGuidance, value: string) => {
+    setWritingGuidance(prev => ({ ...prev, [key]: value }))
+  }
 
   const handleSave = async () => {
     const config: Partial<BookAIConfig> = {
       polishStandard: polishStandard.trim(),
       summaryStandard: summaryStandard.trim(),
-      customPrompt: customPrompt.trim()
+      customPrompt: customPrompt.trim(),
+      writingGuidance: {
+        dialogue: writingGuidance.dialogue.trim(),
+        scene: writingGuidance.scene.trim(),
+        emotion: writingGuidance.emotion.trim(),
+        action: writingGuidance.action.trim(),
+        pacing: writingGuidance.pacing.trim(),
+        custom: writingGuidance.custom.trim()
+      }
     }
     if (isBookLevel) {
       await saveBookAIConfig(config)
@@ -626,6 +706,80 @@ function AIConfigLevel() {
             className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-20"
           />
         </div>
+
+        {/* Writing Guidance */}
+        {isBookLevel && (
+          <div className="border border-gray-700 rounded-lg overflow-hidden">
+            <button
+              onClick={() => setShowWritingGuidance(!showWritingGuidance)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs text-amber-400 hover:bg-gray-700/30 transition-colors"
+            >
+              <span className="font-medium">写作指导意见</span>
+              <span className="text-[10px] text-gray-500">{showWritingGuidance ? '▼' : '▶'}</span>
+            </button>
+            {showWritingGuidance && (
+              <div className="px-3 pb-3 space-y-3 border-t border-gray-700/50">
+                <p className="text-[10px] text-gray-500 pt-2">
+                  指导 AI 在撰写内容时的描写风格和技巧要求
+                </p>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">对话风格</label>
+                  <textarea
+                    value={writingGuidance.dialogue}
+                    onChange={e => updateGuidance('dialogue', e.target.value)}
+                    placeholder="例如：对话要口语化、符合角色性格，避免书面语..."
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">场景描写</label>
+                  <textarea
+                    value={writingGuidance.scene}
+                    onChange={e => updateGuidance('scene', e.target.value)}
+                    placeholder="例如：注重感官细节，营造画面感，避免过度描写..."
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">情感描写</label>
+                  <textarea
+                    value={writingGuidance.emotion}
+                    onChange={e => updateGuidance('emotion', e.target.value)}
+                    placeholder="例如：通过动作和细节传达情感，避免直白陈述..."
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">动作描写</label>
+                  <textarea
+                    value={writingGuidance.action}
+                    onChange={e => updateGuidance('action', e.target.value)}
+                    placeholder="例如：动作场景要有节奏感，用短句增加紧张感..."
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">节奏把控</label>
+                  <textarea
+                    value={writingGuidance.pacing}
+                    onChange={e => updateGuidance('pacing', e.target.value)}
+                    placeholder="例如：每章结尾留悬念，高潮与过渡交替..."
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">其他要求</label>
+                  <textarea
+                    value={writingGuidance.custom}
+                    onChange={e => updateGuidance('custom', e.target.value)}
+                    placeholder="其他写作要求..."
+                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="p-3 border-t border-gray-700/50 shrink-0">

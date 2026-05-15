@@ -1,10 +1,11 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync } from 'fs'
-import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation } from './store/db'
+import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline } from './store/db'
 import { autoPolish, polishText, summarizeChapter } from './llm/client'
-import { startDialogueStream, cancelDialogueStream } from './llm/dialogue'
-import type { ExportOptions, BookAIConfig, DialogueLevel } from '../shared/types'
+import { refineSummary } from './llm/refine-summary'
+import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
+import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
 
@@ -33,21 +34,31 @@ function createWindow(): void {
 function registerIPC(): void {
   // AI
   ipcMain.handle('auto-polish', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
-    const config = getLLMConfig()
+    const config = resolveFeatureConfig('polish')
+    if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
     return autoPolish(config, content, aiConfig)
   })
 
   ipcMain.handle('polish-text', async (_e, original: string, context: string) => {
-    const config = getLLMConfig()
+    const config = resolveFeatureConfig('polish')
+    if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
     return polishText(config, original, context)
   })
 
   ipcMain.handle('summarize-chapter', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
-    const config = getLLMConfig()
+    const config = resolveFeatureConfig('summary')
+    if (!config) throw new Error('摘要功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
     return summarizeChapter(config, content, aiConfig)
+  })
+
+  ipcMain.handle('refine-summary', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
+    const config = resolveFeatureConfig('refineSummary')
+    if (!config) throw new Error('精炼总结功能未启用，请在设置中开启')
+    if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
+    return refineSummary(config, content, aiConfig)
   })
 
   // Config
@@ -135,7 +146,8 @@ function registerIPC(): void {
 
   // Dialogue
   ipcMain.handle('dialogue:send', async (_e, level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) => {
-    const config = getLLMConfig()
+    const config = resolveFeatureConfig('dialogue')
+    if (!config) throw new Error('对话功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
 
     // Resolve context based on level
@@ -175,7 +187,7 @@ function registerIPC(): void {
       chapter,
       allVolumes,
       allChapters,
-      aiConfig: resolveAIConfig(project.id, volume?.id),
+      aiConfig: resolveAIConfig(project, volume),
       messages
     })
   })
@@ -194,6 +206,24 @@ function registerIPC(): void {
 
   ipcMain.handle('delete-conversation', (_e, level: DialogueLevel, entityId: string) => {
     deleteConversation(level, entityId)
+  })
+
+  // Dialogue approval
+  ipcMain.handle('dialogue:approve-tool', (_e, response: DialogueToolApprovalResponse) => {
+    handleApprovalResponse(response)
+  })
+
+  // Outlines
+  ipcMain.handle('get-outline', (_e, level: DialogueLevel, entityId: string) => {
+    return getOutline(level, entityId)
+  })
+
+  ipcMain.handle('save-outline', (_e, outline) => {
+    saveOutline(outline)
+  })
+
+  ipcMain.handle('delete-outline', (_e, level: DialogueLevel, entityId: string) => {
+    deleteOutline(level, entityId)
   })
 }
 

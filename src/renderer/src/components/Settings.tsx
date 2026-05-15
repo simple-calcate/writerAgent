@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
+import type { APIProfile, AIFeatureConfig } from '../../../shared/types'
 
 type TabKey = 'api' | 'ai' | 'data'
 
@@ -9,6 +10,13 @@ const TABS: { key: TabKey; label: string }[] = [
   { key: 'data', label: '数据存储' }
 ]
 
+const FEATURE_LIST: { key: keyof AIFeatureConfig; label: string; desc: string }[] = [
+  { key: 'polish', label: '润色优化', desc: '自动检测并优化薄弱片段' },
+  { key: 'summary', label: '章节摘要', desc: '生成章节结构化摘要（人物、事件、伏笔）' },
+  { key: 'refineSummary', label: '精炼总结', desc: '用一段话精炼概括章节核心情节' },
+  { key: 'dialogue', label: 'AI 对话', desc: '与 AI 进行创作对话、剧情规划' }
+]
+
 export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
   const [form, setForm] = useState(llmConfig)
@@ -16,6 +24,10 @@ export default function Settings() {
   const [dataPath, setDataPath] = useState('')
   const [defaultPath, setDefaultPath] = useState('')
   const [customPath, setCustomPath] = useState('')
+
+  // API profile editing state
+  const [editingProfile, setEditingProfile] = useState<APIProfile | null>(null)
+  const [isAdding, setIsAdding] = useState(false)
 
   useEffect(() => {
     setForm(llmConfig)
@@ -56,9 +68,85 @@ export default function Settings() {
     setDataPath(defaultPath)
   }
 
+  // Profile management
+  const handleAddProfile = () => {
+    const newProfile: APIProfile = {
+      id: crypto.randomUUID(),
+      name: '',
+      apiKey: '',
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-4o-mini'
+    }
+    setEditingProfile(newProfile)
+    setIsAdding(true)
+  }
+
+  const handleSaveProfile = () => {
+    if (!editingProfile) return
+    if (!editingProfile.name.trim()) {
+      alert('请输入配置名称')
+      return
+    }
+    const profiles = isAdding
+      ? [...form.profiles, editingProfile]
+      : form.profiles.map(p => p.id === editingProfile.id ? editingProfile : p)
+    const defaultProfileId = form.defaultProfileId || editingProfile.id
+    setForm({ ...form, profiles, defaultProfileId })
+    setEditingProfile(null)
+    setIsAdding(false)
+  }
+
+  const handleDeleteProfile = (id: string) => {
+    if (form.profiles.length <= 1) {
+      alert('至少保留一套 API 配置')
+      return
+    }
+    const profiles = form.profiles.filter(p => p.id !== id)
+    const defaultProfileId = form.defaultProfileId === id ? profiles[0].id : form.defaultProfileId
+    // Clear profile bindings that reference deleted profile
+    const aiFeatures = { ...form.aiFeatures }
+    for (const key of Object.keys(aiFeatures) as (keyof AIFeatureConfig)[]) {
+      if (aiFeatures[key].profileId === id) {
+        aiFeatures[key] = { ...aiFeatures[key], profileId: null }
+      }
+    }
+    setForm({ ...form, profiles, defaultProfileId, aiFeatures })
+  }
+
+  const handleSetDefault = (id: string) => {
+    setForm({ ...form, defaultProfileId: id })
+  }
+
+  const handleToggleFeature = (key: keyof AIFeatureConfig) => {
+    const current = form.aiFeatures[key]
+    setForm({
+      ...form,
+      aiFeatures: {
+        ...form.aiFeatures,
+        [key]: { ...current, enabled: !current.enabled }
+      }
+    })
+  }
+
+  const handleBindProfile = (key: keyof AIFeatureConfig, profileId: string | null) => {
+    const current = form.aiFeatures[key]
+    setForm({
+      ...form,
+      aiFeatures: {
+        ...form.aiFeatures,
+        [key]: { ...current, profileId }
+      }
+    })
+  }
+
+  const getProfileName = (profileId: string | null) => {
+    if (!profileId) return '默认'
+    return form.profiles.find(p => p.id === profileId)?.name || '默认'
+  }
+
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={toggleSettings}>
-      <div className="bg-gray-800 rounded-lg w-full max-w-lg shadow-xl flex overflow-hidden" onClick={e => e.stopPropagation()} style={{ height: 420 }}>
+      <div className="bg-gray-800 rounded-lg w-full max-w-lg shadow-xl flex overflow-hidden" onClick={e => e.stopPropagation()} style={{ height: 480 }}>
         {/* Left sidebar */}
         <div className="w-36 bg-gray-900/60 border-r border-gray-700 flex flex-col py-3 shrink-0">
           <div className="px-4 mb-3">
@@ -86,73 +174,163 @@ export default function Settings() {
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {activeTab === 'api' && (
               <>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">API Key</label>
-                  <input
-                    type="password"
-                    value={form.apiKey}
-                    onChange={e => setForm({ ...form, apiKey: e.target.value })}
-                    placeholder="sk-..."
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">Base URL</label>
-                  <input
-                    type="text"
-                    value={form.baseUrl}
-                    onChange={e => setForm({ ...form, baseUrl: e.target.value })}
-                    placeholder="https://api.openai.com/v1"
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-400 mb-1">模型</label>
-                  <input
-                    type="text"
-                    value={form.model}
-                    onChange={e => setForm({ ...form, model: e.target.value })}
-                    placeholder="gpt-4o-mini"
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                  />
-                </div>
+                {editingProfile ? (
+                  /* Profile edit form */
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-sm text-gray-300">{isAdding ? '添加 API 配置' : '编辑 API 配置'}</h3>
+                      <button onClick={() => { setEditingProfile(null); setIsAdding(false) }} className="text-xs text-gray-500 hover:text-gray-300">取消</button>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">配置名称</label>
+                      <input
+                        type="text"
+                        value={editingProfile.name}
+                        onChange={e => setEditingProfile({ ...editingProfile, name: e.target.value })}
+                        placeholder="如 OpenAI、本地 Ollama..."
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">API Key</label>
+                      <input
+                        type="password"
+                        value={editingProfile.apiKey}
+                        onChange={e => setEditingProfile({ ...editingProfile, apiKey: e.target.value })}
+                        placeholder="sk-..."
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Base URL</label>
+                      <input
+                        type="text"
+                        value={editingProfile.baseUrl}
+                        onChange={e => setEditingProfile({ ...editingProfile, baseUrl: e.target.value })}
+                        placeholder="https://api.openai.com/v1"
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">模型</label>
+                      <input
+                        type="text"
+                        value={editingProfile.model}
+                        onChange={e => setEditingProfile({ ...editingProfile, model: e.target.value })}
+                        placeholder="gpt-4o-mini"
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      />
+                    </div>
+                    <button
+                      onClick={handleSaveProfile}
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition-colors"
+                    >
+                      保存配置
+                    </button>
+                  </div>
+                ) : (
+                  /* Profile list */
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <h3 className="text-sm text-gray-300">API 配置列表</h3>
+                      <button onClick={handleAddProfile} className="text-xs text-blue-400 hover:text-blue-300">+ 添加</button>
+                    </div>
+                    {form.profiles.map(profile => (
+                      <div
+                        key={profile.id}
+                        className={`px-3 py-2.5 rounded border transition-colors ${
+                          form.defaultProfileId === profile.id
+                            ? 'border-blue-500/50 bg-blue-500/10'
+                            : 'border-gray-700 bg-gray-700/30 hover:bg-gray-700/50'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <button
+                              onClick={() => handleSetDefault(profile.id)}
+                              title={form.defaultProfileId === profile.id ? '默认配置' : '设为默认'}
+                              className={`shrink-0 text-sm ${form.defaultProfileId === profile.id ? 'text-yellow-400' : 'text-gray-600 hover:text-gray-400'}`}
+                            >
+                              {form.defaultProfileId === profile.id ? '★' : '☆'}
+                            </button>
+                            <span className="text-sm text-gray-200 truncate">{profile.name}</span>
+                            <span className="text-[10px] text-gray-500 truncate">{profile.model}</span>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => setEditingProfile(profile)}
+                              className="text-[10px] text-gray-500 hover:text-blue-400 px-1.5 py-0.5"
+                            >
+                              编辑
+                            </button>
+                            <button
+                              onClick={() => handleDeleteProfile(profile.id)}
+                              className="text-[10px] text-gray-500 hover:text-red-400 px-1.5 py-0.5"
+                            >
+                              删除
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1 ml-6">
+                          <span className="text-[10px] text-gray-500 truncate">{profile.baseUrl}</span>
+                          <span className="text-[10px] text-gray-600">{'*'.repeat(Math.min(profile.apiKey.length, 8))}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </>
             )}
 
             {activeTab === 'ai' && (
               <div className="space-y-2">
-                {[
-                  { key: 'polish', label: '润色优化', desc: '自动检测并优化薄弱片段' },
-                  { key: 'summary', label: '章节摘要', desc: '生成章节结构化摘要（人物、事件、伏笔）' }
-                ].map(feat => (
-                  <label
-                    key={feat.key}
-                    className="flex items-center justify-between px-3 py-3 bg-gray-700/50 rounded cursor-pointer hover:bg-gray-700 transition-colors"
-                  >
-                    <div>
-                      <p className="text-sm text-gray-200">{feat.label}</p>
-                      <p className="text-xs text-gray-500 mt-0.5">{feat.desc}</p>
-                    </div>
+                {FEATURE_LIST.map(feat => {
+                  const entry = form.aiFeatures[feat.key]
+                  return (
                     <div
-                      onClick={() =>
-                        setForm({
-                          ...form,
-                          aiFeatures: { ...form.aiFeatures, [feat.key]: !form.aiFeatures[feat.key] }
-                        })
-                      }
-                      className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${
-                        form.aiFeatures[feat.key] ? 'bg-blue-600' : 'bg-gray-600'
+                      key={feat.key}
+                      className={`px-3 py-3 rounded border transition-colors ${
+                        entry.enabled
+                          ? 'border-gray-600 bg-gray-700/30'
+                          : 'border-gray-700/50 bg-gray-800/50 opacity-60'
                       }`}
                     >
-                      <div
-                        className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                          form.aiFeatures[feat.key] ? 'translate-x-5' : 'translate-x-0.5'
-                        }`}
-                      />
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm text-gray-200">{feat.label}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{feat.desc}</p>
+                        </div>
+                        <div
+                          onClick={() => handleToggleFeature(feat.key)}
+                          className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${
+                            entry.enabled ? 'bg-blue-600' : 'bg-gray-600'
+                          }`}
+                        >
+                          <div
+                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                              entry.enabled ? 'translate-x-5' : 'translate-x-0.5'
+                            }`}
+                          />
+                        </div>
+                      </div>
+                      {entry.enabled && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-[10px] text-gray-500 shrink-0">API:</span>
+                          <select
+                            value={entry.profileId || ''}
+                            onChange={e => handleBindProfile(feat.key, e.target.value || null)}
+                            className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">默认 ({getProfileName(null)})</option>
+                            {form.profiles.map(p => (
+                              <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
                     </div>
-                  </label>
-                ))}
-                <p className="text-[11px] text-gray-600 px-1 pt-1">后续功能将在此处添加</p>
+                  )
+                })}
               </div>
             )}
 

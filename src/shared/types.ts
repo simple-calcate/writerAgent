@@ -1,7 +1,36 @@
-export interface LLMConfig {
+// API 配置档案
+export interface APIProfile {
+  id: string
+  name: string
   apiKey: string
   baseUrl: string
   model: string
+}
+
+// 单个 API 配置（用于实际调用）
+export interface LLMConfigSingle {
+  apiKey: string
+  baseUrl: string
+  model: string
+}
+
+// AI 功能开关 + API 绑定
+export interface AIFeatureEntry {
+  enabled: boolean
+  profileId: string | null  // null = 使用默认配置
+}
+
+export interface AIFeatureConfig {
+  polish: AIFeatureEntry
+  summary: AIFeatureEntry
+  dialogue: AIFeatureEntry
+  refineSummary: AIFeatureEntry
+}
+
+// 全局 LLM 配置
+export interface LLMConfig {
+  profiles: APIProfile[]
+  defaultProfileId: string | null
   aiFeatures: AIFeatureConfig
 }
 
@@ -20,19 +49,40 @@ export interface DiffItem {
   value: string
 }
 
+// 写作指导意见
+export interface WritingGuidance {
+  dialogue: string   // 对话风格指导
+  scene: string      // 场景描写指导
+  emotion: string    // 情感描写指导
+  action: string     // 动作描写指导
+  pacing: string     // 节奏把控指导
+  custom: string     // 其他自定义指导
+}
+
+export const DEFAULT_WRITING_GUIDANCE: WritingGuidance = {
+  dialogue: '',
+  scene: '',
+  emotion: '',
+  action: '',
+  pacing: '',
+  custom: ''
+}
+
 // AI 配置（书籍/卷级别可设）
 export interface BookAIConfig {
   genre: string | null
   polishStandard: string
   summaryStandard: string
   customPrompt: string
+  writingGuidance: WritingGuidance
 }
 
 export const DEFAULT_BOOK_AI_CONFIG: BookAIConfig = {
   genre: null,
   polishStandard: '',
   summaryStandard: '',
-  customPrompt: ''
+  customPrompt: '',
+  writingGuidance: { ...DEFAULT_WRITING_GUIDANCE }
 }
 
 // 卷
@@ -101,15 +151,34 @@ export interface AIFeatureConfig {
   [key: string]: boolean
 }
 
+// ─── Outline ───
+
+export interface Outline {
+  id: string
+  projectId: string | null
+  volumeId: string | null
+  chapterId: string | null
+  level: 'book' | 'volume' | 'chapter'
+  content: string
+  createdAt: string
+  updatedAt: string
+}
+
 // ─── AI Dialogue ───
+
+export type DialogueMode = 'chat' | 'plan'
 
 export interface ToolCallInfo {
   id: string
-  toolName: string       // 'summarize_chapter' | 'refine_summary' | 'polish_text'
-  displayName: string    // '章节摘要' | '精炼总结' | '文本润色'
+  toolName: string
+  displayName: string
   args: Record<string, string>
-  status: 'running' | 'done'
+  status: 'running' | 'done' | 'pending_approval'
   result?: string
+  needsApproval?: boolean
+  approved?: boolean
+  cachedResult?: string
+  cacheHint?: string
 }
 
 export interface ConversationMessage {
@@ -160,6 +229,24 @@ export interface DialogueToolDone {
   result: string
 }
 
+export interface DialogueToolApproval {
+  streamId: string
+  toolCallId: string
+  toolName: string
+  args: Record<string, string>
+  approvalId: string
+  displayName: string
+  description: string
+  cachedResult?: string
+  cacheHint?: string
+}
+
+export interface DialogueToolApprovalResponse {
+  approvalId: string
+  approved: boolean
+  refreshCache?: boolean
+}
+
 export type DialogueLevel = 'book' | 'volume' | 'chapter'
 
 export interface IPCAPI {
@@ -167,6 +254,7 @@ export interface IPCAPI {
   autoPolish: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<AutoPolishResult>
   polishText: (original: string, context: string) => Promise<PolishResult>
   summarizeChapter: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<string>
+  refineSummary: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<string>
 
   // Config
   getLLMConfig: () => Promise<LLMConfig>
@@ -192,7 +280,7 @@ export interface IPCAPI {
 
   // Chapters
   getChapters: (projectId: string) => Promise<Chapter[]>
-  createChapter: (projectId: string, title: string, volumeId?: string | null) => Promise<Chapter>
+  createChapter: (projectId: string, title: string, volumeId?: string | null) => Promise<Chapter | null>
   renameChapter: (id: string, title: string) => Promise<void>
   updateChapter: (id: string, data: Partial<Chapter>) => Promise<void>
   deleteChapter: (id: string) => Promise<void>
@@ -217,4 +305,11 @@ export interface IPCAPI {
   onDialogueError: (callback: (data: DialogueStreamError) => void) => () => void
   onDialogueToolStart: (callback: (data: DialogueToolStart) => void) => () => void
   onDialogueToolDone: (callback: (data: DialogueToolDone) => void) => () => void
+  onDialogueToolApproval: (callback: (data: DialogueToolApproval) => void) => () => void
+  dialogueApproveTool: (response: DialogueToolApprovalResponse) => Promise<void>
+
+  // Outlines
+  getOutline: (level: DialogueLevel, entityId: string) => Promise<Outline | undefined>
+  saveOutline: (outline: Outline) => Promise<void>
+  deleteOutline: (level: DialogueLevel, entityId: string) => Promise<void>
 }

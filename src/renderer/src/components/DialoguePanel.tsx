@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import type { DialogueLevel, ToolCallInfo } from '../../../shared/types'
+import type { DialogueLevel, ToolCallInfo, DialogueToolApproval } from '../../../shared/types'
 
 const LEVEL_META: Record<DialogueLevel, { label: string; icon: string }> = {
   book: { label: '书籍对话', icon: '📚' },
@@ -88,7 +88,9 @@ function renderInline(text: string): React.ReactNode {
 
 // ─── Tool Call Card ───
 
-function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
+const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
+
+function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: ToolCallInfo; approval?: DialogueToolApproval; onApprove: (approvalId: string, approved: boolean, refreshCache?: boolean) => void }) {
   const [expanded, setExpanded] = useState(false)
 
   return (
@@ -101,23 +103,157 @@ function ToolCallCard({ toolCall }: { toolCall: ToolCallInfo }) {
       >
         {toolCall.status === 'running' ? (
           <div className="w-3 h-3 border border-amber-400 border-t-transparent rounded-full animate-spin" />
+        ) : toolCall.status === 'pending_approval' ? (
+          <span className="text-yellow-400">⏳</span>
         ) : (
           <span className="text-green-400">✓</span>
         )}
-        <span className={toolCall.status === 'running' ? 'text-amber-300' : 'text-gray-300'}>
+        <span className={
+          toolCall.status === 'running' ? 'text-amber-300' :
+          toolCall.status === 'pending_approval' ? 'text-yellow-300' :
+          'text-gray-300'
+        }>
           {toolCall.displayName}
         </span>
         {toolCall.status === 'done' && (
           <span className="ml-auto text-gray-600 text-[10px]">{expanded ? '收起' : '展开'}</span>
         )}
       </button>
-      {expanded && toolCall.result && (
+
+      {/* Approval UI */}
+      {toolCall.status === 'pending_approval' && approval && (
+        <div className="px-3 pb-3 border-t border-gray-700/40 pt-2 space-y-2">
+          <p className="text-xs text-gray-400">{approval.description}</p>
+
+          {/* Cache hit: show cached result + 3 buttons */}
+          {approval.cachedResult && CACHEABLE_TOOLS.has(toolCall.toolName) ? (
+            <>
+              <div className="text-xs text-gray-500 bg-gray-900/40 rounded p-2 max-h-32 overflow-y-auto">
+                <p className="text-[10px] text-gray-600 mb-1">缓存结果：</p>
+                {renderMarkdown(approval.cachedResult.substring(0, 200) + (approval.cachedResult.length > 200 ? '...' : ''))}
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => onApprove(approval.approvalId, true, false)}
+                  className="flex-1 bg-green-600/80 hover:bg-green-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+                >
+                  使用缓存
+                </button>
+                <button
+                  onClick={() => onApprove(approval.approvalId, true, true)}
+                  className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+                >
+                  刷新
+                </button>
+                <button
+                  onClick={() => onApprove(approval.approvalId, false)}
+                  className="flex-1 bg-gray-600/80 hover:bg-gray-600 text-gray-200 px-2 py-1.5 rounded text-[11px] transition-colors"
+                >
+                  拒绝
+                </button>
+              </div>
+            </>
+          ) : (
+            /* Write tool: confirm/reject */
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => onApprove(approval.approvalId, true)}
+                className="flex-1 bg-green-600/80 hover:bg-green-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+              >
+                确认执行
+              </button>
+              <button
+                onClick={() => onApprove(approval.approvalId, false)}
+                className="flex-1 bg-red-600/80 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+              >
+                拒绝
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Done: expandable result */}
+      {expanded && toolCall.result && toolCall.status === 'done' && (
         <div className="px-3 pb-3 border-t border-gray-700/40 pt-2">
           <div className="text-xs text-gray-400 leading-relaxed max-h-48 overflow-y-auto">
             {renderMarkdown(toolCall.result)}
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Standalone Pending Approval Card (for approvals arriving before tool-start) ───
+
+function PendingApprovalCard({ approval, onApprove }: { approval: DialogueToolApproval; onApprove: (approvalId: string, approved: boolean, refreshCache?: boolean) => void }) {
+  return (
+    <div className="border border-yellow-600/40 rounded-lg bg-yellow-900/10 mb-2 overflow-hidden">
+      <div className="flex items-center gap-2 px-3 py-2 text-xs">
+        <span className="text-yellow-400">⏳</span>
+        <span className="text-yellow-300">{approval.displayName}</span>
+        <span className="ml-auto text-[10px] text-yellow-600">等待确认</span>
+      </div>
+      <div className="px-3 pb-3 border-t border-gray-700/40 pt-2 space-y-2">
+        <p className="text-xs text-gray-400">{approval.description}</p>
+
+        {approval.cachedResult && CACHEABLE_TOOLS.has(approval.toolName) ? (
+          <>
+            <div className="text-xs text-gray-500 bg-gray-900/40 rounded p-2 max-h-32 overflow-y-auto">
+              <p className="text-[10px] text-gray-600 mb-1">缓存结果：</p>
+              {renderMarkdown(approval.cachedResult.substring(0, 200) + (approval.cachedResult.length > 200 ? '...' : ''))}
+            </div>
+            <div className="flex gap-1.5">
+              <button
+                onClick={() => onApprove(approval.approvalId, true, false)}
+                className="flex-1 bg-green-600/80 hover:bg-green-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+              >
+                使用缓存
+              </button>
+              <button
+                onClick={() => onApprove(approval.approvalId, true, true)}
+                className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+              >
+                刷新
+              </button>
+              <button
+                onClick={() => onApprove(approval.approvalId, false)}
+                className="flex-1 bg-gray-600/80 hover:bg-gray-600 text-gray-200 px-2 py-1.5 rounded text-[11px] transition-colors"
+              >
+                拒绝
+              </button>
+            </div>
+          </>
+        ) : (
+          <div className="flex gap-1.5">
+            <button
+              onClick={() => onApprove(approval.approvalId, true)}
+              className="flex-1 bg-green-600/80 hover:bg-green-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+            >
+              确认执行
+            </button>
+            <button
+              onClick={() => onApprove(approval.approvalId, false)}
+              className="flex-1 bg-red-600/80 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+            >
+              拒绝
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Plan Mode Badge ───
+
+function PlanModeBadge() {
+  return (
+    <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-900/20 border border-purple-700/40 rounded-lg mb-2 text-xs">
+      <span className="text-purple-400">📋</span>
+      <span className="text-purple-300">计划模式</span>
+      <span className="text-[10px] text-purple-500">AI 正在进行剧情规划，将提供双分支方案</span>
     </div>
   )
 }
@@ -130,9 +266,12 @@ export default function DialoguePanel() {
     streamingText,
     streamingToolCalls,
     dialogueError,
+    pendingApprovals,
+    planModeActive,
     sendDialogueMessage,
     cancelDialogueStream,
-    clearDialogue
+    clearDialogue,
+    approveTool
   } = useAppStore()
 
   const [input, setInput] = useState('')
@@ -197,7 +336,7 @@ export default function DialoguePanel() {
             }`}>
               {msg.role === 'assistant' && msg.toolCalls && msg.toolCalls.length > 0 && (
                 <div className="mb-2">
-                  {msg.toolCalls.map(tc => <ToolCallCard key={tc.id} toolCall={tc} />)}
+                  {msg.toolCalls.map(tc => <ToolCallCard key={tc.id} toolCall={tc} onApprove={approveTool} />)}
                 </div>
               )}
               {msg.role === 'assistant' ? renderMarkdown(msg.content) : (
@@ -211,11 +350,29 @@ export default function DialoguePanel() {
         {isStreaming && (
           <div className="flex justify-start">
             <div className="max-w-[85%] rounded-lg px-3 py-2 bg-gray-700/50 border border-gray-700/60">
+              {/* Plan mode indicator */}
+              {planModeActive && <PlanModeBadge />}
+
+              {/* Tool calls with approval */}
               {streamingToolCalls.length > 0 && (
                 <div className="mb-2">
-                  {streamingToolCalls.map(tc => <ToolCallCard key={tc.id} toolCall={tc} />)}
+                  {streamingToolCalls.map(tc => (
+                    <ToolCallCard
+                      key={tc.id}
+                      toolCall={tc}
+                      approval={pendingApprovals.find(a => a.toolCallId === tc.id)}
+                      onApprove={approveTool}
+                    />
+                  ))}
                 </div>
               )}
+
+              {/* Standalone pending approvals (arrived before tool-start) */}
+              {pendingApprovals
+                .filter(a => !streamingToolCalls.some(tc => tc.id === a.toolCallId))
+                .map(a => (
+                  <PendingApprovalCard key={a.approvalId} approval={a} onApprove={approveTool} />
+                ))}
               {streamingText ? renderMarkdown(streamingText) : (
                 <div className="flex items-center gap-1.5">
                   <div className="flex gap-0.5">

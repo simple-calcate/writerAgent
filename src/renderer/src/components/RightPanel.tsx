@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import type { PolishResult } from '../../../shared/types'
+import type { PolishResult, DialogueLevel } from '../../../shared/types'
 import DialoguePanel from './DialoguePanel'
 
 // ─── Summary Tab ───
@@ -220,12 +220,186 @@ function PolishContent() {
   )
 }
 
+// ─── Outline Tab ───
+
+function getOutlineTitle(level: DialogueLevel): string {
+  switch (level) {
+    case 'book': return '书籍大纲'
+    case 'volume': return '卷纲'
+    case 'chapter': return '章纲'
+  }
+}
+
+function renderInlineMarkdown(text: string): React.ReactNode {
+  const parts: React.ReactNode[] = []
+  const regex = /(\*\*(.+?)\*\*|\*(.+?)\*|`(.+?)`|~~(.+?)~~)/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
+    if (match[2]) parts.push(<strong key={match.index} className="text-gray-200 font-semibold">{match[2]}</strong>)
+    else if (match[3]) parts.push(<em key={match.index} className="text-gray-300 italic">{match[3]}</em>)
+    else if (match[4]) parts.push(<code key={match.index} className="bg-gray-800 text-amber-300 px-1 py-0.5 rounded text-[11px]">{match[4]}</code>)
+    else if (match[5]) parts.push(<del key={match.index} className="text-gray-500">{match[5]}</del>)
+    lastIndex = match.index + match[0].length
+  }
+  if (parts.length === 0) return text
+  if (lastIndex < text.length) parts.push(text.slice(lastIndex))
+  return <>{parts}</>
+}
+
+function renderOutlineMarkdown(text: string): React.ReactNode[] {
+  const lines = text.split('\n')
+  const elements: React.ReactNode[] = []
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const headerMatch = line.match(/^(#{1,6})\s+(.+)/)
+    if (headerMatch) {
+      const level = headerMatch[1].length
+      const sizes = ['text-lg', 'text-base', 'text-sm', 'text-xs', 'text-[11px]', 'text-[10px]']
+      elements.push(<div key={i} className={`${sizes[level - 1]} font-semibold text-gray-200 mt-3 mb-1`}>{headerMatch[2]}</div>)
+      continue
+    }
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { elements.push(<hr key={i} className="border-gray-700 my-2" />); continue }
+    if (line.startsWith('> ')) { elements.push(<div key={i} className="border-l-2 border-blue-500/50 pl-3 text-xs text-gray-400 italic my-0.5">{renderInlineMarkdown(line.slice(2))}</div>); continue }
+    if (/^[\-\*]\s+\[([ xX])\]\s+/.test(line)) {
+      const cm = line.match(/^[\-\*]\s+\[([ xX])\]\s+(.+)/)
+      if (cm) {
+        const checked = cm[1] !== ' '
+        elements.push(<div key={i} className="flex gap-1.5 text-xs text-gray-300 leading-relaxed ml-2"><span className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded border ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-600'} flex items-center justify-center text-[9px]`}>{checked ? '✓' : ''}</span><span className={checked ? 'line-through text-gray-500' : ''}>{renderInlineMarkdown(cm[2])}</span></div>)
+        continue
+      }
+    }
+    if (/^[\-\*]\s+/.test(line)) { elements.push(<div key={i} className="flex gap-1.5 text-xs text-gray-300 leading-relaxed ml-2"><span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-gray-500" /><span>{renderInlineMarkdown(line.replace(/^[\-\*]\s+/, ''))}</span></div>); continue }
+    const numMatch = line.match(/^(\d+)[\.\)]\s+(.+)/)
+    if (numMatch) { elements.push(<div key={i} className="flex gap-1.5 text-xs text-gray-300 leading-relaxed ml-2"><span className="shrink-0 text-gray-500 w-4">{numMatch[1]}.</span><span>{renderInlineMarkdown(numMatch[2])}</span></div>); continue }
+    if (!line.trim()) { elements.push(<div key={i} className="h-1.5" />); continue }
+    elements.push(<p key={i} className="text-xs text-gray-300 leading-relaxed">{renderInlineMarkdown(line)}</p>)
+  }
+  return elements
+}
+
+function OutlineContent() {
+  const {
+    currentOutline,
+    editingOutlineLevel,
+    editingOutlineEntityId,
+    currentProject,
+    volumes,
+    chapters,
+    saveOutline,
+    closeOutline
+  } = useAppStore()
+
+  const [content, setContent] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const [showPreview, setShowPreview] = useState(false)
+
+  useEffect(() => {
+    setContent(currentOutline?.content || '')
+    setSaved(false)
+  }, [currentOutline])
+
+  const entityName = (() => {
+    if (!editingOutlineLevel || !editingOutlineEntityId) return ''
+    switch (editingOutlineLevel) {
+      case 'book': return currentProject?.name || ''
+      case 'volume': return volumes.find(v => v.id === editingOutlineEntityId)?.name || ''
+      case 'chapter': return chapters.find(c => c.id === editingOutlineEntityId)?.title || ''
+    }
+  })()
+
+  const handleSave = useCallback(async () => {
+    if (!editingOutlineLevel) return
+    setSaving(true)
+    try {
+      await saveOutline(content)
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } finally {
+      setSaving(false)
+    }
+  }, [content, editingOutlineLevel, saveOutline])
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+        e.preventDefault()
+        handleSave()
+      }
+    }
+    document.addEventListener('keydown', handler)
+    return () => document.removeEventListener('keydown', handler)
+  }, [handleSave])
+
+  if (!editingOutlineLevel) return null
+
+  const title = getOutlineTitle(editingOutlineLevel)
+
+  return (
+    <div className="flex-1 flex flex-col overflow-hidden">
+      {/* Header */}
+      <div className="px-3 py-1.5 border-b border-gray-700/60 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs text-gray-300">{title}</span>
+          {entityName && <span className="text-[10px] text-gray-500 truncate">— {entityName}</span>}
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setShowPreview(!showPreview)}
+            className={`text-[10px] px-2 py-0.5 rounded transition-colors ${showPreview ? 'bg-blue-600/30 text-blue-300' : 'text-gray-500 hover:text-gray-300'}`}
+          >
+            {showPreview ? '编辑' : '预览'}
+          </button>
+          {saved && <span className="text-[10px] text-green-400">已保存</span>}
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="text-[10px] bg-blue-600 hover:bg-blue-700 text-white px-2 py-0.5 rounded transition-colors disabled:opacity-50"
+          >
+            {saving ? '...' : '保存'}
+          </button>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {showPreview ? (
+          <div className="flex-1 overflow-y-auto p-3">
+            {content.trim() ? (
+              renderOutlineMarkdown(content)
+            ) : (
+              <p className="text-xs text-gray-600 italic">暂无内容</p>
+            )}
+          </div>
+        ) : (
+          <textarea
+            value={content}
+            onChange={e => setContent(e.target.value)}
+            placeholder={`在此输入${title}内容（Markdown 格式）...`}
+            className="flex-1 bg-transparent text-gray-300 text-xs leading-relaxed p-3 resize-none focus:outline-none font-mono"
+            spellCheck={false}
+          />
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="px-3 py-1 border-t border-gray-800 shrink-0 flex items-center justify-between">
+        <span className="text-[10px] text-gray-600">Ctrl+S 保存</span>
+        <span className="text-[10px] text-gray-600">{content.length} 字符</span>
+      </div>
+    </div>
+  )
+}
+
 // ─── Main RightPanel ───
 
 const TABS = [
   { key: 'polish' as const, label: '润色', icon: '◎' },
   { key: 'summary' as const, label: '摘要', icon: '◉' },
-  { key: 'dialogue' as const, label: '对话', icon: '💬' }
+  { key: 'dialogue' as const, label: '对话', icon: '💬' },
+  { key: 'outline' as const, label: '大纲', icon: '📋' }
 ]
 
 export default function RightPanel({ width }: { width?: number }) {
@@ -234,9 +408,11 @@ export default function RightPanel({ width }: { width?: number }) {
   if (!rightPanel) return null
 
   const features = llmConfig.aiFeatures
-  // Polish/summary only at chapter level, dialogue at all project levels
+  // Polish/summary only at chapter level, dialogue at all project levels, outline at project/volume/chapter
   const visibleTabs = TABS.filter(t => {
-    if (!features[t.key]) return false
+    if (t.key === 'outline') return navLevel === 'project' || navLevel === 'volume' || navLevel === 'chapter'
+    const feat = features[t.key]
+    if (!feat || !feat.enabled) return false
     if (t.key === 'polish' || t.key === 'summary') return navLevel === 'chapter'
     if (t.key === 'dialogue') return navLevel !== 'projects'
     return true
@@ -275,6 +451,7 @@ export default function RightPanel({ width }: { width?: number }) {
         {rightPanel === 'polish' && <PolishContent />}
         {rightPanel === 'summary' && <SummaryContent />}
         {rightPanel === 'dialogue' && <DialoguePanel />}
+        {rightPanel === 'outline' && <OutlineContent />}
       </div>
     </div>
   )

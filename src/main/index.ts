@@ -1,10 +1,11 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
-import { writeFileSync, mkdirSync } from 'fs'
+import { writeFileSync, mkdirSync, readFileSync } from 'fs'
 import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline } from './store/db'
 import { autoPolish, polishText, summarizeChapter } from './llm/client'
 import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
+import { parseTxtContent } from './import-parser'
 import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -142,6 +143,43 @@ function registerIPC(): void {
       }
       return true
     }
+  })
+
+  // Import
+  ipcMain.handle('import-book-preview', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      title: '选择要导入的 .txt 文件',
+      filters: [{ name: '文本文件', extensions: ['txt'] }],
+      properties: ['openFile']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+
+    const filePath = result.filePaths[0]
+    const content = readFileSync(filePath, 'utf-8')
+    const chapters = parseTxtContent(content)
+    if (chapters.length === 0) return null
+
+    // 从文件名提取书名
+    const fileName = filePath.split(/[/\\]/).pop() || '导入书籍'
+    const bookName = fileName.replace(/\.txt$/i, '')
+    const totalChars = chapters.reduce((sum, ch) => sum + ch.content.length, 0)
+
+    return { bookName, chapters, totalChars }
+  })
+
+  ipcMain.handle('import-book-confirm', async (_e, bookName: string, chapters: { title: string; content: string }[]) => {
+    const project = createProject(bookName)
+    const volume = createVolume(project.id, '第一卷')
+
+    for (let i = 0; i < chapters.length; i++) {
+      const ch = chapters[i]
+      const chapter = createChapter(project.id, ch.title, volume.id)
+      if (chapter) {
+        updateChapter(chapter.id, { content: ch.content })
+      }
+    }
+
+    return { project, volume, chapterCount: chapters.length }
   })
 
   // Dialogue

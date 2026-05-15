@@ -156,6 +156,20 @@ export interface ExportOptions {
   mode: 'separate' | 'merged'
 }
 
+// ─── Import ───
+
+export interface ImportPreview {
+  bookName: string
+  chapters: { title: string; content: string }[]
+  totalChars: number
+}
+
+export interface ImportConfirmResult {
+  project: Project
+  volume: Volume
+  chapterCount: number
+}
+
 export interface AIFeatureConfig {
   polish: boolean
   summary: boolean
@@ -315,6 +329,10 @@ export interface IPCAPI {
 
   // Export
   exportFiles: (options: ExportOptions) => Promise<boolean>
+
+  // Import
+  importBookPreview: () => Promise<ImportPreview | null>
+  importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
 
   // Dialogue
   dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) => Promise<{ streamId: string }>

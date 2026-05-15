@@ -99,7 +99,7 @@ function SlidePanel({ active, direction, children }: { active: boolean; directio
 // ─── Level 1: Projects ───
 
 function ProjectsLevel() {
-  const { projects, currentProject, selectProject, createProject, deleteProject, renameProject, navTo } = useAppStore()
+  const { projects, currentProject, selectProject, createProject, deleteProject, renameProject, navTo, importBookPreview } = useAppStore()
   const [showNew, setShowNew] = useState(false)
   const [newName, setNewName] = useState('')
   const [newGenre, setNewGenre] = useState<string | null>(null)
@@ -131,7 +131,10 @@ function ProjectsLevel() {
     <div className="flex flex-col h-full">
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/50">
         <span className="text-sm font-medium text-gray-300">项目</span>
-        <button onClick={() => setShowNew(!showNew)} className="text-xs text-blue-400 hover:text-blue-300">+ 新建</button>
+        <div className="flex gap-2">
+          <button onClick={() => importBookPreview()} className="text-xs text-green-400 hover:text-green-300">导入</button>
+          <button onClick={() => setShowNew(!showNew)} className="text-xs text-blue-400 hover:text-blue-300">+ 新建</button>
+        </div>
       </div>
 
       {showNew && (

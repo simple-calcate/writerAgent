@@ -6,6 +6,7 @@ import RightPanel from './components/RightPanel'
 import Settings from './components/Settings'
 import HistoryPanel from './components/HistoryPanel'
 import ResizeHandle from './components/ResizeHandle'
+import ImportPreviewDialog from './components/ImportPreviewDialog'
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
@@ -95,6 +96,7 @@ export default function App() {
       {/* Modals */}
       {showSettings && <Settings />}
       <HistoryPanel />
+      <ImportPreviewDialog />
     </div>
   )
 }

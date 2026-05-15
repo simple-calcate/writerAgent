@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -98,6 +98,13 @@ const api: IPCAPI = {
   // Export
   exportFiles: (options: ExportOptions) =>
     ipcRenderer.invoke('export-files', options),
+
+  // Import
+  importBookPreview: () =>
+    ipcRenderer.invoke('import-book-preview'),
+
+  importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) =>
+    ipcRenderer.invoke('import-book-confirm', bookName, chapters),
 
   // Dialogue
   dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) =>

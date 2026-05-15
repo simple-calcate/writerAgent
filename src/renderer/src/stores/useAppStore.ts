@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG } from '../../../shared/types'
 
 type RightPanelType = 'polish' | 'summary' | 'dialogue' | 'outline' | null
@@ -96,6 +96,13 @@ interface AppState {
   showExport: boolean
   toggleExport: () => void
   exportProject: (options: ExportOptions) => Promise<boolean>
+
+  // Import
+  importPreview: ImportPreview | null
+  showImportPreview: boolean
+  importBookPreview: () => Promise<ImportPreview | null>
+  importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
+  closeImportPreview: () => void
 
   // Settings
   showSettings: boolean
@@ -685,6 +692,30 @@ export const useAppStore = create<AppState>((set, get) => ({
   exportProject: async (options) => {
     return window.api.exportFiles(options)
   },
+
+  // Import
+  importPreview: null,
+  showImportPreview: false,
+
+  importBookPreview: async () => {
+    const preview = await window.api.importBookPreview()
+    if (preview) {
+      set({ importPreview: preview, showImportPreview: true })
+    }
+    return preview
+  },
+
+  importBookConfirm: async (bookName, chapters) => {
+    const result = await window.api.importBookConfirm(bookName, chapters)
+    set({ importPreview: null, showImportPreview: false })
+    await get().loadProjects()
+    set({ currentProject: result.project, navLevel: 'project' as NavLevel })
+    await get().loadVolumes(result.project.id)
+    await get().loadChapters(result.project.id)
+    return result
+  },
+
+  closeImportPreview: () => set({ importPreview: null, showImportPreview: false }),
 
   // Settings
   showSettings: false,

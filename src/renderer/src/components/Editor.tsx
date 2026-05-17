@@ -369,21 +369,14 @@ export default function Editor() {
       setSaveStatus('saved')
     }, 1000)
 
-    // Continuation timer
+    // Continuation timer — only on non-comment lines
     if (continuationCfg.enabled) {
       const textUpToCursor = text.substring(0, cursor)
       const lastNewline = textUpToCursor.lastIndexOf('\n')
       const currentLine = textUpToCursor.substring(lastNewline + 1).trimStart()
       const isComment = currentLine.startsWith('//')
 
-      if (isComment) {
-        const { continuationTimer } = useAppStore.getState()
-        if (continuationTimer) clearTimeout(continuationTimer)
-        const timer = setTimeout(() => {
-          useAppStore.getState().triggerContinuation(cursor)
-        }, continuationCfg.commentDelayMs)
-        useAppStore.setState({ continuationTimer: timer })
-      } else {
+      if (!isComment) {
         resetContinuationTimer(cursor)
       }
     }

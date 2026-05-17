@@ -298,7 +298,11 @@ export default function Editor() {
           value={currentChapter.content}
           onChange={e => handleChange(e.target.value)}
           onKeyDown={e => {
-            // Tab 接受续写由 window 级别 keydown 处理（支持自定义快捷键）
+            // 必须在此处 preventDefault 阻止 Tab 焦点跳转
+            if (continuationSuggestion && (e.key === 'Tab' || matchKey(e, keyBindings.acceptContinuation))) {
+              e.preventDefault()
+              acceptContinuation()
+            }
           }}
           placeholder="开始写作..."
           className={`${EDITOR_STYLES} absolute inset-0`}

@@ -297,12 +297,14 @@ export async function executeTool(
       if (!args.title) return '错误：未提供章节标题'
       const newChapter = createChapter(projectId, args.title, args.volumeId || null)
       if (!newChapter) return `错误：章节名「${args.title}」在该卷下已存在`
-      return `已创建章节「${newChapter.title}」`
+      params.allChapters.push(newChapter)
+      return `已创建章节「${newChapter.title}」（ID: ${newChapter.id}）`
     }
 
     case 'create_volume': {
       if (!args.name) return '错误：未提供卷名称'
       const newVolume = createVolume(projectId, args.name)
+      params.allVolumes.push(newVolume)
       return `已创建卷「${newVolume.name}」（ID: ${newVolume.id}）`
     }
 

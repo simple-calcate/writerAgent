@@ -346,8 +346,13 @@ export default function Editor() {
   // ── Handle contentEditable input ────────────────────────
   const handleInput = useCallback(() => {
     if (!editorRef.current || isComposingRef.current) return
-    const text = htmlToPlainText(editorRef.current)
+    const el = editorRef.current
+    const cursor = getCursorOffset(el)
+    const text = htmlToPlainText(el)
     updateChapterContent(text)
+    // Re-render HTML to apply comment styling (// lines → green)
+    el.innerHTML = plainTextToHtml(text)
+    setCursorAtOffset(el, cursor)
     setSaveStatus('unsaved')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
@@ -358,7 +363,6 @@ export default function Editor() {
 
     // Continuation timer
     if (continuationCfg.enabled) {
-      const cursor = getCursorOffset(editorRef.current)
       // Check if current line is a comment
       const textUpToCursor = text.substring(0, cursor)
       const lastNewline = textUpToCursor.lastIndexOf('\n')

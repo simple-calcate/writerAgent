@@ -37,8 +37,7 @@ function htmlToPlainText(container: HTMLElement): string {
       const el = child as HTMLElement
       const tag = el.tagName.toLowerCase()
       if (tag === 'p' || tag === 'div') {
-        const text = el.innerText
-        if (text.trim()) paragraphs.push(text)
+        paragraphs.push(el.innerText)
       }
     }
   }
@@ -207,6 +206,11 @@ function hasGhostText(container: HTMLElement): boolean {
 function insertGhostText(container: HTMLElement, offset: number, text: string) {
   removeGhostText(container)
 
+  const span = document.createElement('span')
+  span.className = 'ghost-text'
+  span.textContent = text
+  span.contentEditable = 'false'
+
   const paragraphs = container.querySelectorAll('p')
   let accumulated = 0
 
@@ -214,7 +218,7 @@ function insertGhostText(container: HTMLElement, offset: number, text: string) {
     const paraText = p.innerText
     const paraLen = paraText.length
 
-    if (accumulated + paraLen >= offset || accumulated + paraLen === offset) {
+    if (accumulated + paraLen >= offset) {
       const localOffset = Math.min(offset - accumulated, paraLen)
       const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
       let charCount = 0
@@ -222,23 +226,36 @@ function insertGhostText(container: HTMLElement, offset: number, text: string) {
       while (walker.nextNode()) {
         const node = walker.currentNode as Text
         if (charCount + node.length >= localOffset) {
-          const span = document.createElement('span')
-          span.className = 'ghost-text'
-          span.textContent = text
-          span.contentEditable = 'false'
-
           const range = document.createRange()
-          const splitOffset = localOffset - charCount
-          range.setStart(node, splitOffset)
+          range.setStart(node, localOffset - charCount)
           range.collapse(true)
           range.insertNode(span)
           return
         }
         charCount += node.length
       }
-      break
+
+      // No text node found (empty paragraph) — create one and insert
+      const textNode = document.createTextNode('')
+      p.appendChild(textNode)
+      const range = document.createRange()
+      range.setStart(textNode, 0)
+      range.collapse(true)
+      range.insertNode(span)
+      return
     }
     accumulated += paraLen + 2
+  }
+
+  // Fallback: append to last paragraph
+  const lastP = paragraphs[paragraphs.length - 1]
+  if (lastP) {
+    const textNode = document.createTextNode('')
+    lastP.appendChild(textNode)
+    const range = document.createRange()
+    range.setStart(textNode, 0)
+    range.collapse(true)
+    range.insertNode(span)
   }
 }
 
@@ -478,19 +495,34 @@ export default function Editor() {
 
   // ── Insert ghost text when continuation arrives ─────────
   const lastSuggestionRef = useRef<string | null>(null)
+  const pendingGhostRef = useRef<{ text: string; cursor: number } | null>(null)
+
+  // Try to insert ghost when suggestion changes
   useEffect(() => {
-    if (!editorRef.current) return
     // Only act when suggestion actually changes
     if (continuationSuggestion === lastSuggestionRef.current) return
     lastSuggestionRef.current = continuationSuggestion
 
     if (continuationSuggestion) {
       const cursor = useAppStore.getState().continuationCursorPos ?? currentChapter?.content.length ?? 0
-      insertGhostText(editorRef.current, cursor, continuationSuggestion)
+      if (editorRef.current) {
+        insertGhostText(editorRef.current, cursor, continuationSuggestion)
+      } else {
+        pendingGhostRef.current = { text: continuationSuggestion, cursor }
+      }
     } else {
-      removeGhostText(editorRef.current)
+      if (editorRef.current) removeGhostText(editorRef.current)
     }
   }, [continuationSuggestion])
+
+  // Flush pending ghost text once editor mounts
+  useEffect(() => {
+    if (editorRef.current && pendingGhostRef.current) {
+      const { text, cursor } = pendingGhostRef.current
+      pendingGhostRef.current = null
+      insertGhostText(editorRef.current, cursor, text)
+    }
+  })
 
   // ── IME composition handling (Chinese input) ────────────
   const handleCompositionStart = useCallback(() => { isComposingRef.current = true }, [])

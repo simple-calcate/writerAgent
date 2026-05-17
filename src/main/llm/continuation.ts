@@ -16,7 +16,6 @@ export async function generateContinuation(
   const { content, cursorPosition, chapterOutline, volumeOutline, bookOutline, aiConfig } = params
 
   const beforeCursor = content.substring(Math.max(0, cursorPosition - 2000), cursorPosition)
-  const afterCursor = content.substring(cursorPosition, cursorPosition + 500)
 
   // 检测光标所在行是否为注释
   const lineStart = content.lastIndexOf('\n', cursorPosition - 1) + 1
@@ -46,7 +45,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 - 默认只写 1-2 句话
 - 仅当大纲中明确描述了该片段的详细内容时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
-    userMessage = `【作者注释】${commentText}\n\n【光标前文】\n${beforeCursor}${afterCursor ? '\n\n【光标后文】\n' + afterCursor : ''}${outlineSection}`
+    userMessage = `【作者注释】${commentText}\n\n【光标前文】\n${beforeCursor}${outlineSection}`
   } else {
     systemPrompt = `你是一位网文写作助手。根据上下文提供续写建议。不要解释、不要评论。
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
@@ -55,7 +54,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 - 默认只写 1-2 句话，自然衔接上下文
 - 仅当大纲中明确描述了当前片段的详细剧情时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
-    userMessage = `【光标前文】\n${beforeCursor}${afterCursor ? '\n\n【光标后文】\n' + afterCursor : ''}${outlineSection}`
+    userMessage = `【光标前文】\n${beforeCursor}${outlineSection}`
   }
 
   const response = await client.chat.completions.create({
@@ -65,8 +64,10 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
       { role: 'user', content: userMessage }
     ],
     temperature: 0.7,
-    max_tokens: 256
+    max_tokens: 20480
   })
 
-  return response.choices[0]?.message?.content?.trim() || ''
+  const choice = response.choices?.[0]
+  const raw = choice?.message?.content
+  return raw?.trim() || ''
 }

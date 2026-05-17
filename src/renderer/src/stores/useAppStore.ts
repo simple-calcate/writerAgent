@@ -689,7 +689,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   exportTxt: () => {
     const { currentChapter } = get()
     if (!currentChapter) return
-    const blob = new Blob([currentChapter.content], { type: 'text/plain;charset=utf-8' })
+    // 过滤注释行（// 开头的行）
+    const filtered = currentChapter.content
+      .split('\n')
+      .filter(line => !line.trimStart().startsWith('//'))
+      .join('\n')
+    const blob = new Blob([filtered], { type: 'text/plain;charset=utf-8' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url

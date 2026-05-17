@@ -477,15 +477,20 @@ export default function Editor() {
   }, [scrollToPosition, clearScrollToPosition])
 
   // ── Insert ghost text when continuation arrives ─────────
+  const lastSuggestionRef = useRef<string | null>(null)
   useEffect(() => {
     if (!editorRef.current) return
+    // Only act when suggestion actually changes
+    if (continuationSuggestion === lastSuggestionRef.current) return
+    lastSuggestionRef.current = continuationSuggestion
+
     if (continuationSuggestion) {
       const cursor = useAppStore.getState().continuationCursorPos ?? currentChapter?.content.length ?? 0
       insertGhostText(editorRef.current, cursor, continuationSuggestion)
     } else {
       removeGhostText(editorRef.current)
     }
-  }, [continuationSuggestion, currentChapter?.content.length])
+  }, [continuationSuggestion])
 
   // ── IME composition handling (Chinese input) ────────────
   const handleCompositionStart = useCallback(() => { isComposingRef.current = true }, [])

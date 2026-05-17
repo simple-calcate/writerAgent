@@ -300,9 +300,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   updateChapterContent: (content) => {
-    const { currentChapter } = get()
+    const { currentChapter, chapters } = get()
     if (!currentChapter) return
-    set({ currentChapter: { ...currentChapter, content } })
+    const updated = { ...currentChapter, content }
+    set({
+      currentChapter: updated,
+      chapters: chapters.map(c => c.id === updated.id ? updated : c)
+    })
   },
 
   saveChapter: async () => {
@@ -340,11 +344,13 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
 
   undo: () => {
-    const { undoStack, currentChapter } = get()
+    const { undoStack, currentChapter, chapters } = get()
     if (undoStack.length === 0 || !currentChapter) return
     const prev = undoStack[undoStack.length - 1]
+    const restored = { ...currentChapter, content: prev.content, polishingMarks: prev.polishingMarks }
     set({
-      currentChapter: { ...currentChapter, content: prev.content, polishingMarks: prev.polishingMarks },
+      currentChapter: restored,
+      chapters: chapters.map(c => c.id === restored.id ? restored : c),
       undoStack: undoStack.slice(0, -1)
     })
   },

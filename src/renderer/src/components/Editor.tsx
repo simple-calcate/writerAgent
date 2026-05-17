@@ -307,16 +307,16 @@ export default function Editor() {
             // Enter 插入双换行（段落间距）
             if (e.key === 'Enter' && !e.shiftKey) {
               e.preventDefault()
-              const textarea = textareaRef.current
-              if (!textarea) return
-              const start = textarea.selectionStart
-              const end = textarea.selectionEnd
-              const value = textarea.value
-              const newValue = value.substring(0, start) + '\n\n' + value.substring(end)
+              const ta = textareaRef.current
+              if (!ta) return
+              const start = ta.selectionStart
+              const end = ta.selectionEnd
+              const before = ta.value.substring(0, start)
+              const after = ta.value.substring(end)
+              const newValue = before.endsWith('\n\n') ? before + after : before + '\n\n' + after
               handleChange(newValue)
-              // 设置光标到插入位置之后
               requestAnimationFrame(() => {
-                textarea.selectionStart = textarea.selectionEnd = start + 2
+                ta.selectionStart = ta.selectionEnd = start + 2
               })
             }
           }}

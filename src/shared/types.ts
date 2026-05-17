@@ -39,11 +39,41 @@ export interface AIFeatureConfig {
   refineSummary: AIFeatureEntry
 }
 
+// 快捷键配置
+export interface KeyBindings {
+  acceptContinuation: string  // 接受续写建议，默认 Tab
+  undo: string                // 撤销，默认 Ctrl+Z
+  save: string                // 保存，默认空
+  dismissContinuation: string // 取消续写建议，默认空
+}
+
+export const DEFAULT_KEY_BINDINGS: KeyBindings = {
+  acceptContinuation: 'Tab',
+  undo: 'Ctrl+Z',
+  save: '',
+  dismissContinuation: ''
+}
+
+// 续写配置
+export interface ContinuationConfig {
+  enabled: boolean
+  delayMs: number             // 正文触发延迟（毫秒），默认 10000
+  commentDelayMs: number      // 注释触发延迟（毫秒），默认 2000
+}
+
+export const DEFAULT_CONTINUATION_CONFIG: ContinuationConfig = {
+  enabled: true,
+  delayMs: 10000,
+  commentDelayMs: 2000
+}
+
 // 全局 LLM 配置
 export interface LLMConfig {
   profiles: APIProfile[]
   defaultProfileId: string | null
   aiFeatures: AIFeatureConfig
+  keyBindings?: KeyBindings  // 可选，向后兼容
+  continuationConfig?: ContinuationConfig  // 可选，向后兼容
 }
 
 export interface PolishResult {
@@ -168,13 +198,6 @@ export interface ImportConfirmResult {
   project: Project
   volume: Volume
   chapterCount: number
-}
-
-export interface AIFeatureConfig {
-  polish: boolean
-  summary: boolean
-  dialogue: boolean
-  [key: string]: boolean
 }
 
 // ─── Outline ───
@@ -333,6 +356,9 @@ export interface IPCAPI {
   // Import
   importBookPreview: () => Promise<ImportPreview | null>
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
+
+  // Continuation
+  generateContinuation: (chapterId: string, cursorPosition: number) => Promise<string | null>
 
   // Dialogue
   dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) => Promise<{ streamId: string }>

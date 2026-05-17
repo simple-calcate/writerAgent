@@ -1,13 +1,22 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset } from '../../../shared/types'
+import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig } from '../../../shared/types'
+import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
 
-type TabKey = 'api' | 'ai' | 'data'
+type TabKey = 'api' | 'ai' | 'keys' | 'data'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'api', label: 'API 配置' },
   { key: 'ai', label: 'AI 功能' },
+  { key: 'keys', label: '快捷键' },
   { key: 'data', label: '数据存储' }
+]
+
+const KEY_BINDING_ITEMS: { key: keyof KeyBindings; label: string; desc: string }[] = [
+  { key: 'undo', label: '撤销', desc: '撤销上一步操作' },
+  { key: 'acceptContinuation', label: '接受续写', desc: '接受 AI 续写建议' },
+  { key: 'dismissContinuation', label: '取消续写', desc: '取消当前续写建议' },
+  { key: 'save', label: '保存', desc: '手动保存当前章节' }
 ]
 
 const FEATURE_LIST: { key: keyof AIFeatureConfig; label: string; desc: string }[] = [
@@ -34,6 +43,7 @@ export default function Settings() {
   const [dataPath, setDataPath] = useState('')
   const [defaultPath, setDefaultPath] = useState('')
   const [customPath, setCustomPath] = useState('')
+  const [recordingKey, setRecordingKey] = useState<keyof KeyBindings | null>(null)
 
   // API profile editing state
   const [editingProfile, setEditingProfile] = useState<APIProfile | null>(null)
@@ -386,6 +396,152 @@ export default function Settings() {
                           </select>
                         </div>
                       )}
+                    </div>
+                  )
+                })}
+
+                {/* 智能续写配置 */}
+                <div className="border-t border-gray-700/50 pt-3 mt-3 space-y-3">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">智能续写</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">需要至少有章纲、卷纲或书籍大纲才能触发</p>
+                  </div>
+                  {(() => {
+                    const cfg = form.continuationConfig || DEFAULT_CONTINUATION_CONFIG
+                    const updateCfg = (patch: Partial<ContinuationConfig>) => {
+                      setForm(prev => ({
+                        ...prev,
+                        continuationConfig: { ...(prev.continuationConfig || DEFAULT_CONTINUATION_CONFIG), ...patch }
+                      }))
+                    }
+                    return (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-sm text-gray-200">启用续写建议</p>
+                            <p className="text-xs text-gray-500">停笔后自动提供 AI 续写建议</p>
+                          </div>
+                          <div
+                            onClick={() => updateCfg({ enabled: !cfg.enabled })}
+                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${cfg.enabled ? 'bg-blue-600' : 'bg-gray-600'}`}
+                          >
+                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${cfg.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                          </div>
+                        </div>
+                        {cfg.enabled && (
+                          <>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">正文触发延迟（秒）</label>
+                              <input
+                                type="number"
+                                min={1}
+                                max={60}
+                                value={Math.round(cfg.delayMs / 1000)}
+                                onChange={e => updateCfg({ delayMs: Math.max(1, parseInt(e.target.value) || 10) * 1000 })}
+                                className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs text-gray-400 mb-1">注释触发延迟（秒）</label>
+                              <input
+                                type="number"
+                                min={0}
+                                max={30}
+                                value={Math.round(cfg.commentDelayMs / 1000)}
+                                onChange={e => updateCfg({ commentDelayMs: Math.max(0, parseInt(e.target.value) || 2) * 1000 })}
+                                className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                              />
+                              <p className="text-[10px] text-gray-500 mt-1">写 // 注释后触发，用于快速解答困惑</p>
+                            </div>
+                          </>
+                        )}
+                      </>
+                    )
+                  })()}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'keys' && (
+              <div className="space-y-4">
+                <p className="text-xs text-gray-500">配置编辑器中的快捷键。点击"录制"后按下新的快捷键组合。</p>
+                {(form.keyBindings || DEFAULT_KEY_BINDINGS) && KEY_BINDING_ITEMS.map(item => {
+                  const bindings = form.keyBindings || DEFAULT_KEY_BINDINGS
+                  const value = bindings[item.key]
+                  const isRecording = recordingKey === item.key
+
+                  return (
+                    <div key={item.key} className="flex items-center gap-3">
+                      <div className="flex-1">
+                        <p className="text-xs text-gray-300">{item.label}</p>
+                        <p className="text-[10px] text-gray-500">{item.desc}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <input
+                          readOnly
+                          value={isRecording ? '按下快捷键...' : value || '未设置'}
+                          className={`w-32 bg-gray-700 border rounded px-2 py-1.5 text-xs text-center focus:outline-none ${
+                            isRecording ? 'border-blue-500 text-blue-400' : 'border-gray-600 text-gray-300'
+                          }`}
+                          onKeyDown={e => {
+                            if (!isRecording) return
+                            e.preventDefault()
+                            e.stopPropagation()
+
+                            if (e.key === 'Escape') {
+                              setRecordingKey(null)
+                              return
+                            }
+
+                            // 构建快捷键字符串
+                            const parts: string[] = []
+                            if (e.ctrlKey || e.metaKey) parts.push('Ctrl')
+                            if (e.altKey) parts.push('Alt')
+                            if (e.shiftKey) parts.push('Shift')
+
+                            const key = e.key
+                            if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) {
+                              // Tab 特殊处理
+                              if (key === 'Tab') {
+                                parts.push('Tab')
+                              } else if (key === ' ') {
+                                parts.push('Space')
+                              } else if (key === 'Escape') {
+                                parts.push('Esc')
+                              } else {
+                                parts.push(key.length === 1 ? key.toUpperCase() : key)
+                              }
+                              const binding = parts.join('+')
+                              setForm(prev => ({
+                                ...prev,
+                                keyBindings: { ...(prev.keyBindings || DEFAULT_KEY_BINDINGS), [item.key]: binding }
+                              }))
+                              setRecordingKey(null)
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => setRecordingKey(isRecording ? null : item.key)}
+                          className={`px-2 py-1.5 text-xs rounded transition-colors ${
+                            isRecording
+                              ? 'bg-red-600/80 hover:bg-red-600 text-white'
+                              : 'bg-gray-700 hover:bg-gray-600 text-gray-300'
+                          }`}
+                        >
+                          {isRecording ? '取消' : '录制'}
+                        </button>
+                        {value && (
+                          <button
+                            onClick={() => setForm(prev => ({
+                              ...prev,
+                              keyBindings: { ...(prev.keyBindings || DEFAULT_KEY_BINDINGS), [item.key]: '' }
+                            }))}
+                            className="px-2 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-400 rounded transition-colors"
+                          >
+                            清除
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )
                 })}

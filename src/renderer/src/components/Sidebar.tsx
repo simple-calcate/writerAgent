@@ -584,7 +584,7 @@ function ChapterLevel() {
               <span>{isSummarizing ? '正在生成...' : '生成摘要'}</span>
             </button>
           )}
-          {features.summary.enabled && (
+          {features.refineSummary.enabled && (
             <button
               onClick={refineSummary}
               disabled={isRefining}

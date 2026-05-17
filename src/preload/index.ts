@@ -106,6 +106,10 @@ const api: IPCAPI = {
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) =>
     ipcRenderer.invoke('import-book-confirm', bookName, chapters),
 
+  // Continuation
+  generateContinuation: (chapterId: string, cursorPosition: number) =>
+    ipcRenderer.invoke('generate-continuation', chapterId, cursorPosition),
+
   // Dialogue
   dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) =>
     ipcRenderer.invoke('dialogue:send', level, entityId, messages),

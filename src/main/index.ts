@@ -6,6 +6,7 @@ import { autoPolish, polishText, summarizeChapter } from './llm/client'
 import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
 import { parseTxtContent } from './import-parser'
+import { generateContinuation } from './llm/continuation'
 import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
@@ -104,6 +105,10 @@ function registerIPC(): void {
     const { projectName, chapters, format, mode } = options
     const ext = format === 'md' ? '.md' : '.txt'
 
+    // 过滤注释行（// 开头的行）
+    const filterComments = (text: string) =>
+      text.split('\n').filter(line => !line.trimStart().startsWith('//')).join('\n')
+
     if (mode === 'merged') {
       const result = await dialog.showSaveDialog(mainWindow!, {
         title: '导出合并文件',
@@ -116,7 +121,7 @@ function registerIPC(): void {
       const content = chapters
         .map(ch => {
           const header = format === 'md' ? `# ${ch.title}\n\n` : `【${ch.title}】\n\n`
-          return header + ch.content
+          return header + filterComments(ch.content)
         })
         .join(separator)
 
@@ -139,7 +144,7 @@ function registerIPC(): void {
         const prefix = String(i + 1).padStart(2, '0')
         const safeTitle = ch.title.replace(/[<>:"/\\|?*]/g, '_')
         const header = format === 'md' ? `# ${ch.title}\n\n` : ''
-        writeFileSync(join(exportDir, `${prefix}_${safeTitle}${ext}`), header + ch.content, 'utf-8')
+        writeFileSync(join(exportDir, `${prefix}_${safeTitle}${ext}`), header + filterComments(ch.content), 'utf-8')
       }
       return true
     }
@@ -180,6 +185,39 @@ function registerIPC(): void {
     }
 
     return { project, volume, chapterCount: chapters.length }
+  })
+
+  // Continuation
+  ipcMain.handle('generate-continuation', async (_e, chapterId: string, cursorPosition: number) => {
+    const config = resolveFeatureConfig('dialogue')
+    if (!config || !config.apiKey) return null
+
+    const allProjects = getProjects()
+    let chapter = null
+    let projectId = ''
+    for (const p of allProjects) {
+      const chs = getChapters(p.id)
+      const found = chs.find(c => c.id === chapterId)
+      if (found) { chapter = found; projectId = p.id; break }
+    }
+    if (!chapter) return null
+
+    const aiConfig = resolveAIConfig(projectId, chapter.volumeId || undefined)
+    const chapterOutline = getOutline('chapter', chapterId)
+    const volumeOutline = chapter.volumeId ? getOutline('volume', chapter.volumeId) : null
+    const bookOutline = getOutline('book', projectId)
+
+    // 没有任何大纲时不触发续写
+    if (!chapterOutline && !volumeOutline && !bookOutline) return null
+
+    return generateContinuation(config, {
+      content: chapter.content,
+      cursorPosition,
+      chapterOutline: chapterOutline?.content,
+      volumeOutline: volumeOutline?.content,
+      bookOutline: bookOutline?.content,
+      aiConfig
+    })
   })
 
   // Dialogue

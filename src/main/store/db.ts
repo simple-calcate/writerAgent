@@ -3,7 +3,7 @@ import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
 import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline } from '../../shared/types'
-import { DEFAULT_BOOK_AI_CONFIG } from '../../shared/types'
+import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../shared/types'
 
 interface Store {
   projects: Project[]
@@ -35,7 +35,9 @@ const defaultStore: Store = {
       summary: { enabled: true, profileId: null },
       dialogue: { enabled: true, profileId: null },
       refineSummary: { enabled: true, profileId: null }
-    }
+    },
+    keyBindings: { ...DEFAULT_KEY_BINDINGS },
+    continuationConfig: { ...DEFAULT_CONTINUATION_CONFIG }
   },
   versions: {},
   conversations: [],

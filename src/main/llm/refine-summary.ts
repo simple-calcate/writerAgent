@@ -13,20 +13,21 @@ export async function refineSummary(
     messages: [
       {
         role: 'system',
-        content: `你是一位网文写作分析助手。请用一段简洁连贯的文字概括这一章的核心内容。
+        content: `你是一位网文写作分析助手。请按场景梳理这一章的剧情脉络，输出一段连贯的总结。
 
 要求：
-- 用 2-5 句话概括本章发生了什么
-- 突出核心情节转折和关键人物行动
-- 不要分条目，写成一段流畅的文字
-- 语言精炼，避免废话
+- 按场景顺序梳理：每个场景的核心事件、人物行动、情感变化
+- 保留关键转折点和剧情推进的关键信息
+- 如果有伏笔或悬念，明确指出
+- 写成连贯段落，不要分条目
+- 语言精炼，信息密度高，避免废话
 ${aiConfig?.summaryStandard ? '\n摘要标准：' + aiConfig.summaryStandard : ''}
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       },
       { role: 'user', content }
     ],
     temperature: 0.3,
-    max_tokens: 512
+    max_tokens: 1024
   })
 
   return response.choices[0]?.message?.content?.trim() || '无法生成总结'

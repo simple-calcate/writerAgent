@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
+import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
+import type { KeyBindings, ContinuationConfig } from '../../../shared/types'
 import FormatPanel from './FormatPanel'
 import ExportPanel from './ExportPanel'
 
@@ -77,6 +79,25 @@ function ExportMenu({
   )
 }
 
+// 快捷键匹配
+function matchKey(e: React.KeyboardEvent | KeyboardEvent, binding: string): boolean {
+  if (!binding) return false
+  const parts = binding.toLowerCase().split('+').map(s => s.trim())
+  const key = parts.find(p => !['ctrl', 'alt', 'shift', 'meta'].includes(p)) || ''
+  const needCtrl = parts.includes('ctrl')
+  const needAlt = parts.includes('alt')
+  const needShift = parts.includes('shift')
+
+  const eventKey = e.key.toLowerCase()
+  // Tab 特殊处理
+  if (key === 'tab' && eventKey === 'tab') {
+    return needCtrl === (e.ctrlKey || e.metaKey) && needAlt === e.altKey && needShift === e.shiftKey
+  }
+  return eventKey === key && needCtrl === (e.ctrlKey || e.metaKey) && needAlt === e.altKey && needShift === e.shiftKey
+}
+
+const EDITOR_STYLES = 'flex-1 resize-none bg-transparent p-6 text-base leading-relaxed focus:outline-none placeholder-gray-600 indent-[2em]'
+
 export default function Editor() {
   const {
     currentChapter,
@@ -92,12 +113,22 @@ export default function Editor() {
     scrollToPosition,
     clearScrollToPosition,
     polishSuggestions,
-    activeSuggestionId
+    activeSuggestionId,
+    llmConfig,
+    continuationSuggestion,
+    continuationLoading,
+    acceptContinuation,
+    dismissContinuation,
+    resetContinuationTimer
   } = useAppStore()
 
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'unsaved'>('saved')
+
+  const keyBindings: KeyBindings = llmConfig.keyBindings || DEFAULT_KEY_BINDINGS
+  const continuationCfg: ContinuationConfig = llmConfig.continuationConfig || DEFAULT_CONTINUATION_CONFIG
 
   const handleChange = useCallback((value: string) => {
     updateChapterContent(value)
@@ -108,14 +139,54 @@ export default function Editor() {
       await saveChapter()
       setSaveStatus('saved')
     }, 1000)
-  }, [updateChapterContent, saveChapter])
 
+    // 续写计时器
+    if (continuationCfg.enabled) {
+      const textarea = textareaRef.current
+      if (textarea) {
+        const cursor = textarea.selectionStart
+        const text = value
+        const lineStart = text.lastIndexOf('\n', cursor - 1) + 1
+        const lineEnd = text.indexOf('\n', cursor)
+        const currentLine = text.substring(lineStart, lineEnd === -1 ? text.length : lineEnd).trimStart()
+        const isComment = currentLine.startsWith('//')
+
+        if (isComment) {
+          const { continuationTimer } = useAppStore.getState()
+          if (continuationTimer) clearTimeout(continuationTimer)
+          const timer = setTimeout(() => {
+            useAppStore.getState().triggerContinuation(cursor)
+          }, continuationCfg.commentDelayMs)
+          useAppStore.setState({ continuationTimer: timer })
+        } else {
+          resetContinuationTimer(cursor)
+        }
+      }
+    }
+  }, [updateChapterContent, saveChapter, resetContinuationTimer, continuationCfg])
+
+  // 快捷键
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
+      // 撤销
+      if (matchKey(e, keyBindings.undo)) {
         e.preventDefault()
         undo()
+        return
       }
+      // 接受续写
+      if (continuationSuggestion && matchKey(e, keyBindings.acceptContinuation)) {
+        e.preventDefault()
+        acceptContinuation()
+        return
+      }
+      // 取消续写
+      if (continuationSuggestion && matchKey(e, keyBindings.dismissContinuation)) {
+        e.preventDefault()
+        dismissContinuation()
+        return
+      }
+      // Ctrl+S 保存（始终生效）
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
         e.preventDefault()
         saveChapter()
@@ -124,7 +195,7 @@ export default function Editor() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [undo, saveChapter])
+  }, [undo, saveChapter, keyBindings, continuationSuggestion, acceptContinuation, dismissContinuation])
 
   useEffect(() => {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
@@ -135,21 +206,15 @@ export default function Editor() {
     if (scrollToPosition === null || !textareaRef.current) return
     const textarea = textareaRef.current
     const content = textarea.value
-
-    // Find the active suggestion to get the original text length
     const activeSuggestion = polishSuggestions.find(s => s.id === activeSuggestionId)
     const selectLength = activeSuggestion ? activeSuggestion.polished.length : 0
-
-    // Calculate line number from character position
     const textBefore = content.substring(0, scrollToPosition)
     const lineNumber = textBefore.split('\n').length - 1
-    const lineHeight = 28 // approximate line height for text-base leading-relaxed
+    const lineHeight = 28
     const scrollTarget = lineNumber * lineHeight - textarea.clientHeight / 3
-
     textarea.scrollTop = Math.max(0, scrollTarget)
     textarea.setSelectionRange(scrollToPosition, scrollToPosition + selectLength)
     textarea.focus()
-
     clearScrollToPosition()
   }, [scrollToPosition, activeSuggestionId, polishSuggestions, clearScrollToPosition])
 
@@ -172,7 +237,6 @@ export default function Editor() {
     <div className="flex-1 flex flex-col">
       {/* Toolbar */}
       <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-700/60 bg-gray-800/40">
-        {/* Left: chapter title + status */}
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-sm font-medium text-gray-300 truncate">{currentChapter.title}</h2>
           <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${
@@ -189,29 +253,30 @@ export default function Editor() {
               润色预览中
             </span>
           )}
+          {continuationLoading && (
+            <span className="text-[11px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded shrink-0">
+              AI 续写中...
+            </span>
+          )}
         </div>
 
-        {/* Right: tool groups */}
         <div className="flex items-center gap-1.5 shrink-0">
-          {/* Stats */}
           <span className="text-[11px] text-gray-500 mr-1">
             {wordCount} 字{markCount > 0 ? ` · ${markCount} 处润色` : ''}
           </span>
 
           <Divider />
 
-          {/* Edit group */}
           <ToolBtn
             onClick={undo}
             disabled={undoStack.length === 0}
-            title="撤销 (Ctrl+Z)"
+            title={`撤销 (${keyBindings.undo || 'Ctrl+Z'})`}
           >
             ↩ 撤销
           </ToolBtn>
 
           <Divider />
 
-          {/* Version group */}
           <ToolBtn onClick={createVersion} title="创建版本快照">
             ☆ 存版本
           </ToolBtn>
@@ -221,21 +286,57 @@ export default function Editor() {
 
           <Divider />
 
-          {/* Tools group */}
           <FormatPanel />
           <ExportMenu onExportCurrent={exportTxt} onBatchExport={toggleExport} />
         </div>
       </div>
 
       {/* Editor */}
-      <textarea
-        ref={textareaRef}
-        value={currentChapter.content}
-        onChange={e => handleChange(e.target.value)}
-        placeholder="开始写作..."
-        className="flex-1 resize-none bg-transparent p-6 text-base leading-relaxed focus:outline-none placeholder-gray-600 indent-[2em]"
-        spellCheck={false}
-      />
+      <div ref={containerRef} className="flex-1 relative overflow-hidden">
+        <textarea
+          ref={textareaRef}
+          value={currentChapter.content}
+          onChange={e => handleChange(e.target.value)}
+          onKeyDown={e => {
+            // Tab 接受续写由 window 级别 keydown 处理（支持自定义快捷键）
+          }}
+          placeholder="开始写作..."
+          className={`${EDITOR_STYLES} absolute inset-0`}
+          spellCheck={false}
+        />
+      </div>
+
+      {/* 续写建议栏 */}
+      {continuationSuggestion && (
+        <div className="border-t border-gray-700/60 bg-gray-800/60 px-4 py-2 flex items-start gap-3">
+          <span className="text-xs text-purple-400 shrink-0 mt-0.5">💡</span>
+          <p className="text-xs text-gray-400 leading-relaxed flex-1 line-clamp-3">
+            {continuationSuggestion}
+          </p>
+          <div className="flex gap-1.5 shrink-0">
+            <button
+              onClick={acceptContinuation}
+              className="text-[11px] px-2 py-1 bg-purple-600/80 hover:bg-purple-600 text-white rounded transition-colors"
+            >
+              {keyBindings.acceptContinuation || 'Tab'} 接受
+            </button>
+            <button
+              onClick={dismissContinuation}
+              className="text-[11px] px-2 py-1 bg-gray-600/80 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+            >
+              取消
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Loading indicator */}
+      {continuationLoading && (
+        <div className="border-t border-gray-700/60 bg-gray-800/60 px-4 py-2 flex items-center gap-2">
+          <div className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs text-purple-400">AI 正在思考续写建议...</span>
+        </div>
+      )}
 
       <ExportPanel />
     </div>

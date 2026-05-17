@@ -107,8 +107,8 @@ const api: IPCAPI = {
     ipcRenderer.invoke('import-book-confirm', bookName, chapters),
 
   // Continuation
-  generateContinuation: (chapterId: string, cursorPosition: number) =>
-    ipcRenderer.invoke('generate-continuation', chapterId, cursorPosition),
+  generateContinuation: (chapterId: string, cursorPosition: number, content: string) =>
+    ipcRenderer.invoke('generate-continuation', chapterId, cursorPosition, content),
 
   // Dialogue
   dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) =>

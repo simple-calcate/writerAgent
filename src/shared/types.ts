@@ -358,7 +358,7 @@ export interface IPCAPI {
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
 
   // Continuation
-  generateContinuation: (chapterId: string, cursorPosition: number) => Promise<string | null>
+  generateContinuation: (chapterId: string, cursorPosition: number, content: string) => Promise<string | null>
 
   // Dialogue
   dialogueSend: (level: DialogueLevel, entityId: string, messages: { role: 'user' | 'assistant'; content: string }[]) => Promise<{ streamId: string }>

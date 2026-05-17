@@ -770,7 +770,7 @@ export const useAppStore = create<AppState>((set, get) => ({
 
     set({ continuationLoading: true, continuationSuggestion: null, continuationCursorPos: cursorPosition })
     try {
-      const result = await window.api.generateContinuation(currentChapter.id, cursorPosition)
+      const result = await window.api.generateContinuation(currentChapter.id, cursorPosition, currentChapter.content)
       set({ continuationSuggestion: result, continuationLoading: false })
     } catch {
       set({ continuationLoading: false })

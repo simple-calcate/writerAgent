@@ -188,7 +188,7 @@ function registerIPC(): void {
   })
 
   // Continuation
-  ipcMain.handle('generate-continuation', async (_e, chapterId: string, cursorPosition: number) => {
+  ipcMain.handle('generate-continuation', async (_e, chapterId: string, cursorPosition: number, content: string) => {
     const config = resolveFeatureConfig('dialogue')
     if (!config || !config.apiKey) return null
 
@@ -211,7 +211,7 @@ function registerIPC(): void {
     if (!chapterOutline && !volumeOutline && !bookOutline) return null
 
     return generateContinuation(config, {
-      content: chapter.content,
+      content,
       cursorPosition,
       chapterOutline: chapterOutline?.content,
       volumeOutline: volumeOutline?.content,

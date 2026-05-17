@@ -350,9 +350,17 @@ export default function Editor() {
     const cursor = getCursorOffset(el)
     const text = htmlToPlainText(el)
     updateChapterContent(text)
-    // Re-render HTML to apply comment styling (// lines → green)
-    el.innerHTML = plainTextToHtml(text)
-    setCursorAtOffset(el, cursor)
+
+    // Style // paragraphs directly in DOM (no full re-render)
+    for (const p of el.querySelectorAll('p, div')) {
+      const t = (p.textContent || '').trimStart()
+      if (t.startsWith('//')) {
+        p.classList.add('comment')
+      } else {
+        p.classList.remove('comment')
+      }
+    }
+
     setSaveStatus('unsaved')
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     saveTimerRef.current = setTimeout(async () => {
@@ -363,7 +371,6 @@ export default function Editor() {
 
     // Continuation timer
     if (continuationCfg.enabled) {
-      // Check if current line is a comment
       const textUpToCursor = text.substring(0, cursor)
       const lastNewline = textUpToCursor.lastIndexOf('\n')
       const currentLine = textUpToCursor.substring(lastNewline + 1).trimStart()

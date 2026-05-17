@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
 import type { KeyBindings, ContinuationConfig } from '../../../shared/types'
-import FormatPanel from './FormatPanel'
 import ExportPanel from './ExportPanel'
 
 // ─── Helpers ──────────────────────────────────────────────
@@ -15,18 +14,16 @@ function escapeHtml(text: string): string {
 }
 
 /** Plain text (with \n\n paragraphs) → HTML paragraphs */
-function plainTextToHtml(text: string): string {
+function plainTextToHtml(text: string, committedComments?: Set<number>): string {
   if (!text) return '<p><br></p>'
   const paragraphs = text.split(/\n\n+/)
-  const html = paragraphs.map(p => {
+  const html = paragraphs.map((p, i) => {
     const trimmed = p.trim()
     if (!trimmed) return ''
-    if (trimmed.startsWith('//')) {
-      return `<p class="comment">${escapeHtml(trimmed)}</p>`
-    }
-    // Single newlines within a paragraph → <br>
+    const isComment = committedComments?.has(i) && trimmed.startsWith('//')
+    const cls = isComment ? ' class="comment"' : ''
     const inner = escapeHtml(trimmed).replace(/\n/g, '<br>')
-    return `<p>${inner}</p>`
+    return `<p${cls}>${inner}</p>`
   }).filter(Boolean).join('')
   return html || '<p><br></p>'
 }
@@ -278,6 +275,7 @@ export default function Editor() {
   const lastChapterIdRef = useRef<string | null>(null)
   const isComposingRef = useRef(false)
   const pendingSyncRef = useRef<{ html: string; cursorOffset: number } | null>(null)
+  const committedCommentsRef = useRef<Set<number>>(new Set())
 
   const keyBindings: KeyBindings = llmConfig.keyBindings || DEFAULT_KEY_BINDINGS
   const continuationCfg: ContinuationConfig = llmConfig.continuationConfig || DEFAULT_CONTINUATION_CONFIG
@@ -287,6 +285,7 @@ export default function Editor() {
     if (!editorRef.current || !currentChapter) return
     if (currentChapter.id === lastChapterIdRef.current) return
     lastChapterIdRef.current = currentChapter.id
+    committedCommentsRef.current = new Set()
     editorRef.current.innerHTML = plainTextToHtml(currentChapter.content)
   }, [currentChapter?.id])
 
@@ -320,7 +319,7 @@ export default function Editor() {
     const insertEnd = cursorPos + prefix.length + suggestion.length
     const newContent = before + prefix + suggestion + suffix + after
 
-    pendingSyncRef.current = { html: plainTextToHtml(newContent), cursorOffset: insertEnd }
+    pendingSyncRef.current = { html: plainTextToHtml(newContent, committedCommentsRef.current), cursorOffset: insertEnd }
     acceptContinuation()
   }, [acceptContinuation])
 
@@ -333,7 +332,7 @@ export default function Editor() {
       const cursorOffset = sel && editorRef.current.contains(sel.anchorNode)
         ? getCursorOffset(editorRef.current)
         : 0
-      pendingSyncRef.current = { html: plainTextToHtml(prev.content), cursorOffset }
+      pendingSyncRef.current = { html: plainTextToHtml(prev.content, committedCommentsRef.current), cursorOffset }
       undo()
     } else {
       // Fallback to browser native undo for contentEditable
@@ -382,11 +381,36 @@ export default function Editor() {
 
   // ── Keyboard handling ───────────────────────────────────
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Tab: accept continuation
-    if (continuationSuggestion && (e.key === 'Tab' || matchKey(e, keyBindings.acceptContinuation))) {
-      e.preventDefault()
-      handleAcceptContinuation()
-      return
+    // Tab: accept continuation or commit comment
+    if (e.key === 'Tab' || matchKey(e, keyBindings.acceptContinuation)) {
+      if (continuationSuggestion) {
+        e.preventDefault()
+        handleAcceptContinuation()
+        return
+      }
+      // Commit current // paragraph as comment
+      if (editorRef.current) {
+        const sel = window.getSelection()
+        if (sel && sel.rangeCount > 0) {
+          let node: Node | null = sel.anchorNode
+          while (node && node !== editorRef.current) {
+            if (node instanceof HTMLParagraphElement) {
+              const text = node.textContent?.trim() || ''
+              if (text.startsWith('//')) {
+                e.preventDefault()
+                node.classList.add('comment')
+                // Track index for re-render
+                const allPs = editorRef.current.querySelectorAll('p')
+                const idx = Array.from(allPs).indexOf(node)
+                if (idx >= 0) committedCommentsRef.current.add(idx)
+                return
+              }
+              break
+            }
+            node = node.parentNode
+          }
+        }
+      }
     }
   }, [continuationSuggestion, keyBindings, handleAcceptContinuation])
 
@@ -547,7 +571,6 @@ export default function Editor() {
 
           <Divider />
 
-          <FormatPanel />
           <ExportMenu onExportCurrent={exportTxt} onBatchExport={toggleExport} />
         </div>
       </div>

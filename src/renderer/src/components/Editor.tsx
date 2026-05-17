@@ -327,15 +327,23 @@ export default function Editor() {
   // ── Wrapped undo with cursor restore ────────────────────
   const handleUndo = useCallback(() => {
     const state = useAppStore.getState()
-    if (state.undoStack.length === 0) return
-    const prev = state.undoStack[state.undoStack.length - 1]
-    const sel = window.getSelection()
-    const cursorOffset = sel && editorRef.current?.contains(sel.anchorNode)
-      ? getCursorOffset(editorRef.current)
-      : prev.content.length
-    pendingSyncRef.current = { html: plainTextToHtml(prev.content), cursorOffset }
-    undo()
-  }, [undo])
+    if (state.undoStack.length > 0 && editorRef.current) {
+      const prev = state.undoStack[state.undoStack.length - 1]
+      const sel = window.getSelection()
+      const cursorOffset = sel && editorRef.current.contains(sel.anchorNode)
+        ? getCursorOffset(editorRef.current)
+        : 0
+      pendingSyncRef.current = { html: plainTextToHtml(prev.content), cursorOffset }
+      undo()
+    } else {
+      // Fallback to browser native undo for contentEditable
+      document.execCommand('undo')
+      if (editorRef.current) {
+        const text = htmlToPlainText(editorRef.current)
+        updateChapterContent(text)
+      }
+    }
+  }, [undo, updateChapterContent])
 
   // ── Handle contentEditable input ────────────────────────
   const handleInput = useCallback(() => {
@@ -386,8 +394,12 @@ export default function Editor() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (matchKey(e, keyBindings.undo)) {
-        e.preventDefault()
-        handleUndo()
+        // Only intercept if we have custom undo entries; otherwise let browser handle natively
+        const state = useAppStore.getState()
+        if (state.undoStack.length > 0) {
+          e.preventDefault()
+          handleUndo()
+        }
         return
       }
       if (continuationSuggestion && matchKey(e, keyBindings.acceptContinuation)) {

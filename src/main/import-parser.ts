@@ -43,41 +43,28 @@ export function parseTxtContent(content: string): { title: string; content: stri
 
 /**
  * 将原始行数组转换为标准化内容格式：
- * - 空行分隔的文本块作为段落，用 \n\n 连接
- * - 去掉段落内部的多余空行
+ * - 每个非空行作为独立段落（网文通常一行一段）
+ * - 连续空行合并为一个段落分隔
  * - 保留分隔线 ---
+ * - 段落之间用 \n\n 连接
  */
 function normalizeContent(lines: string[]): string {
   const paragraphs: string[] = []
-  let currentPara: string[] = []
 
   for (const line of lines) {
     const trimmed = line.trim()
 
+    // 跳过空行（空行只是段落分隔标记，不产生内容）
+    if (trimmed === '') continue
+
     // 分隔线作为独立段落
     if (/^-{3,}$/.test(trimmed)) {
-      if (currentPara.length > 0) {
-        paragraphs.push(currentPara.join('\n'))
-        currentPara = []
-      }
       paragraphs.push(trimmed)
       continue
     }
 
-    if (trimmed === '') {
-      // 空行 = 段落分隔
-      if (currentPara.length > 0) {
-        paragraphs.push(currentPara.join('\n'))
-        currentPara = []
-      }
-    } else {
-      currentPara.push(trimmed)
-    }
-  }
-
-  // 最后一段
-  if (currentPara.length > 0) {
-    paragraphs.push(currentPara.join('\n'))
+    // 每个非空行是一个独立段落
+    paragraphs.push(trimmed)
   }
 
   return paragraphs.join('\n\n')

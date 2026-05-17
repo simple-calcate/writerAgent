@@ -32,7 +32,6 @@ function plainTextToHtml(text: string): string {
 /** contentEditable DOM → plain text with \n\n paragraph separators */
 function htmlToPlainText(container: HTMLElement): string {
   const paragraphs: string[] = []
-  // Walk child nodes to handle both <p> and bare <div>/<br>
   for (const child of Array.from(container.childNodes)) {
     if (child.nodeType === Node.ELEMENT_NODE) {
       const el = child as HTMLElement
@@ -56,15 +55,13 @@ function getCursorOffset(container: HTMLElement): number {
   const paragraphs = container.querySelectorAll('p')
   for (const p of paragraphs) {
     if (p.contains(range.startContainer)) {
-      // Cursor is in this paragraph — count chars before cursor within this p
       const preRange = document.createRange()
       preRange.selectNodeContents(p)
       preRange.setEnd(range.startContainer, range.startOffset)
       offset += preRange.toString().length
       break
     } else {
-      // Whole paragraph comes before cursor
-      offset += p.innerText.length + 2 // +2 for \n\n separator
+      offset += p.innerText.length + 2
     }
   }
   return offset
@@ -80,7 +77,6 @@ function setCursorAtOffset(container: HTMLElement, targetOffset: number) {
     const paraLen = text.length
 
     if (accumulated + paraLen >= targetOffset) {
-      // Target is within this paragraph
       const localOffset = targetOffset - accumulated
       const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
       let charCount = 0
@@ -101,7 +97,7 @@ function setCursorAtOffset(container: HTMLElement, targetOffset: number) {
       }
       break
     }
-    accumulated += paraLen + 2 // +2 for \n\n
+    accumulated += paraLen + 2
   }
 }
 
@@ -204,10 +200,13 @@ function removeGhostText(container: HTMLElement) {
   container.querySelectorAll('.ghost-text').forEach(el => el.remove())
 }
 
+function hasGhostText(container: HTMLElement): boolean {
+  return container.querySelector('.ghost-text') !== null
+}
+
 function insertGhostText(container: HTMLElement, offset: number, text: string) {
   removeGhostText(container)
 
-  // Find the paragraph and text node for the offset
   const paragraphs = container.querySelectorAll('p')
   let accumulated = 0
 
@@ -243,6 +242,36 @@ function insertGhostText(container: HTMLElement, offset: number, text: string) {
   }
 }
 
+/** Accept ghost text: convert ghost span to real text */
+function acceptGhostText(container: HTMLElement, store: ReturnType<typeof useAppStore.getState>) {
+  const ghost = container.querySelector('.ghost-text') as HTMLElement | null
+  if (!ghost) return
+
+  const ghostText = ghost.textContent || ''
+
+  // Place cursor after where ghost was, then remove ghost
+  const range = document.createRange()
+  range.setStartAfter(ghost)
+  range.collapse(true)
+  ghost.remove()
+
+  // Insert text as real content
+  const textNode = document.createTextNode(ghostText)
+  range.insertNode(textNode)
+  range.setStartAfter(textNode)
+  range.collapse(true)
+  const sel = window.getSelection()
+  if (sel) {
+    sel.removeAllRanges()
+    sel.addRange(range)
+  }
+
+  // Update store and clear continuation state
+  const text = htmlToPlainText(container)
+  store.updateChapterContent(text)
+  store.clearContinuation()
+}
+
 // ─── Editor component ─────────────────────────────────────
 
 export default function Editor() {
@@ -264,9 +293,9 @@ export default function Editor() {
     llmConfig,
     continuationSuggestion,
     continuationLoading,
-    acceptContinuation,
     dismissContinuation,
-    resetContinuationTimer
+    resetContinuationTimer,
+    clearContinuation
   } = useAppStore()
 
   const editorRef = useRef<HTMLDivElement>(null)
@@ -288,7 +317,7 @@ export default function Editor() {
     editorRef.current.innerHTML = plainTextToHtml(currentChapter.content)
   }, [currentChapter?.id])
 
-  // ── Sync innerHTML after programmatic content changes (accept/undo) ──
+  // ── Sync innerHTML after programmatic content changes ───
   useEffect(() => {
     if (!editorRef.current || !pendingSyncRef.current) return
     const { html, cursorOffset } = pendingSyncRef.current
@@ -298,33 +327,14 @@ export default function Editor() {
     editorRef.current.focus()
   }, [currentChapter?.content])
 
-  // ── Wrapped acceptContinuation with cursor restore ──────
-  const handleAcceptContinuation = useCallback(() => {
-    const state = useAppStore.getState()
-    const suggestion = state.continuationSuggestion
-    const chapter = state.currentChapter
-    if (!suggestion || !chapter) {
-      acceptContinuation()
-      return
-    }
-    const cursorPos = state.continuationCursorPos ?? chapter.content.length
-    const content = chapter.content
-    const before = content.substring(0, cursorPos)
-    const after = content.substring(cursorPos)
-    const needNewlineBefore = before.length > 0 && !before.endsWith('\n\n')
-    const needNewlineAfter = after.length > 0 && !after.startsWith('\n\n')
-    const prefix = needNewlineBefore ? (before.endsWith('\n') ? '\n' : '\n\n') : ''
-    const suffix = needNewlineAfter ? (after.startsWith('\n') ? '\n' : '\n\n') : ''
-    const insertEnd = cursorPos + prefix.length + suggestion.length
-    const newContent = before + prefix + suggestion + suffix + after
-
-    pendingSyncRef.current = { html: plainTextToHtml(newContent), cursorOffset: insertEnd }
-    acceptContinuation()
-  }, [acceptContinuation])
-
   // ── Wrapped undo with cursor restore ────────────────────
   const handleUndo = useCallback(() => {
     const state = useAppStore.getState()
+    // Dismiss ghost first
+    if (editorRef.current && hasGhostText(editorRef.current)) {
+      removeGhostText(editorRef.current)
+      clearContinuation()
+    }
     if (state.undoStack.length > 0 && editorRef.current) {
       const prev = state.undoStack[state.undoStack.length - 1]
       const sel = window.getSelection()
@@ -334,24 +344,30 @@ export default function Editor() {
       pendingSyncRef.current = { html: plainTextToHtml(prev.content), cursorOffset }
       undo()
     } else {
-      // Fallback to browser native undo for contentEditable
       document.execCommand('undo')
       if (editorRef.current) {
         const text = htmlToPlainText(editorRef.current)
         updateChapterContent(text)
       }
     }
-  }, [undo, updateChapterContent])
+  }, [undo, updateChapterContent, clearContinuation])
 
   // ── Handle contentEditable input ────────────────────────
   const handleInput = useCallback(() => {
     if (!editorRef.current || isComposingRef.current) return
     const el = editorRef.current
+
+    // If user typed while ghost was visible, remove ghost (auto-dismiss)
+    if (hasGhostText(el)) {
+      removeGhostText(el)
+      clearContinuation()
+    }
+
     const cursor = getCursorOffset(el)
     const text = htmlToPlainText(el)
     updateChapterContent(text)
 
-    // Style // paragraphs directly in DOM (no full re-render)
+    // Style // paragraphs directly in DOM
     for (const p of el.querySelectorAll('p, div')) {
       const t = (p.textContent || '').trimStart()
       if (t.startsWith('//')) {
@@ -380,37 +396,32 @@ export default function Editor() {
         resetContinuationTimer(cursor)
       }
     }
-  }, [updateChapterContent, saveChapter, resetContinuationTimer, continuationCfg])
+  }, [updateChapterContent, saveChapter, resetContinuationTimer, continuationCfg, clearContinuation])
 
   // ── Keyboard handling ───────────────────────────────────
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    // Tab: accept continuation
-    if ((e.key === 'Tab' || matchKey(e, keyBindings.acceptContinuation)) && continuationSuggestion) {
+    // Tab: accept ghost text
+    if (e.key === 'Tab' && editorRef.current && hasGhostText(editorRef.current)) {
       e.preventDefault()
-      handleAcceptContinuation()
+      acceptGhostText(editorRef.current, useAppStore.getState())
+      return
     }
-  }, [continuationSuggestion, keyBindings, handleAcceptContinuation])
+    // Any other key while ghost visible: dismiss ghost, let key through
+    if (editorRef.current && hasGhostText(editorRef.current)) {
+      removeGhostText(editorRef.current)
+      clearContinuation()
+    }
+  }, [clearContinuation])
 
   // Global keyboard shortcuts
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (matchKey(e, keyBindings.undo)) {
-        // Only intercept if we have custom undo entries; otherwise let browser handle natively
         const state = useAppStore.getState()
         if (state.undoStack.length > 0) {
           e.preventDefault()
           handleUndo()
         }
-        return
-      }
-      if (continuationSuggestion && matchKey(e, keyBindings.acceptContinuation)) {
-        e.preventDefault()
-        handleAcceptContinuation()
-        return
-      }
-      if (continuationSuggestion && matchKey(e, keyBindings.dismissContinuation)) {
-        e.preventDefault()
-        dismissContinuation()
         return
       }
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -421,13 +432,24 @@ export default function Editor() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [handleUndo, saveChapter, keyBindings, continuationSuggestion, handleAcceptContinuation, dismissContinuation])
+  }, [handleUndo, saveChapter, keyBindings])
 
-  // ── Paste: strip formatting ─────────────────────────────
+  // ── Click elsewhere: dismiss ghost ──────────────────────
+  const handleMouseDown = useCallback(() => {
+    if (editorRef.current && hasGhostText(editorRef.current)) {
+      removeGhostText(editorRef.current)
+      clearContinuation()
+    }
+  }, [clearContinuation])
+
+  // ── Paste: strip formatting, dismiss ghost ──────────────
   const handlePaste = useCallback((e: React.ClipboardEvent) => {
     e.preventDefault()
+    if (editorRef.current && hasGhostText(editorRef.current)) {
+      removeGhostText(editorRef.current)
+      clearContinuation()
+    }
     const text = e.clipboardData.getData('text/plain')
-    // Insert as plain text
     const sel = window.getSelection()
     if (!sel || sel.rangeCount === 0) return
     sel.deleteFromDocument()
@@ -438,9 +460,8 @@ export default function Editor() {
     range.collapse(true)
     sel.removeAllRanges()
     sel.addRange(range)
-    // Trigger input handler
     handleInput()
-  }, [handleInput])
+  }, [handleInput, clearContinuation])
 
   // ── Cleanup save timer ──────────────────────────────────
   useEffect(() => {
@@ -455,7 +476,7 @@ export default function Editor() {
     clearScrollToPosition()
   }, [scrollToPosition, clearScrollToPosition])
 
-  // ── Ghost text for continuation suggestion ──────────────
+  // ── Insert ghost text when continuation arrives ─────────
   useEffect(() => {
     if (!editorRef.current) return
     if (continuationSuggestion) {
@@ -465,12 +486,6 @@ export default function Editor() {
       removeGhostText(editorRef.current)
     }
   }, [continuationSuggestion, currentChapter?.content.length])
-
-  // ── Accept continuation: cursor position ────────────────
-  useEffect(() => {
-    // After acceptContinuation updates content, set cursor at end of inserted text
-    // This is handled by the store's acceptContinuation + re-render
-  }, [currentChapter?.content])
 
   // ── IME composition handling (Chinese input) ────────────
   const handleCompositionStart = useCallback(() => { isComposingRef.current = true }, [])
@@ -560,6 +575,7 @@ export default function Editor() {
           suppressContentEditableWarning
           onInput={handleInput}
           onKeyDown={handleKeyDown}
+          onMouseDown={handleMouseDown}
           onPaste={handlePaste}
           onCompositionStart={handleCompositionStart}
           onCompositionEnd={handleCompositionEnd}
@@ -567,30 +583,6 @@ export default function Editor() {
           spellCheck={false}
         />
       </div>
-
-      {/* Continuation suggestion bar (fallback if ghost text hard to read) */}
-      {continuationSuggestion && (
-        <div className="border-t border-gray-700/60 bg-gray-800/60 px-4 py-2 flex items-start gap-3">
-          <span className="text-xs text-purple-400 shrink-0 mt-0.5">💡</span>
-          <p className="text-xs text-gray-400 leading-relaxed flex-1 line-clamp-3">
-            {continuationSuggestion}
-          </p>
-          <div className="flex gap-1.5 shrink-0">
-            <button
-              onClick={handleAcceptContinuation}
-              className="text-[11px] px-2 py-1 bg-purple-600/80 hover:bg-purple-600 text-white rounded transition-colors"
-            >
-              {keyBindings.acceptContinuation || 'Tab'} 接受
-            </button>
-            <button
-              onClick={dismissContinuation}
-              className="text-[11px] px-2 py-1 bg-gray-600/80 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-            >
-              取消
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Loading indicator */}
       {continuationLoading && (

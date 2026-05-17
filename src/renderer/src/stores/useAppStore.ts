@@ -114,6 +114,7 @@ interface AppState {
   triggerContinuation: (cursorPosition: number) => Promise<void>
   acceptContinuation: () => void
   dismissContinuation: () => void
+  clearContinuation: () => void
   resetContinuationTimer: (cursorPosition: number) => void
 
   // Settings
@@ -815,6 +816,10 @@ export const useAppStore = create<AppState>((set, get) => ({
     const { continuationTimer } = get()
     if (continuationTimer) clearTimeout(continuationTimer)
     set({ continuationSuggestion: null, continuationTimer: null, continuationLoading: false })
+  },
+
+  clearContinuation: () => {
+    set({ continuationSuggestion: null, continuationCursorPos: null })
   },
 
   // Settings

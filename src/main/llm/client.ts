@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
 import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider } from '../../shared/types'
+import { getMaxTokens } from '../store/db'
 
 export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
@@ -96,7 +97,7 @@ export async function polishText(
       }
     ],
     temperature: 0.7,
-    max_tokens: 4096,
+    max_tokens: getMaxTokens(),
     response_format: { type: 'json_object' }
   })
 
@@ -156,22 +157,47 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
       { role: 'user', content }
     ],
     temperature: 0.3,
-    max_tokens: 2048,
+    max_tokens: getMaxTokens(),
     response_format: { type: 'json_object' }
   })
 
-  const detectContent = detectResponse.choices[0]?.message?.content?.trim() || '{"segments":[]}'
+  const rawContent = detectResponse.choices[0]?.message?.content
+  console.log('[polish] raw detect response:', rawContent?.substring(0, 500))
+  const detectContent = rawContent?.trim() || '{"segments":[]}'
   let segments: { text: string; start_char: number }[] = []
 
   try {
     const parsed = JSON.parse(detectContent)
-    segments = parsed.segments || []
-  } catch {
-    return { suggestions: [] }
+    // 兼容多种返回格式
+    if (Array.isArray(parsed)) {
+      segments = parsed
+    } else if (parsed.segments) {
+      segments = parsed.segments
+    } else if (parsed.text && Array.isArray(parsed.text)) {
+      segments = parsed.text
+    }
+    console.log('[polish] detected segments:', segments.length)
+  } catch (e) {
+    // 尝试从 markdown 代码块中提取 JSON
+    const jsonMatch = detectContent.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonMatch) {
+      try {
+        const parsed = JSON.parse(jsonMatch[1].trim())
+        segments = parsed.segments || []
+        console.log('[polish] extracted from code block, segments:', segments.length)
+      } catch {
+        console.log('[polish] failed to parse code block JSON')
+        return { suggestions: [] }
+      }
+    } else {
+      console.log('[polish] JSON parse failed:', e)
+      return { suggestions: [] }
+    }
   }
 
   // Step 2: Polish each segment with surrounding context (parallel)
   const validSegments = segments.filter(seg => seg.text && seg.text.length >= 5)
+  console.log('[polish] valid segments to polish:', validSegments.length)
 
   const results = await Promise.allSettled(
     validSegments.map(async (seg) => {
@@ -190,6 +216,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
     .filter((r): r is PromiseFulfilledResult<PolishResult> => r.status === 'fulfilled')
     .map(r => r.value)
 
+  console.log('[polish] final suggestions:', suggestions.length, 'rejected:', results.filter(r => r.status === 'rejected').length)
   return { suggestions }
 }
 
@@ -229,7 +256,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
       { role: 'user', content }
     ],
     temperature: 0.3,
-    max_tokens: 2048
+    max_tokens: getMaxTokens()
   })
 
   return response.choices[0]?.message?.content?.trim() || '无法生成总结'

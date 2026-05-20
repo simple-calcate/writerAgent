@@ -445,18 +445,64 @@ export default function Settings() {
                         </div>
                       </div>
                       {entry.enabled && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[10px] text-gray-500 shrink-0">API:</span>
-                          <select
-                            value={entry.profileId || ''}
-                            onChange={e => handleBindProfile(feat.key, e.target.value || null)}
-                            className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                          >
-                            <option value="">默认 ({getProfileName(null)})</option>
-                            {form.profiles.map(p => (
-                              <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
-                            ))}
-                          </select>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 shrink-0">API:</span>
+                            <select
+                              value={entry.profileId || ''}
+                              onChange={e => handleBindProfile(feat.key, e.target.value || null)}
+                              className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="">默认 ({getProfileName(null)})</option>
+                              {form.profiles.map(p => (
+                                <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 shrink-0">思考:</span>
+                            <select
+                              value={entry.thinkingDepth?.preset || 'default'}
+                              onChange={e => {
+                                const val = e.target.value
+                                if (val === 'default') {
+                                  const { thinkingDepth, ...rest } = entry
+                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: rest } })
+                                } else {
+                                  const td: ThinkingDepth = val === 'custom'
+                                    ? { preset: 'custom', budgetTokens: entry.thinkingDepth?.budgetTokens || 8192 }
+                                    : { preset: val as ThinkingDepthPreset }
+                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: { ...entry, thinkingDepth: td } } })
+                                }
+                              }}
+                              className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                            >
+                              <option value="default">跟随 API 配置</option>
+                              {THINKING_PRESETS.map(p => (
+                                <option key={p.value} value={p.value}>{p.label}</option>
+                              ))}
+                            </select>
+                          </div>
+                          {entry.thinkingDepth?.preset === 'custom' && (
+                            <div className="flex items-center gap-2 ml-10">
+                              <span className="text-[10px] text-gray-500 shrink-0">预算:</span>
+                              <input
+                                type="number"
+                                value={entry.thinkingDepth?.budgetTokens || 8192}
+                                onChange={e => setForm({
+                                  ...form,
+                                  aiFeatures: {
+                                    ...form.aiFeatures,
+                                    [feat.key]: { ...entry, thinkingDepth: { preset: 'custom', budgetTokens: Math.max(1024, parseInt(e.target.value) || 8192) } }
+                                  }
+                                })}
+                                min={1024}
+                                step={1024}
+                                className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                              />
+                              <span className="text-[10px] text-gray-500">tokens</span>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -521,6 +567,26 @@ export default function Settings() {
                       </>
                     )
                   })()}
+                </div>
+
+                {/* 最大输出 Token */}
+                <div className="border-t border-gray-700/50 pt-3 mt-3 space-y-2">
+                  <div>
+                    <p className="text-xs text-gray-400 font-medium">最大输出 Token</p>
+                    <p className="text-[10px] text-gray-500 mt-0.5">控制 AI 单次回复的最大长度，单位：万</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min={1}
+                      max={100}
+                      value={form.maxTokens ?? 2}
+                      onChange={e => setForm({ ...form, maxTokens: Math.min(100, Math.max(1, parseInt(e.target.value) || 2)) })}
+                      className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                    />
+                    <span className="text-xs text-gray-500">万（{(form.maxTokens ?? 2) * 10000} tokens）</span>
+                  </div>
+                  <p className="text-[10px] text-gray-500">默认 2万，最大 100万。DeepSeek 推理模型需要较大值。</p>
                 </div>
               </div>
             )}

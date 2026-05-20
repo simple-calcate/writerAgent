@@ -37,9 +37,13 @@ function registerIPC(): void {
   // AI
   ipcMain.handle('auto-polish', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
     const config = resolveFeatureConfig('polish')
+    console.log('[auto-polish] config:', config ? { model: config.model, baseUrl: config.baseUrl } : null)
     if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
-    return autoPolish(config, content, aiConfig)
+    console.log('[auto-polish] content length:', content.length)
+    const result = await autoPolish(config, content, aiConfig)
+    console.log('[auto-polish] result suggestions:', result.suggestions.length)
+    return result
   })
 
   ipcMain.handle('polish-text', async (_e, original: string, context: string) => {

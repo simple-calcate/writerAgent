@@ -4,7 +4,7 @@ import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAICo
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
-import { getOutline } from '../store/db'
+import { getOutline, getMaxTokens } from '../store/db'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50
@@ -79,7 +79,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             messages: fullMessages as any,
             tools,
             temperature: 0.7,
-            max_tokens: 4096,
+            max_tokens: getMaxTokens(),
             stream: true,
             ...thinkingParams
           }, { signal: controller.signal })
@@ -90,7 +90,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               messages: fullMessages as any,
               tools,
               temperature: 0.7,
-              max_tokens: 4096,
+              max_tokens: getMaxTokens(),
               stream: true
             }, { signal: controller.signal })
           } else {

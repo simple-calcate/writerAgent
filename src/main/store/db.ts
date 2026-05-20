@@ -414,6 +414,12 @@ export function getDefaultProfile(): APIProfile | null {
   return profiles.find(p => p.id === defaultProfileId) || profiles[0] || null
 }
 
+export function getMaxTokens(): number {
+  const val = store.llmConfig.maxTokens
+  if (typeof val === 'number' && val > 0) return val * 10000
+  return 20000  // 默认 2万
+}
+
 export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigSingle | null {
   const { profiles, defaultProfileId, aiFeatures } = store.llmConfig
   const featureConf = aiFeatures[feature]
@@ -421,7 +427,8 @@ export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigS
   const profileId = featureConf.profileId || defaultProfileId
   const profile = profiles.find(p => p.id === profileId) || profiles[0]
   if (!profile) return null
-  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model, thinkingDepth: profile.thinkingDepth }
+  const thinkingDepth = featureConf.thinkingDepth || profile.thinkingDepth
+  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model, thinkingDepth }
 }
 
 // ─── Conversations ───

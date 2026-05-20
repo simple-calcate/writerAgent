@@ -1,5 +1,6 @@
 import type { LLMConfigSingle, BookAIConfig } from '../../shared/types'
 import { createClient } from './client'
+import { getMaxTokens } from '../store/db'
 
 export async function refineSummary(
   config: LLMConfigSingle,
@@ -27,7 +28,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       { role: 'user', content }
     ],
     temperature: 0.3,
-    max_tokens: 1024
+    max_tokens: getMaxTokens()
   })
 
   return response.choices[0]?.message?.content?.trim() || '无法生成总结'

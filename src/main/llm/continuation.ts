@@ -64,7 +64,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
       { role: 'user', content: userMessage }
     ],
     temperature: 0.7,
-    max_tokens: config.maxTokens || 20000
+    ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })
 
   const choice = response.choices?.[0]

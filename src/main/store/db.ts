@@ -414,12 +414,6 @@ export function getDefaultProfile(): APIProfile | null {
   return profiles.find(p => p.id === defaultProfileId) || profiles[0] || null
 }
 
-export function getMaxTokens(): number {
-  const val = store.llmConfig.maxTokens
-  if (typeof val === 'number' && val > 0) return Math.min(val * 1000, 390000)
-  return 20000  // 默认 20k
-}
-
 export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigSingle | null {
   const { profiles, defaultProfileId, aiFeatures } = store.llmConfig
   const featureConf = aiFeatures[feature]
@@ -428,13 +422,10 @@ export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigS
   const profile = profiles.find(p => p.id === profileId) || profiles[0]
   if (!profile) return null
   const thinkingDepth = featureConf.thinkingDepth || profile.thinkingDepth
-  const maxTokens = getMaxTokensForFeature(featureConf)
+  const maxTokens = featureConf.maxTokens && featureConf.maxTokens > 0
+    ? Math.min(featureConf.maxTokens * 1000, 390000)
+    : undefined
   return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model, thinkingDepth, maxTokens }
-}
-
-function getMaxTokensForFeature(featureConf: AIFeatureEntry): number {
-  if (featureConf.maxTokens && featureConf.maxTokens > 0) return Math.min(featureConf.maxTokens * 1000, 390000)
-  return getMaxTokens()
 }
 
 // ─── Conversations ───

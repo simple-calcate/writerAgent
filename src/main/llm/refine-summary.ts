@@ -27,7 +27,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       { role: 'user', content }
     ],
     temperature: 0.3,
-    max_tokens: config.maxTokens || 20000
+    ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })
 
   return response.choices[0]?.message?.content?.trim() || '无法生成总结'

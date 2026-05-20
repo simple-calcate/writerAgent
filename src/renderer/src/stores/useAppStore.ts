@@ -845,8 +845,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       refineSummary: { enabled: true, profileId: null }
     },
     keyBindings: { ...DEFAULT_KEY_BINDINGS },
-    continuationConfig: { ...DEFAULT_CONTINUATION_CONFIG },
-    maxTokens: 20
+    continuationConfig: { ...DEFAULT_CONTINUATION_CONFIG }
   },
 
   loadLLMConfig: async () => {

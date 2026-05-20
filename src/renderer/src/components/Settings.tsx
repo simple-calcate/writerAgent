@@ -504,13 +504,13 @@ export default function Settings() {
                             </div>
                           )}
                           <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-500 shrink-0">输出:</span>
+                            <span className="text-[10px] text-gray-500 shrink-0">输出上限:</span>
                             <input
                               type="number"
                               min={1}
                               max={390}
                               value={entry.maxTokens ?? ''}
-                              placeholder="跟随全局"
+                              placeholder="不限"
                               onChange={e => {
                                 const val = e.target.value ? Math.min(390, Math.max(1, parseInt(e.target.value))) : undefined
                                 const { maxTokens, ...rest } = entry
@@ -522,7 +522,7 @@ export default function Settings() {
                               }}
                               className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
                             />
-                            <span className="text-[10px] text-gray-500">k {entry.maxTokens ? `(${entry.maxTokens * 1000})` : ''}</span>
+                            <span className="text-[10px] text-gray-500">k {entry.maxTokens ? `(${entry.maxTokens * 1000})` : '默认不限制'}</span>
                           </div>
                         </div>
                       )}
@@ -590,25 +590,6 @@ export default function Settings() {
                   })()}
                 </div>
 
-                {/* 最大输出 Token */}
-                <div className="border-t border-gray-700/50 pt-3 mt-3 space-y-2">
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">最大输出 Token</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">控制 AI 单次回复的最大长度，单位：k（千）</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="number"
-                      min={1}
-                      max={390}
-                      value={form.maxTokens ?? 20}
-                      onChange={e => setForm({ ...form, maxTokens: Math.min(390, Math.max(1, parseInt(e.target.value) || 20)) })}
-                      className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                    />
-                    <span className="text-xs text-gray-500">k（{(form.maxTokens ?? 20) * 1000} tokens）</span>
-                  </div>
-                  <p className="text-[10px] text-gray-500">默认 20k，最大 390k。DeepSeek 推理模型需要较大值。</p>
-                </div>
               </div>
             )}
 

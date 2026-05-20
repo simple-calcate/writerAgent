@@ -79,7 +79,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             messages: fullMessages as any,
             tools,
             temperature: 0.7,
-            max_tokens: config.maxTokens || 20000,
+            ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
             stream: true,
             ...thinkingParams
           }, { signal: controller.signal })
@@ -90,7 +90,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               messages: fullMessages as any,
               tools,
               temperature: 0.7,
-              max_tokens: config.maxTokens || 20000,
+              ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
               stream: true
             }, { signal: controller.signal })
           } else {

@@ -1,6 +1,6 @@
 {
   "name": "novel-writer",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "description": "网文写作辅助工具 — 文风润色",
   "license": "AGPL-3.0",
   "main": "./out/main/index.js",

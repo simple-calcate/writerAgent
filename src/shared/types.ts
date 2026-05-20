@@ -6,7 +6,7 @@ export interface ThinkingDepth {
   budgetTokens?: number  // custom 模式下用户自定义的 token 预算
 }
 
-export type APIProvider = 'deepseek' | 'openai' | 'claude' | 'qwen' | 'moonshot' | 'ollama' | 'generic'
+export type APIProvider = 'deepseek' | 'openai' | 'claude' | 'qwen' | 'moonshot' | 'ollama' | 'openrouter' | 'generic'
 
 // API 配置档案
 export interface APIProfile {
@@ -322,6 +322,7 @@ export interface IPCAPI {
   getDataPathDefault: () => Promise<string>
   setDataPath: (newPath: string) => Promise<void>
   openDataFolder: () => Promise<void>
+  openExternal: (url: string) => Promise<void>
 
   // Projects
   getProjects: () => Promise<Project[]>

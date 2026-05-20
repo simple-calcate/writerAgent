@@ -36,6 +36,32 @@ const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; 
 
 const DEFAULT_THINKING: ThinkingDepth = { preset: 'off' }
 
+interface ProviderPreset {
+  value: string
+  label: string
+  baseUrl: string
+  model: string
+  rechargeUrl: string
+}
+
+const PROVIDER_PRESETS: ProviderPreset[] = [
+  { value: '', label: '自定义', baseUrl: '', model: '', rechargeUrl: '' },
+  { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'deepseek/deepseek-chat', rechargeUrl: 'https://openrouter.ai/settings/credits' },
+  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-chat', rechargeUrl: 'https://platform.deepseek.com/top_up' },
+  { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', rechargeUrl: 'https://platform.openai.com/settings/organization/billing/overview' },
+  { value: 'claude', label: 'Claude', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', rechargeUrl: 'https://console.anthropic.com/settings/billing' },
+  { value: 'qwen', label: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', rechargeUrl: 'https://usercenter2.aliyun.com' },
+  { value: 'moonshot', label: 'Moonshot', baseUrl: 'https://api.moonshot.cn/v1', model: 'moonshot-v1-8k', rechargeUrl: 'https://platform.moonshot.cn/console/account/billing' },
+  { value: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3', rechargeUrl: '' },
+]
+
+function detectPreset(baseUrl: string): string {
+  for (const p of PROVIDER_PRESETS) {
+    if (p.value && p.baseUrl && baseUrl === p.baseUrl) return p.value
+  }
+  return ''
+}
+
 export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
   const [form, setForm] = useState(llmConfig)
@@ -213,6 +239,28 @@ export default function Settings() {
                       />
                     </div>
                     <div>
+                      <label className="block text-xs text-gray-400 mb-1">提供商</label>
+                      <select
+                        value={detectPreset(editingProfile.baseUrl)}
+                        onChange={e => {
+                          const preset = PROVIDER_PRESETS.find(p => p.value === e.target.value)
+                          if (!preset) return
+                          const updates: Partial<APIProfile> = {}
+                          if (!editingProfile.name.trim() && preset.label !== '自定义') {
+                            updates.name = preset.label
+                          }
+                          if (preset.baseUrl) updates.baseUrl = preset.baseUrl
+                          if (preset.model) updates.model = preset.model
+                          setEditingProfile({ ...editingProfile, ...updates })
+                        }}
+                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                      >
+                        {PROVIDER_PRESETS.map(p => (
+                          <option key={p.value || '__custom__'} value={p.value}>{p.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
                       <label className="block text-xs text-gray-400 mb-1">API Key</label>
                       <input
                         type="password"
@@ -221,6 +269,21 @@ export default function Settings() {
                         placeholder="sk-..."
                         className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                       />
+                      {(() => {
+                        const preset = PROVIDER_PRESETS.find(p => p.value === detectPreset(editingProfile.baseUrl))
+                        if (preset?.rechargeUrl) {
+                          return (
+                            <button
+                              type="button"
+                              onClick={() => window.api.openExternal(preset.rechargeUrl)}
+                              className="mt-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
+                            >
+                              在 {preset.label} 充值 Token
+                            </button>
+                          )
+                        }
+                        return null
+                      })()}
                     </div>
                     <div>
                       <label className="block text-xs text-gray-400 mb-1">Base URL</label>

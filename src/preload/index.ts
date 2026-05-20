@@ -34,6 +34,9 @@ const api: IPCAPI = {
   openDataFolder: () =>
     ipcRenderer.invoke('open-data-folder'),
 
+  openExternal: (url: string) =>
+    ipcRenderer.invoke('open-external', url),
+
   // Projects
   getProjects: () =>
     ipcRenderer.invoke('get-projects'),

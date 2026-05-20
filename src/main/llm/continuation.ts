@@ -13,16 +13,16 @@ export async function generateContinuation(
   }
 ): Promise<string> {
   const client = createClient(config)
-  const { content, cursorPosition, chapterOutline, volumeOutline, bookOutline, aiConfig } = params
+  const { content, chapterOutline, volumeOutline, bookOutline, aiConfig } = params
 
-  const beforeCursor = content.substring(Math.max(0, cursorPosition - 2000), cursorPosition)
+  // 光标在末尾，取章节末尾内容作为上下文
+  const tailContent = content.slice(-2000)
 
-  // 检测光标所在行是否为注释
-  const lineStart = content.lastIndexOf('\n', cursorPosition - 1) + 1
-  const lineEnd = content.indexOf('\n', cursorPosition)
-  const currentLine = content.substring(lineStart, lineEnd === -1 ? content.length : lineEnd).trimStart()
-  const isComment = currentLine.startsWith('//')
-  const commentText = isComment ? currentLine.replace(/^\/\/\s*/, '') : ''
+  // 检测最后一行是否为注释
+  const lastNewline = content.lastIndexOf('\n')
+  const lastLine = content.substring(lastNewline + 1).trimStart()
+  const isComment = lastLine.startsWith('//')
+  const commentText = isComment ? lastLine.replace(/^\/\/\s*/, '') : ''
 
   let outlineSection = ''
   if (chapterOutline) {
@@ -37,7 +37,7 @@ export async function generateContinuation(
   let userMessage: string
 
   if (isComment) {
-    systemPrompt = `你是一位网文写作助手。作者留下了一条注释（// 开头），可能是疑问或 TODO。
+    systemPrompt = `你是一位网文写作助手。作者在章节末尾留下了一条注释（// 开头），可能是疑问或 TODO。
 根据上下文和大纲，直接输出能解答困惑的正文。不要解释、不要评论、不要重复注释。
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 
@@ -45,16 +45,16 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 - 默认只写 1-2 句话
 - 仅当大纲中明确描述了该片段的详细内容时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
-    userMessage = `【作者注释】${commentText}\n\n【光标前文】\n${beforeCursor}${outlineSection}`
+    userMessage = `【作者注释】${commentText}\n\n【章节末尾内容】\n${tailContent}${outlineSection}`
   } else {
-    systemPrompt = `你是一位网文写作助手。根据上下文提供续写建议。不要解释、不要评论。
+    systemPrompt = `你是一位网文写作助手。作者正在写到章节末尾，需要你提供续写建议。不要解释、不要评论。
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 
 输出规则：
-- 默认只写 1-2 句话，自然衔接上下文
-- 仅当大纲中明确描述了当前片段的详细剧情时，才可以写 1 个自然段
+- 默认只写 1-2 句话，自然衔接前文
+- 仅当大纲中明确描述了后续详细剧情时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
-    userMessage = `【光标前文】\n${beforeCursor}${outlineSection}`
+    userMessage = `【章节末尾内容】\n${tailContent}${outlineSection}`
   }
 
   const response = await client.chat.completions.create({

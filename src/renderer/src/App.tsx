@@ -39,7 +39,13 @@ export default function App() {
 
   useEffect(() => {
     loadProjects()
-    loadLLMConfig()
+    loadLLMConfig().then(() => {
+      const config = useAppStore.getState().llmConfig
+      const hasValidProfile = config.profiles.some(p => p.apiKey.trim())
+      if (!hasValidProfile) {
+        useAppStore.getState().toggleSettings()
+      }
+    })
   }, [loadProjects, loadLLMConfig])
 
   const handleSidebarResize = useCallback((delta: number) => {

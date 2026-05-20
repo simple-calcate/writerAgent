@@ -402,15 +402,18 @@ export default function Editor() {
       setSaveStatus('saved')
     }, 1000)
 
-    // Continuation timer — only on non-comment lines
+    // Continuation timer — only at chapter end, non-comment lines
     if (continuationCfg.enabled) {
-      const textUpToCursor = text.substring(0, cursor)
-      const lastNewline = textUpToCursor.lastIndexOf('\n')
-      const currentLine = textUpToCursor.substring(lastNewline + 1).trimStart()
-      const isComment = currentLine.startsWith('//')
-
-      if (!isComment) {
-        resetContinuationTimer(cursor)
+      const isAtEnd = cursor >= text.length
+      if (isAtEnd) {
+        const lastNewline = text.lastIndexOf('\n')
+        const currentLine = text.substring(lastNewline + 1).trimStart()
+        const isComment = currentLine.startsWith('//')
+        if (!isComment) {
+          resetContinuationTimer(cursor)
+        }
+      } else {
+        clearContinuation()
       }
     }
   }, [updateChapterContent, saveChapter, resetContinuationTimer, continuationCfg, clearContinuation])

@@ -26,6 +26,7 @@ export function detectProvider(config: LLMConfigSingle): APIProvider {
   if (baseUrl.includes('moonshot') || baseUrl.includes('kimi')) return 'moonshot'
   if (baseUrl.includes('qwen') || baseUrl.includes('dashscope') || baseUrl.includes('tongyi')) return 'qwen'
   if (baseUrl.includes('localhost:11434') || baseUrl.includes('127.0.0.1:11434')) return 'ollama'
+  if (baseUrl.includes('openrouter.ai')) return 'openrouter'
   if (baseUrl.includes('openai.com')) return 'openai'
 
   if (model.startsWith('deepseek')) return 'deepseek'

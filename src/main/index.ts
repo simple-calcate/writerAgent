@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync, readFileSync } from 'fs'
 import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline } from './store/db'
@@ -99,6 +99,7 @@ function registerIPC(): void {
   ipcMain.handle('get-data-path-default', () => getDataPathDefault())
   ipcMain.handle('set-data-path', (_e, newPath: string) => setDataPath(newPath))
   ipcMain.handle('open-data-folder', () => openDataFolder())
+  ipcMain.handle('open-external', (_e, url: string) => shell.openExternal(url))
 
   // Export
   ipcMain.handle('export-files', async (_e, options: ExportOptions) => {

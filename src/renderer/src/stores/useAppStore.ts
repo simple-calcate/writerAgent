@@ -601,8 +601,9 @@ export const useAppStore = create<AppState>((set, get) => ({
     const original = previewOriginalContent ?? currentChapter.content
     let baseContent = currentChapter.content
     if (previewOriginalContent !== null) baseContent = previewOriginalContent
-    const newContent = baseContent.replace(suggestion.original, suggestion.polished)
-    const scrollPos = newContent.indexOf(suggestion.polished)
+    const pos = suggestion.position
+    const newContent = baseContent.slice(0, pos) + suggestion.polished + baseContent.slice(pos + suggestion.original.length)
+    const scrollPos = pos
 
     get().pushUndo()
     set({
@@ -659,9 +660,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     let newContent = previewOriginalContent || currentChapter.content
     const newMarks = [...(currentChapter.polishingMarks || [])]
 
+    // 按位置从后往前替换，避免偏移量变化
     const sorted = [...polishSuggestions].sort((a, b) => b.position - a.position)
     for (const s of sorted) {
-      newContent = newContent.replace(s.original, s.polished)
+      const pos = s.position
+      if (pos >= 0 && pos + s.original.length <= newContent.length) {
+        newContent = newContent.slice(0, pos) + s.polished + newContent.slice(pos + s.original.length)
+      }
       newMarks.push({
         id: s.id, original: s.original, polished: s.polished,
         reason: s.reason, position: s.position, length: s.polished.length

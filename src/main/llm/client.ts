@@ -170,26 +170,25 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
     return { suggestions: [] }
   }
 
-  // Step 2: Polish each segment with surrounding context
-  const suggestions: PolishResult[] = []
+  // Step 2: Polish each segment with surrounding context (parallel)
+  const validSegments = segments.filter(seg => seg.text && seg.text.length >= 5)
 
-  for (const seg of segments) {
-    if (!seg.text || seg.text.length < 5) continue
+  const results = await Promise.allSettled(
+    validSegments.map(async (seg) => {
+      const segStart = content.indexOf(seg.text)
+      const ctxStart = Math.max(0, segStart - 150)
+      const ctxEnd = Math.min(content.length, segStart + seg.text.length + 150)
+      const context = content.slice(ctxStart, ctxEnd)
 
-    // Extract context around the segment
-    const segStart = content.indexOf(seg.text)
-    const ctxStart = Math.max(0, segStart - 150)
-    const ctxEnd = Math.min(content.length, segStart + seg.text.length + 150)
-    const context = content.slice(ctxStart, ctxEnd)
-
-    try {
       const polishResult = await polishText(config, seg.text, context)
       polishResult.position = segStart >= 0 ? segStart : seg.start_char
-      suggestions.push(polishResult)
-    } catch {
-      // Skip failed segments
-    }
-  }
+      return polishResult
+    })
+  )
+
+  const suggestions: PolishResult[] = results
+    .filter((r): r is PromiseFulfilledResult<PolishResult> => r.status === 'fulfilled')
+    .map(r => r.value)
 
   return { suggestions }
 }

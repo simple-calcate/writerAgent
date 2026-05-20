@@ -579,14 +579,14 @@ export default function Settings() {
                     <input
                       type="number"
                       min={1}
-                      max={100}
+                      max={39}
                       value={form.maxTokens ?? 2}
-                      onChange={e => setForm({ ...form, maxTokens: Math.min(100, Math.max(1, parseInt(e.target.value) || 2)) })}
+                      onChange={e => setForm({ ...form, maxTokens: Math.min(39, Math.max(1, parseInt(e.target.value) || 2)) })}
                       className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
                     />
                     <span className="text-xs text-gray-500">万（{(form.maxTokens ?? 2) * 10000} tokens）</span>
                   </div>
-                  <p className="text-[10px] text-gray-500">默认 2万，最大 100万。DeepSeek 推理模型需要较大值。</p>
+                  <p className="text-[10px] text-gray-500">默认 2万，最大 39万（API 限制）。DeepSeek 推理模型需要较大值。</p>
                 </div>
               </div>
             )}

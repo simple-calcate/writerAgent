@@ -416,7 +416,7 @@ export function getDefaultProfile(): APIProfile | null {
 
 export function getMaxTokens(): number {
   const val = store.llmConfig.maxTokens
-  if (typeof val === 'number' && val > 0) return val * 10000
+  if (typeof val === 'number' && val > 0) return Math.min(val * 10000, 390000)
   return 20000  // 默认 2万
 }
 

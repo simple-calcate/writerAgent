@@ -24,6 +24,7 @@ export interface LLMConfigSingle {
   baseUrl: string
   model: string
   thinkingDepth?: ThinkingDepth
+  maxTokens?: number  // 实际 token 数（已从"万"转换）
 }
 
 // AI 功能开关 + API 绑定
@@ -31,6 +32,7 @@ export interface AIFeatureEntry {
   enabled: boolean
   profileId: string | null  // null = 使用默认配置
   thinkingDepth?: ThinkingDepth  // 可选，覆盖 API 配置中的思考深度
+  maxTokens?: number  // 单位：万，可选，覆盖全局设置
 }
 
 export interface AIFeatureConfig {

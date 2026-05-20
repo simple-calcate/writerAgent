@@ -1,6 +1,5 @@
 import type { LLMConfigSingle, BookAIConfig } from '../../shared/types'
 import { createClient } from './client'
-import { getMaxTokens } from '../store/db'
 
 export async function generateContinuation(
   config: LLMConfigSingle,
@@ -65,7 +64,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
       { role: 'user', content: userMessage }
     ],
     temperature: 0.7,
-    max_tokens: getMaxTokens()
+    max_tokens: config.maxTokens || 20000
   })
 
   const choice = response.choices?.[0]

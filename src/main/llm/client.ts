@@ -1,7 +1,6 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
 import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider } from '../../shared/types'
-import { getMaxTokens } from '../store/db'
 
 export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
@@ -97,7 +96,7 @@ export async function polishText(
       }
     ],
     temperature: 0.7,
-    max_tokens: getMaxTokens(),
+    max_tokens: config.maxTokens || 20000,
     response_format: { type: 'json_object' }
   })
 
@@ -157,7 +156,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
       { role: 'user', content }
     ],
     temperature: 0.3,
-    max_tokens: getMaxTokens(),
+    max_tokens: config.maxTokens || 20000,
     response_format: { type: 'json_object' }
   })
 

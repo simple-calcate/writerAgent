@@ -503,6 +503,27 @@ export default function Settings() {
                               <span className="text-[10px] text-gray-500">tokens</span>
                             </div>
                           )}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 shrink-0">输出:</span>
+                            <input
+                              type="number"
+                              min={1}
+                              max={39}
+                              value={entry.maxTokens ?? ''}
+                              placeholder="跟随全局"
+                              onChange={e => {
+                                const val = e.target.value ? Math.min(39, Math.max(1, parseInt(e.target.value))) : undefined
+                                const { maxTokens, ...rest } = entry
+                                if (val) {
+                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: { ...entry, maxTokens: val } } })
+                                } else {
+                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: rest } })
+                                }
+                              }}
+                              className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                            />
+                            <span className="text-[10px] text-gray-500">万 {entry.maxTokens ? `(${entry.maxTokens * 10000})` : ''}</span>
+                          </div>
                         </div>
                       )}
                     </div>

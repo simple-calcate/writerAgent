@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../shared/types'
 
 interface Store {
@@ -428,7 +428,13 @@ export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigS
   const profile = profiles.find(p => p.id === profileId) || profiles[0]
   if (!profile) return null
   const thinkingDepth = featureConf.thinkingDepth || profile.thinkingDepth
-  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model, thinkingDepth }
+  const maxTokens = getMaxTokensForFeature(featureConf)
+  return { apiKey: profile.apiKey, baseUrl: profile.baseUrl, model: profile.model, thinkingDepth, maxTokens }
+}
+
+function getMaxTokensForFeature(featureConf: AIFeatureEntry): number {
+  if (featureConf.maxTokens && featureConf.maxTokens > 0) return Math.min(featureConf.maxTokens * 10000, 390000)
+  return getMaxTokens()
 }
 
 // ─── Conversations ───

@@ -416,8 +416,8 @@ export function getDefaultProfile(): APIProfile | null {
 
 export function getMaxTokens(): number {
   const val = store.llmConfig.maxTokens
-  if (typeof val === 'number' && val > 0) return Math.min(val * 10000, 390000)
-  return 20000  // 默认 2万
+  if (typeof val === 'number' && val > 0) return Math.min(val * 1000, 390000)
+  return 20000  // 默认 20k
 }
 
 export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigSingle | null {
@@ -433,7 +433,7 @@ export function resolveFeatureConfig(feature: keyof AIFeatureConfig): LLMConfigS
 }
 
 function getMaxTokensForFeature(featureConf: AIFeatureEntry): number {
-  if (featureConf.maxTokens && featureConf.maxTokens > 0) return Math.min(featureConf.maxTokens * 10000, 390000)
+  if (featureConf.maxTokens && featureConf.maxTokens > 0) return Math.min(featureConf.maxTokens * 1000, 390000)
   return getMaxTokens()
 }
 

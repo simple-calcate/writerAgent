@@ -32,7 +32,7 @@ export interface AIFeatureEntry {
   enabled: boolean
   profileId: string | null  // null = 使用默认配置
   thinkingDepth?: ThinkingDepth  // 可选，覆盖 API 配置中的思考深度
-  maxTokens?: number  // 单位：万，可选，覆盖全局设置
+  maxTokens?: number  // 单位：k，可选，覆盖全局设置
 }
 
 export interface AIFeatureConfig {
@@ -77,7 +77,7 @@ export interface LLMConfig {
   aiFeatures: AIFeatureConfig
   keyBindings?: KeyBindings  // 可选，向后兼容
   continuationConfig?: ContinuationConfig  // 可选，向后兼容
-  maxTokens?: number  // 单位：万，默认 2（即 20000），最大 100（即 1000000）
+  maxTokens?: number  // 单位：k，默认 20（即 20000），最大 390（即 390000）
 }
 
 export interface PolishResult {

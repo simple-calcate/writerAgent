@@ -1,13 +1,14 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync, readFileSync } from 'fs'
-import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline } from './store/db'
+import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills } from './store/db'
 import { autoPolish, polishText, summarizeChapter } from './llm/client'
 import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
 import { parseTxtContent } from './import-parser'
 import { generateContinuation } from './llm/continuation'
-import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse } from '../shared/types'
+import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, WritingSkill } from '../shared/types'
+import { randomUUID } from 'crypto'
 
 let mainWindow: BrowserWindow | null = null
 let currentAIAbort: AbortController | null = null
@@ -239,6 +240,14 @@ function registerIPC(): void {
     // 没有任何大纲时不触发续写
     if (!chapterOutline && !volumeOutline && !bookOutline) return null
 
+    // Get enabled skills (continuation feature)
+    const project = allProjects.find(p => p.id === projectId)
+    const allSkills = getSkills()
+    const skillIds = project?.featureSkillIds?.continuation || project?.enabledSkillIds || []
+    const enabledSkills = skillIds.length > 0
+      ? allSkills.filter(s => skillIds.includes(s.id))
+      : []
+
     return generateContinuation(config, {
       content,
       cursorPosition,
@@ -246,6 +255,7 @@ function registerIPC(): void {
       volumeOutline: volumeOutline?.content,
       bookOutline: bookOutline?.content,
       aiConfig,
+      skills: enabledSkills,
       mainWindow: mainWindow!
     })
   })
@@ -330,6 +340,79 @@ function registerIPC(): void {
 
   ipcMain.handle('delete-outline', (_e, level: DialogueLevel, entityId: string) => {
     deleteOutline(level, entityId)
+  })
+
+  // Skills
+  ipcMain.handle('get-skills', () => getSkills())
+
+  ipcMain.handle('save-skill', (_e, skill: WritingSkill) => {
+    saveSkill(skill)
+  })
+
+  ipcMain.handle('delete-skill', (_e, id: string) => {
+    deleteSkill(id)
+  })
+
+  ipcMain.handle('update-project-enabled-skills', (_e, projectId: string, skillIds: string[]) => {
+    updateProjectEnabledSkills(projectId, skillIds)
+  })
+
+  ipcMain.handle('update-project-feature-skill-ids', (_e, projectId: string, featureSkillIds: any) => {
+    updateProjectFeatureSkillIds(projectId, featureSkillIds)
+  })
+
+  ipcMain.handle('export-skills', async (_e, skillIds?: string[]) => {
+    const allSkills = getSkills()
+    const skills = skillIds ? allSkills.filter(s => skillIds.includes(s.id)) : allSkills
+    if (skills.length === 0) return false
+
+    const exportData = {
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      skills: skills.map(({ name, category, content, source }) => ({ name, category, content, source }))
+    }
+
+    const result = await dialog.showSaveDialog(mainWindow!, {
+      title: '导出技能库',
+      defaultPath: join(app.getPath('desktop'), 'writing-skills.json'),
+      filters: [{ name: 'JSON 文件', extensions: ['json'] }]
+    })
+    if (result.canceled || !result.filePath) return false
+    writeFileSync(result.filePath, JSON.stringify(exportData, null, 2), 'utf-8')
+    return true
+  })
+
+  ipcMain.handle('import-skills', async () => {
+    const result = await dialog.showOpenDialog(mainWindow!, {
+      title: '导入技能库',
+      filters: [{ name: 'JSON 文件', extensions: ['json'] }],
+      properties: ['openFile']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+
+    try {
+      const content = readFileSync(result.filePaths[0], 'utf-8')
+      const data = JSON.parse(content)
+      if (!data.skills || !Array.isArray(data.skills)) return null
+
+      const now = new Date().toISOString()
+      const skills: WritingSkill[] = data.skills.map((s: any) => ({
+        id: randomUUID(),
+        name: s.name || '未命名技能',
+        category: s.category || 'custom',
+        content: s.content || '',
+        source: s.source,
+        createdAt: now,
+        updatedAt: now
+      }))
+      return skills
+    } catch {
+      return null
+    }
+  })
+
+  ipcMain.handle('import-skills-confirm', (_e, skills: WritingSkill[]) => {
+    saveSkills(skills)
   })
 }
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
 
 type RightPanelType = 'polish' | 'summary' | 'dialogue' | 'outline' | null
@@ -170,6 +170,20 @@ interface AppState {
   openOutline: (level: DialogueLevel, entityId: string) => Promise<void>
   saveOutline: (content: string) => Promise<void>
   closeOutline: () => void
+
+  // Skills
+  skills: WritingSkill[]
+  loadSkills: () => Promise<void>
+  saveSkill: (skill: WritingSkill) => Promise<void>
+  deleteSkill: (id: string) => Promise<void>
+  updateProjectEnabledSkills: (skillIds: string[]) => Promise<void>
+  updateProjectFeatureSkillIds: (featureSkillIds: any) => Promise<void>
+  exportSkills: (skillIds?: string[]) => Promise<boolean>
+  importSkills: () => Promise<WritingSkill[] | null>
+  importSkillsConfirm: (skills: WritingSkill[]) => Promise<void>
+  showSkillImportPreview: boolean
+  skillImportPreview: WritingSkill[] | null
+  closeSkillImportPreview: () => void
 }
 
 // 获取当前章节所属卷的 AI 配置
@@ -1255,5 +1269,72 @@ export const useAppStore = create<AppState>((set, get) => ({
       editingOutlineEntityId: null,
       rightPanel: null
     })
+  },
+
+  // Skills
+  skills: [],
+  showSkillImportPreview: false,
+  skillImportPreview: null,
+
+  loadSkills: async () => {
+    const skills = await window.api.getSkills()
+    set({ skills })
+  },
+
+  saveSkill: async (skill: WritingSkill) => {
+    await window.api.saveSkill(skill)
+    const skills = await window.api.getSkills()
+    set({ skills })
+  },
+
+  deleteSkill: async (id: string) => {
+    await window.api.deleteSkill(id)
+    const skills = await window.api.getSkills()
+    set({ skills })
+  },
+
+  updateProjectEnabledSkills: async (skillIds: string[]) => {
+    const { currentProject } = get()
+    if (!currentProject) return
+    await window.api.updateProjectEnabledSkills(currentProject.id, skillIds)
+    // Update local project state
+    const projects = await window.api.getProjects()
+    const updated = projects.find(p => p.id === currentProject.id)
+    if (updated) {
+      set({ currentProject: updated, projects })
+    }
+  },
+
+  updateProjectFeatureSkillIds: async (featureSkillIds: any) => {
+    const { currentProject } = get()
+    if (!currentProject) return
+    await window.api.updateProjectFeatureSkillIds(currentProject.id, featureSkillIds)
+    const projects = await window.api.getProjects()
+    const updated = projects.find(p => p.id === currentProject.id)
+    if (updated) {
+      set({ currentProject: updated, projects })
+    }
+  },
+
+  exportSkills: async (skillIds?: string[]) => {
+    return window.api.exportSkills(skillIds)
+  },
+
+  importSkills: async () => {
+    const skills = await window.api.importSkills()
+    if (skills && skills.length > 0) {
+      set({ skillImportPreview: skills, showSkillImportPreview: true })
+    }
+    return skills
+  },
+
+  importSkillsConfirm: async (skills: WritingSkill[]) => {
+    await window.api.importSkillsConfirm(skills)
+    const updatedSkills = await window.api.getSkills()
+    set({ skills: updatedSkills, showSkillImportPreview: false, skillImportPreview: null })
+  },
+
+  closeSkillImportPreview: () => {
+    set({ showSkillImportPreview: false, skillImportPreview: null })
   }
 }))

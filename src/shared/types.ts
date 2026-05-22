@@ -119,16 +119,140 @@ export interface BookAIConfig {
   polishStandard: string
   summaryStandard: string
   customPrompt: string
-  writingGuidance: WritingGuidance
 }
 
 export const DEFAULT_BOOK_AI_CONFIG: BookAIConfig = {
   genre: null,
   polishStandard: '',
   summaryStandard: '',
-  customPrompt: '',
-  writingGuidance: { ...DEFAULT_WRITING_GUIDANCE }
+  customPrompt: ''
 }
+
+// ─── Writing Skills ───
+
+export type SkillCategory = 'scene' | 'dialogue' | 'pacing' | 'formatting' | 'style' | 'character' | 'structure' | 'custom'
+
+export const SKILL_CATEGORIES: Record<SkillCategory, { label: string; icon: string }> = {
+  scene: { label: '场景描写', icon: '🎬' },
+  dialogue: { label: '对话风格', icon: '💬' },
+  pacing: { label: '节奏把控', icon: '⚡' },
+  formatting: { label: '排版规范', icon: '📝' },
+  style: { label: '文风特征', icon: '✒️' },
+  character: { label: '人物塑造', icon: '👤' },
+  structure: { label: '结构技巧', icon: '🏗️' },
+  custom: { label: '自定义', icon: '📌' }
+}
+
+export interface WritingSkill {
+  id: string
+  name: string
+  category: SkillCategory
+  content: string
+  source?: string
+  builtin?: boolean
+  createdAt: string
+  updatedAt: string
+}
+
+export interface SkillExportData {
+  version: number
+  exportedAt: string
+  skills: Omit<WritingSkill, 'id' | 'createdAt' | 'updatedAt'>[]
+}
+
+export const BUILTIN_SKILLS: Omit<WritingSkill, 'id' | 'createdAt' | 'updatedAt'>[] = [
+  {
+    name: '对话风格指导',
+    category: 'dialogue',
+    builtin: true,
+    content: `## 对话写作原则
+
+### 1. 口语化表达
+- 避免书面语和翻译腔，使用自然流畅的口语
+- 每个角色的说话方式应体现其性格、年龄、背景
+
+### 2. 对话节奏
+- 短句为主，避免长篇大论的对话
+- 适当穿插动作描写，打破纯对话的单调感
+- 关键台词前后留白，增强冲击力
+
+### 3. 潜台词与弦外之音
+- 角色不一定说出真实想法，通过语气、停顿、转移话题暗示
+- 让读者能"读出"角色没说出口的话`
+  },
+  {
+    name: '场景描写指导',
+    category: 'scene',
+    builtin: true,
+    content: `## 场景描写原则
+
+### 1. 感官细节
+- 调动视觉、听觉、嗅觉、触觉、味觉，营造沉浸感
+- 选择 1-2 个核心感官细节，避免面面俱到
+
+### 2. 动态描写
+- 场景不是静止的，加入细微的动态元素（风、光影、声音）
+- 通过角色的行动来展现环境，而非纯粹的静态描述
+
+### 3. 情绪映射
+- 环境描写应与角色情绪呼应
+- 紧张时环境压抑，放松时环境明亮`
+  },
+  {
+    name: '节奏把控指导',
+    category: 'pacing',
+    builtin: true,
+    content: `## 节奏控制原则
+
+### 1. 张弛有度
+- 高潮场景后安排缓冲段落，让读者喘息
+- 紧张情节用短句，舒缓情节用长句
+
+### 2. 章节结构
+- 每章结尾留悬念或钩子，驱动读者继续阅读
+- 开头快速切入，避免冗长的背景铺垫
+
+### 3. 信息投放
+- 新设定、新信息分批投放，避免信息过载
+- 重要信息通过事件自然揭示，而非旁白讲解`
+  },
+  {
+    name: '文风特征指导',
+    category: 'style',
+    builtin: true,
+    content: `## 文风统一原则
+
+### 1. 叙述视角
+- 保持一致的叙述人称和视角
+- 第一人称注意限制信息量，第三人称注意切换自然
+
+### 2. 用词风格
+- 全书用词风格统一，避免忽雅忽俗
+- 根据题材选择合适的语言风格
+
+### 3. 段落节奏
+- 长短段落交替使用，制造阅读节奏感
+- 关键场景用短段落增强冲击力`
+  },
+  {
+    name: '人物塑造指导',
+    category: 'character',
+    builtin: true,
+    content: `## 人物塑造原则
+
+### 1. 性格一致性
+- 角色行为应符合其已建立的性格特征
+- 性格转变需要充分的铺垫和动机
+
+### 2. 独特性
+- 每个角色应有独特的说话方式、行为习惯、思维模式
+- 通过细节而非标签来展现性格
+
+### 3. 成长弧线
+- 主角应有清晰的成长轨迹
+- 配角也应有自己的目标和动机`
+  }
+]
 
 // 卷
 export interface Volume {
@@ -141,11 +265,27 @@ export interface Volume {
   updatedAt: string
 }
 
+export interface FeatureSkillIds {
+  dialogue: string[]
+  polish: string[]
+  summary: string[]
+  continuation: string[]
+}
+
+export const DEFAULT_FEATURE_SKILL_IDS: FeatureSkillIds = {
+  dialogue: [],
+  polish: [],
+  summary: [],
+  continuation: []
+}
+
 export interface Project {
   id: string
   name: string
   genre: string | null
   aiConfig: BookAIConfig
+  enabledSkillIds?: string[] // legacy, migrated to featureSkillIds
+  featureSkillIds?: FeatureSkillIds
   createdAt: string
   updatedAt: string
 }
@@ -341,6 +481,8 @@ export interface IPCAPI {
   renameProject: (id: string, name: string) => Promise<void>
   deleteProject: (id: string) => Promise<void>
   updateProjectAIConfig: (projectId: string, config: Partial<BookAIConfig>) => Promise<void>
+  updateProjectEnabledSkills: (projectId: string, skillIds: string[]) => Promise<void>
+  updateProjectFeatureSkillIds: (projectId: string, featureSkillIds: FeatureSkillIds) => Promise<void>
 
   // Volumes
   getVolumes: (projectId: string) => Promise<Volume[]>
@@ -368,6 +510,14 @@ export interface IPCAPI {
   // Import
   importBookPreview: () => Promise<ImportPreview | null>
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
+
+  // Skills
+  getSkills: () => Promise<WritingSkill[]>
+  saveSkill: (skill: WritingSkill) => Promise<void>
+  deleteSkill: (id: string) => Promise<void>
+  exportSkills: (skillIds?: string[]) => Promise<boolean>
+  importSkills: () => Promise<WritingSkill[] | null>
+  importSkillsConfirm: (skills: WritingSkill[]) => Promise<void>
 
   // Continuation
   generateContinuation: (chapterId: string, cursorPosition: number, content: string) => Promise<string | null>

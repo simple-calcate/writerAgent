@@ -1,5 +1,5 @@
 import type { BrowserWindow } from 'electron'
-import type { LLMConfigSingle, BookAIConfig } from '../../shared/types'
+import type { LLMConfigSingle, BookAIConfig, WritingSkill } from '../../shared/types'
 import { createClient } from './client'
 import { streamWithThinking } from './streaming'
 
@@ -12,6 +12,7 @@ export async function generateContinuation(
     volumeOutline?: string | null
     bookOutline?: string | null
     aiConfig?: Partial<BookAIConfig>
+    skills?: WritingSkill[]
     mainWindow?: BrowserWindow
     signal?: AbortSignal
   }
@@ -37,6 +38,12 @@ export async function generateContinuation(
     outlineSection = `\n\n【书籍大纲】\n${bookOutline}`
   }
 
+  let skillsSection = ''
+  if (params.skills && params.skills.length > 0) {
+    const skillTexts = params.skills.map(s => `- ${s.name}：${s.content.substring(0, 200)}`).join('\n')
+    skillsSection = `\n\n【写作技能参考】\n${skillTexts}`
+  }
+
   let systemPrompt: string
   let userMessage: string
 
@@ -49,7 +56,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 - 默认只写 1-2 句话
 - 仅当大纲中明确描述了该片段的详细内容时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
-    userMessage = `【作者注释】${commentText}\n\n【章节末尾内容】\n${tailContent}${outlineSection}`
+    userMessage = `【作者注释】${commentText}\n\n【章节末尾内容】\n${tailContent}${outlineSection}${skillsSection}`
   } else {
     systemPrompt = `你是一位网文写作助手。作者正在写到章节末尾，需要你提供续写建议。不要解释、不要评论。
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
@@ -58,7 +65,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 - 默认只写 1-2 句话，自然衔接前文
 - 仅当大纲中明确描述了后续详细剧情时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
-    userMessage = `【章节末尾内容】\n${tailContent}${outlineSection}`
+    userMessage = `【章节末尾内容】\n${tailContent}${outlineSection}${skillsSection}`
   }
 
   const messages = [

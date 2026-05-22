@@ -4,7 +4,7 @@ import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAICo
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
-import { getOutline } from '../store/db'
+import { getOutline, getSkills } from '../store/db'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50
@@ -51,10 +51,18 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
     params.chapter ? getOutline('chapter', params.chapter.id) : null
   ].filter(Boolean)
 
+  // Get enabled skills for this project (dialogue feature)
+  const allSkills = getSkills()
+  const skillIds = params.project.featureSkillIds?.dialogue || params.project.enabledSkillIds || []
+  const enabledSkills = skillIds.length > 0
+    ? allSkills.filter(s => skillIds.includes(s.id))
+    : []
+
   const systemPrompt = buildDialogueSystemPrompt({
     ...promptParams,
     outlines: outlines as any[],
-    isPlanMode
+    isPlanMode,
+    skills: enabledSkills
   })
 
   const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [

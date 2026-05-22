@@ -2,8 +2,8 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline } from '../../shared/types'
-import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline, WritingSkill, FeatureSkillIds } from '../../shared/types'
+import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, BUILTIN_SKILLS } from '../../shared/types'
 
 interface Store {
   projects: Project[]
@@ -13,6 +13,7 @@ interface Store {
   versions: Record<string, VersionSnapshot[]>
   conversations: Conversation[]
   outlines: Outline[]
+  skills: WritingSkill[]
 }
 
 const defaultProfileId = 'default-profile'
@@ -41,7 +42,8 @@ const defaultStore: Store = {
   },
   versions: {},
   conversations: [],
-  outlines: []
+  outlines: [],
+  skills: []
 }
 
 // App-level config (data path setting)
@@ -119,7 +121,8 @@ function migrateStore(saved: any): Store {
     ...saved,
     volumes: saved.volumes || [],
     conversations: saved.conversations || [],
-    outlines: saved.outlines || []
+    outlines: saved.outlines || [],
+    skills: saved.skills || []
   }
 
   // 迁移 LLMConfig：旧格式 { apiKey, baseUrl, model, aiFeatures } → 新格式 { profiles, defaultProfileId, aiFeatures }
@@ -177,6 +180,90 @@ function migrateStore(saved: any): Store {
     if (ch.volumeId === undefined) ch.volumeId = null
     if (ch.summaryResult === undefined) ch.summaryResult = null
   }
+
+  // 迁移 writingGuidance → skills
+  const existingSkillNames = new Set(migrated.skills.map((s: any) => s.name))
+  const now = new Date().toISOString()
+  const wgFieldMap: [string, string, string][] = [
+    ['dialogue', 'dialogue', '对话风格指导'],
+    ['scene', 'scene', '场景描写指导'],
+    ['emotion', 'character', '情感描写指导'],
+    ['action', 'scene', '动作描写指导'],
+    ['pacing', 'pacing', '节奏把控指导'],
+    ['custom', 'custom', '自定义写作指导']
+  ]
+
+  function migrateWritingGuidance(wg: any, targetSkillIds: string[], source: string) {
+    if (!wg) return
+    for (const [field, category, skillName] of wgFieldMap) {
+      const content = wg[field]
+      if (!content || !content.trim()) continue
+      // Find existing skill by name
+      let skill = migrated.skills.find((s: any) => s.name === skillName)
+      if (!skill) {
+        // Create new skill
+        skill = { id: randomUUID(), name: skillName, category, content: content.trim(), source, createdAt: now, updatedAt: now }
+        migrated.skills.push(skill)
+        existingSkillNames.add(skillName)
+      }
+      if (!targetSkillIds.includes(skill.id)) {
+        targetSkillIds.push(skill.id)
+      }
+    }
+  }
+
+  for (const p of migrated.projects) {
+    if (!p.enabledSkillIds) p.enabledSkillIds = []
+    if (p.aiConfig?.writingGuidance) {
+      migrateWritingGuidance(p.aiConfig.writingGuidance, p.enabledSkillIds, `迁移自《${p.name}》书籍配置`)
+      delete p.aiConfig.writingGuidance
+    }
+  }
+  for (const v of migrated.volumes) {
+    if (v.aiConfig?.writingGuidance) {
+      delete v.aiConfig.writingGuidance
+    }
+  }
+
+  // 内置技能：自动创建
+  const builtinSkillIds: string[] = []
+  for (const builtin of BUILTIN_SKILLS) {
+    let skill = migrated.skills.find((s: any) => s.name === builtin.name)
+    if (!skill) {
+      skill = { ...builtin, id: randomUUID(), createdAt: now, updatedAt: now }
+      migrated.skills.push(skill)
+    } else if (!skill.builtin) {
+      skill.builtin = true
+    }
+    builtinSkillIds.push(skill.id)
+  }
+
+  // Helper: get skill IDs by category
+  const getSkillIdsByCategories = (categories: string[]) =>
+    migrated.skills
+      .filter((s: any) => categories.includes(s.category))
+      .map((s: any) => s.id)
+
+  // Default feature assignments based on skill categories
+  const defaultDialogueIds = builtinSkillIds // all built-in skills for dialogue
+  const defaultPolishIds = getSkillIdsByCategories(['style', 'formatting'])
+  const defaultSummaryIds: string[] = [] // no skills for summary
+  const defaultContinuationIds = getSkillIdsByCategories(['scene', 'dialogue', 'pacing', 'style', 'character', 'structure'])
+
+  // Migrate enabledSkillIds → featureSkillIds
+  for (const p of migrated.projects) {
+    if (!p.featureSkillIds) {
+      const ids = p.enabledSkillIds || []
+      // If project has old enabledSkillIds, use them for dialogue; use defaults for others
+      p.featureSkillIds = {
+        dialogue: ids.length > 0 ? [...ids] : [...defaultDialogueIds],
+        polish: ids.length > 0 ? [...ids] : [...defaultPolishIds],
+        summary: ids.length > 0 ? [...ids] : [...defaultSummaryIds],
+        continuation: ids.length > 0 ? [...ids] : [...defaultContinuationIds]
+      }
+    }
+  }
+
   return migrated
 }
 
@@ -217,7 +304,20 @@ export function getProjects(): Project[] {
 export function createProject(name: string, genre?: string | null): Project {
   const now = new Date().toISOString()
   const aiConfig: BookAIConfig = { ...DEFAULT_BOOK_AI_CONFIG, genre: genre || null }
-  const project: Project = { id: randomUUID(), name, genre: genre || null, aiConfig, createdAt: now, updatedAt: now }
+
+  // Default feature skill assignments based on skill categories
+  const getSkillIdsByCategories = (categories: string[]) =>
+    store.skills.filter(s => categories.includes(s.category)).map(s => s.id)
+
+  const builtinIds = store.skills.filter(s => s.builtin).map(s => s.id)
+  const featureSkillIds: FeatureSkillIds = {
+    dialogue: [...builtinIds],
+    polish: getSkillIdsByCategories(['style', 'formatting']),
+    summary: [],
+    continuation: getSkillIdsByCategories(['scene', 'dialogue', 'pacing', 'style', 'character', 'structure'])
+  }
+
+  const project: Project = { id: randomUUID(), name, genre: genre || null, aiConfig, featureSkillIds, createdAt: now, updatedAt: now }
   store.projects.push(project)
   save()
   return project
@@ -249,6 +349,22 @@ export function updateProjectAIConfig(projectId: string, config: Partial<BookAIC
   if (!project) return
   project.aiConfig = { ...project.aiConfig, ...config }
   if (config.genre !== undefined) project.genre = config.genre
+  project.updatedAt = new Date().toISOString()
+  save()
+}
+
+export function updateProjectEnabledSkills(projectId: string, skillIds: string[]): void {
+  const project = store.projects.find(p => p.id === projectId)
+  if (!project) return
+  project.enabledSkillIds = skillIds
+  project.updatedAt = new Date().toISOString()
+  save()
+}
+
+export function updateProjectFeatureSkillIds(projectId: string, featureSkillIds: FeatureSkillIds): void {
+  const project = store.projects.find(p => p.id === projectId)
+  if (!project) return
+  project.featureSkillIds = featureSkillIds
   project.updatedAt = new Date().toISOString()
   save()
 }
@@ -481,5 +597,44 @@ export function deleteOutline(level: DialogueLevel, entityId: string): void {
   store.outlines = store.outlines.filter(
     o => !(o.level === level && o[field] === entityId)
   )
+  save()
+}
+
+// ─── Skills ───
+
+export function getSkills(): WritingSkill[] {
+  return [...store.skills].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt))
+}
+
+export function saveSkill(skill: WritingSkill): void {
+  const idx = store.skills.findIndex(s => s.id === skill.id)
+  if (idx >= 0) {
+    store.skills[idx] = skill
+  } else {
+    store.skills.push(skill)
+  }
+  save()
+}
+
+export function deleteSkill(id: string): void {
+  store.skills = store.skills.filter(s => s.id !== id)
+  // Remove from all projects' enabledSkillIds
+  for (const p of store.projects) {
+    if (p.enabledSkillIds) {
+      p.enabledSkillIds = p.enabledSkillIds.filter(sid => sid !== id)
+    }
+  }
+  save()
+}
+
+export function saveSkills(skills: WritingSkill[]): void {
+  for (const skill of skills) {
+    const idx = store.skills.findIndex(s => s.id === skill.id)
+    if (idx >= 0) {
+      store.skills[idx] = skill
+    } else {
+      store.skills.push(skill)
+    }
+  }
   save()
 }

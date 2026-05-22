@@ -1,4 +1,4 @@
-import type { Project, Volume, Chapter, BookAIConfig, DialogueLevel, Outline, WritingGuidance } from '../../shared/types'
+import type { Project, Volume, Chapter, BookAIConfig, DialogueLevel, Outline, WritingSkill, SkillCategory, SKILL_CATEGORIES } from '../../shared/types'
 import { formatKnowledgeForPrompt } from '../../shared/novel-knowledge'
 
 interface PromptParams {
@@ -10,6 +10,7 @@ interface PromptParams {
   allChapters?: Chapter[]
   outlines?: Outline[]
   isPlanMode?: boolean
+  skills?: WritingSkill[]
 }
 
 const ROLE_PREAMBLES: Record<DialogueLevel, string> = {
@@ -73,10 +74,9 @@ export function buildDialogueSystemPrompt(params: PromptParams): string {
     parts.push(`\n## 作者补充要求\n${aiConfig.customPrompt}`)
   }
 
-  // 3.5 Writing guidance
-  const guidance = buildWritingGuidance(aiConfig.writingGuidance)
-  if (guidance) {
-    parts.push(guidance)
+  // 3.5 Writing skills
+  if (params.skills && params.skills.length > 0) {
+    parts.push(buildSkillsSection(params.skills))
   }
 
   // 4. Level-specific context
@@ -124,17 +124,36 @@ function resolveConfig(project: Project, volume?: Volume | null): BookAIConfig {
   return { ...base, ...volume.aiConfig }
 }
 
-function buildWritingGuidance(guidance?: WritingGuidance): string | null {
-  if (!guidance) return null
-  const entries: string[] = []
-  if (guidance.dialogue) entries.push(`**对话风格**：${guidance.dialogue}`)
-  if (guidance.scene) entries.push(`**场景描写**：${guidance.scene}`)
-  if (guidance.emotion) entries.push(`**情感描写**：${guidance.emotion}`)
-  if (guidance.action) entries.push(`**动作描写**：${guidance.action}`)
-  if (guidance.pacing) entries.push(`**节奏把控**：${guidance.pacing}`)
-  if (guidance.custom) entries.push(`**其他要求**：${guidance.custom}`)
-  if (entries.length === 0) return null
-  return `\n## 写作指导\n${entries.join('\n')}`
+const SKILL_CATEGORY_LABELS: Record<SkillCategory, string> = {
+  scene: '场景描写',
+  dialogue: '对话风格',
+  pacing: '节奏把控',
+  formatting: '排版规范',
+  style: '文风特征',
+  character: '人物塑造',
+  custom: '自定义'
+}
+
+function buildSkillsSection(skills: WritingSkill[]): string {
+  const parts: string[] = ['\n## 写作技能库\n以下是已掌握的写作技能，撰写内容时请参考：']
+
+  // Group by category
+  const grouped = new Map<SkillCategory, WritingSkill[]>()
+  for (const skill of skills) {
+    const list = grouped.get(skill.category) || []
+    list.push(skill)
+    grouped.set(skill.category, list)
+  }
+
+  for (const [category, categorySkills] of grouped) {
+    const label = SKILL_CATEGORY_LABELS[category] || category
+    parts.push(`\n### ${label}`)
+    for (const skill of categorySkills) {
+      parts.push(`\n**${skill.name}**${skill.source ? `（${skill.source}）` : ''}\n${skill.content}`)
+    }
+  }
+
+  return parts.join('\n')
 }
 
 function buildBookContext(project: Project, volumes: Volume[], chapters: Chapter[]): string {

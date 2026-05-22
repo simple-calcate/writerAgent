@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { getGenreList } from '../../../shared/novel-knowledge'
-import type { BookAIConfig, WritingGuidance } from '../../../shared/types'
-import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_WRITING_GUIDANCE } from '../../../shared/types'
+import type { BookAIConfig, FeatureSkillIds } from '../../../shared/types'
+import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_FEATURE_SKILL_IDS, SKILL_CATEGORIES } from '../../../shared/types'
 
 // ─── Context Menu ───
 
@@ -621,8 +621,8 @@ function ChapterLevel() {
 function AIConfigLevel() {
   const {
     editingAIConfig, editingVolumeId,
-    currentProject, volumes,
-    saveBookAIConfig, saveVolumeAIConfig, navBack
+    currentProject, volumes, skills,
+    saveBookAIConfig, saveVolumeAIConfig, updateProjectFeatureSkillIds, loadSkills, navBack
   } = useAppStore()
 
   const isBookLevel = editingAIConfig === 'book'
@@ -634,45 +634,62 @@ function AIConfigLevel() {
   const [polishStandard, setPolishStandard] = useState(existingConfig.polishStandard || '')
   const [summaryStandard, setSummaryStandard] = useState(existingConfig.summaryStandard || '')
   const [customPrompt, setCustomPrompt] = useState(existingConfig.customPrompt || '')
-  const [writingGuidance, setWritingGuidance] = useState<WritingGuidance>(
-    existingConfig.writingGuidance || { ...DEFAULT_WRITING_GUIDANCE }
+  const [featureSkillIds, setFeatureSkillIds] = useState<FeatureSkillIds>(
+    currentProject?.featureSkillIds || { ...DEFAULT_FEATURE_SKILL_IDS }
   )
-  const [showWritingGuidance, setShowWritingGuidance] = useState(true)
+  const [expandedFeature, setExpandedFeature] = useState<string | null>(null)
+
+  useEffect(() => {
+    loadSkills()
+  }, [loadSkills])
 
   useEffect(() => {
     setPolishStandard(existingConfig.polishStandard || '')
     setSummaryStandard(existingConfig.summaryStandard || '')
     setCustomPrompt(existingConfig.customPrompt || '')
-    setWritingGuidance(existingConfig.writingGuidance || { ...DEFAULT_WRITING_GUIDANCE })
-  }, [isBookLevel, editingVolumeId])
-
-  const updateGuidance = (key: keyof WritingGuidance, value: string) => {
-    setWritingGuidance(prev => ({ ...prev, [key]: value }))
-  }
+    setFeatureSkillIds(currentProject?.featureSkillIds || { ...DEFAULT_FEATURE_SKILL_IDS })
+  }, [isBookLevel, editingVolumeId, currentProject?.featureSkillIds])
 
   const handleSave = async () => {
     const config: Partial<BookAIConfig> = {
       polishStandard: polishStandard.trim(),
       summaryStandard: summaryStandard.trim(),
-      customPrompt: customPrompt.trim(),
-      writingGuidance: {
-        dialogue: writingGuidance.dialogue.trim(),
-        scene: writingGuidance.scene.trim(),
-        emotion: writingGuidance.emotion.trim(),
-        action: writingGuidance.action.trim(),
-        pacing: writingGuidance.pacing.trim(),
-        custom: writingGuidance.custom.trim()
-      }
+      customPrompt: customPrompt.trim()
     }
     if (isBookLevel) {
       await saveBookAIConfig(config)
+      await updateProjectFeatureSkillIds(featureSkillIds)
     } else if (editingVolumeId) {
       await saveVolumeAIConfig(editingVolumeId, config)
     }
     navBack()
   }
 
+  const toggleSkill = (feature: keyof FeatureSkillIds, skillId: string) => {
+    setFeatureSkillIds(prev => {
+      const current = prev[feature] || []
+      const next = current.includes(skillId)
+        ? current.filter(id => id !== skillId)
+        : [...current, skillId]
+      return { ...prev, [feature]: next }
+    })
+  }
+
+  const setAllForFeature = (feature: keyof FeatureSkillIds, enable: boolean) => {
+    setFeatureSkillIds(prev => ({
+      ...prev,
+      [feature]: enable ? skills.map(s => s.id) : []
+    }))
+  }
+
   const title = isBookLevel ? '书籍 AI 配置' : '卷 AI 配置'
+
+  const FEATURES: { key: keyof FeatureSkillIds; icon: string; label: string; desc: string; color: string }[] = [
+    { key: 'dialogue', icon: '💬', label: 'AI 对话', desc: '对话系统中使用的技能', color: 'from-blue-500/20 to-blue-600/5 border-blue-500/30' },
+    { key: 'polish', icon: '✨', label: '智能润色', desc: '润色功能中使用的技能', color: 'from-amber-500/20 to-amber-600/5 border-amber-500/30' },
+    { key: 'summary', icon: '📋', label: '章节摘要', desc: '摘要功能中使用的技能', color: 'from-green-500/20 to-green-600/5 border-green-500/30' },
+    { key: 'continuation', icon: '⚡', label: '智能续写', desc: '续写功能中使用的技能', color: 'from-purple-500/20 to-purple-600/5 border-purple-500/30' }
+  ]
 
   return (
     <div className="flex flex-col h-full">
@@ -682,105 +699,108 @@ function AIConfigLevel() {
         <p className="text-[10px] text-gray-500">
           {isBookLevel ? '以下配置将作为所有卷和章节的默认值' : '以下配置将覆盖书籍级配置，仅对本卷生效'}
         </p>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">润色标准</label>
-          <textarea
-            value={polishStandard}
-            onChange={e => setPolishStandard(e.target.value)}
-            placeholder="描述你期望的润色风格和标准..."
-            className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-20"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">摘要标准</label>
-          <textarea
-            value={summaryStandard}
-            onChange={e => setSummaryStandard(e.target.value)}
-            placeholder="描述你期望的摘要关注点..."
-            className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-20"
-          />
-        </div>
-        <div>
-          <label className="block text-xs text-gray-400 mb-1">自定义补充指令</label>
-          <textarea
-            value={customPrompt}
-            onChange={e => setCustomPrompt(e.target.value)}
-            placeholder="其他对 AI 的补充要求..."
-            className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-20"
-          />
+
+        {/* Basic Config */}
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">润色标准</label>
+            <textarea
+              value={polishStandard}
+              onChange={e => setPolishStandard(e.target.value)}
+              placeholder="描述你期望的润色风格和标准..."
+              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">摘要标准</label>
+            <textarea
+              value={summaryStandard}
+              onChange={e => setSummaryStandard(e.target.value)}
+              placeholder="描述你期望的摘要关注点..."
+              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">自定义补充指令</label>
+            <textarea
+              value={customPrompt}
+              onChange={e => setCustomPrompt(e.target.value)}
+              placeholder="其他对 AI 的补充要求..."
+              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
+            />
+          </div>
         </div>
 
-        {/* Writing Guidance */}
-        {isBookLevel && (
-          <div className="border border-gray-700 rounded-lg overflow-hidden">
-            <button
-              onClick={() => setShowWritingGuidance(!showWritingGuidance)}
-              className="w-full flex items-center justify-between px-3 py-2 text-xs text-amber-400 hover:bg-gray-700/30 transition-colors"
-            >
-              <span className="font-medium">写作指导意见</span>
-              <span className="text-[10px] text-gray-500">{showWritingGuidance ? '▼' : '▶'}</span>
-            </button>
-            {showWritingGuidance && (
-              <div className="px-3 pb-3 space-y-3 border-t border-gray-700/50">
-                <p className="text-[10px] text-gray-500 pt-2">
-                  指导 AI 在撰写内容时的描写风格和技巧要求
-                </p>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">对话风格</label>
-                  <textarea
-                    value={writingGuidance.dialogue}
-                    onChange={e => updateGuidance('dialogue', e.target.value)}
-                    placeholder="例如：对话要口语化、符合角色性格，避免书面语..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-                  />
+        {/* Per-Feature Skill Assignment */}
+        {isBookLevel && skills.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
+              <span className="text-[10px] text-gray-500 font-medium tracking-wider">技能搭载</span>
+              <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
+            </div>
+
+            {FEATURES.map(feat => {
+              const assigned = featureSkillIds[feat.key] || []
+              const isExpanded = expandedFeature === feat.key
+              return (
+                <div key={feat.key} className={`rounded-lg border bg-gradient-to-br ${feat.color} overflow-hidden transition-all`}>
+                  <button
+                    onClick={() => setExpandedFeature(isExpanded ? null : feat.key)}
+                    className="w-full flex items-center gap-2 px-3 py-2.5 transition-colors hover:bg-white/5"
+                  >
+                    <span className="text-sm">{feat.icon}</span>
+                    <div className="flex-1 text-left">
+                      <p className="text-xs text-gray-200 font-medium">{feat.label}</p>
+                      <p className="text-[10px] text-gray-500">{feat.desc}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {assigned.length > 0 ? (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-white/10 text-gray-300">
+                          {assigned.length} 技能
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-gray-600">未配置</span>
+                      )}
+                      <span className="text-[10px] text-gray-600">{isExpanded ? '▲' : '▼'}</span>
+                    </div>
+                  </button>
+
+                  {isExpanded && (
+                    <div className="px-3 pb-3 border-t border-white/10">
+                      <div className="flex items-center justify-between pt-2 pb-1">
+                        <span className="text-[10px] text-gray-500">选择此功能使用的技能</span>
+                        <button
+                          onClick={() => setAllForFeature(feat.key, assigned.length < skills.length)}
+                          className="text-[10px] text-blue-400 hover:text-blue-300"
+                        >
+                          {assigned.length < skills.length ? '全选' : '全不选'}
+                        </button>
+                      </div>
+                      <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                        {skills.map(skill => {
+                          const meta = SKILL_CATEGORIES[skill.category] || { icon: '📌', label: skill.category }
+                          const isEnabled = assigned.includes(skill.id)
+                          return (
+                            <label key={skill.id} className="flex items-center gap-2 py-1 cursor-pointer group">
+                              <input
+                                type="checkbox"
+                                checked={isEnabled}
+                                onChange={() => toggleSkill(feat.key, skill.id)}
+                                className="accent-blue-500"
+                              />
+                              <span className="text-[10px]">{meta.icon}</span>
+                              <span className="text-xs text-gray-300 truncate flex-1">{skill.name}</span>
+                              {skill.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1 rounded">内置</span>}
+                            </label>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">场景描写</label>
-                  <textarea
-                    value={writingGuidance.scene}
-                    onChange={e => updateGuidance('scene', e.target.value)}
-                    placeholder="例如：注重感官细节，营造画面感，避免过度描写..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">情感描写</label>
-                  <textarea
-                    value={writingGuidance.emotion}
-                    onChange={e => updateGuidance('emotion', e.target.value)}
-                    placeholder="例如：通过动作和细节传达情感，避免直白陈述..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">动作描写</label>
-                  <textarea
-                    value={writingGuidance.action}
-                    onChange={e => updateGuidance('action', e.target.value)}
-                    placeholder="例如：动作场景要有节奏感，用短句增加紧张感..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">节奏把控</label>
-                  <textarea
-                    value={writingGuidance.pacing}
-                    onChange={e => updateGuidance('pacing', e.target.value)}
-                    placeholder="例如：每章结尾留悬念，高潮与过渡交替..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">其他要求</label>
-                  <textarea
-                    value={writingGuidance.custom}
-                    onChange={e => updateGuidance('custom', e.target.value)}
-                    placeholder="其他写作要求..."
-                    className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-                  />
-                </div>
-              </div>
-            )}
+              )
+            })}
           </div>
         )}
       </div>

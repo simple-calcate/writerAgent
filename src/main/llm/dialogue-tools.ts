@@ -1,9 +1,9 @@
 import type OpenAI from 'openai'
-import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel } from '../../shared/types'
+import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel, WritingSkill } from '../../shared/types'
 import { summarizeChapter } from './client'
 import { polishText } from './client'
 import { refineSummary } from './refine-summary'
-import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline } from '../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills } from '../store/db'
 import { randomUUID } from 'crypto'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
@@ -17,11 +17,13 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   write_chapter_outline: '撰写章纲',
   read_chapter_content: '查看章节内容',
   write_chapter_content: '撰写章节内容',
-  create_volume: '创建卷'
+  create_volume: '创建卷',
+  extract_skill: '提取写作技能',
+  refine_skill: '修正写作技能'
 }
 
 // Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content'])
+const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill'])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
@@ -52,6 +54,10 @@ export function getToolApprovalDescription(toolName: string, args: Record<string
       return `查看章节「${args.chapterId ? '指定章节' : '当前章节'}」的完整内容`
     case 'write_chapter_content':
       return `为章节撰写内容（约 ${(args.content?.length || 0)} 字）`
+    case 'extract_skill':
+      return `提取写作技能「${args.name || '未命名'}」（${args.category || 'custom'}）`
+    case 'refine_skill':
+      return `修正写作技能（${(args.content?.length || 0)} 字）`
     default:
       return `执行 ${toolName}`
   }
@@ -243,6 +249,39 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           required: ['chapterId', 'content']
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'extract_skill',
+        description: '从当前章节内容中提取可复用的写作技能。分析章节中值得学习的写作模式（如场景描写、对话风格、节奏把控等），保存为技能供其他书籍使用。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: '技能名称，如"都市打斗场景写法"' },
+            category: { type: 'string', enum: ['scene', 'dialogue', 'pacing', 'formatting', 'style', 'character', 'structure', 'custom'], description: '技能分类' },
+            content: { type: 'string', description: '结构化的写作指导内容，包含具体规则和示例' },
+            source: { type: 'string', description: '来源说明，如"提取自《xxx》第三章"' }
+          },
+          required: ['name', 'category', 'content']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'refine_skill',
+        description: '根据实际写作内容修正已有写作技能。对比技能描述和实际章节内容，更新技能使其更准确。需要用户确认后执行。先用 read_chapter_content 读取相关章节作为参考。',
+        parameters: {
+          type: 'object',
+          properties: {
+            skillId: { type: 'string', description: '要修正的技能 ID' },
+            content: { type: 'string', description: '修正后的技能内容' },
+            reason: { type: 'string', description: '修正理由' }
+          },
+          required: ['skillId', 'content']
+        }
+      }
     }
   ]
 }
@@ -392,6 +431,38 @@ export async function executeTool(
       updateChapter(args.chapterId, { content: args.content })
       const contentPreview = args.content.length > 500 ? args.content.substring(0, 500) + '...' : args.content
       return `已为章节「${target.title}」写入内容（${args.content.length} 字）\n\n${contentPreview}`
+    }
+
+    case 'extract_skill': {
+      if (!args.name) return '错误：未提供技能名称'
+      if (!args.content) return '错误：未提供技能内容'
+      const now = new Date().toISOString()
+      const skill = {
+        id: randomUUID(),
+        name: args.name,
+        category: (args.category || 'custom') as any,
+        content: args.content,
+        source: args.source,
+        createdAt: now,
+        updatedAt: now
+      }
+      saveSkill(skill)
+      return `已提取写作技能「${skill.name}」（分类：${skill.category}）\n\n${args.content.substring(0, 200)}${args.content.length > 200 ? '...' : ''}`
+    }
+
+    case 'refine_skill': {
+      if (!args.skillId) return '错误：未提供技能 ID'
+      if (!args.content) return '错误：未提供修正内容'
+      const skills = getSkills()
+      const targetSkill = skills.find(s => s.id === args.skillId)
+      if (!targetSkill) return '错误：找不到指定技能'
+      const updatedSkill = {
+        ...targetSkill,
+        content: args.content,
+        updatedAt: new Date().toISOString()
+      }
+      saveSkill(updatedSkill)
+      return `已修正技能「${targetSkill.name}」${args.reason ? '\n\n修正理由：' + args.reason : ''}\n\n${args.content.substring(0, 200)}${args.content.length > 200 ? '...' : ''}`
     }
 
     default:

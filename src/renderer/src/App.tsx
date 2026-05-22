@@ -7,11 +7,12 @@ import Settings from './components/Settings'
 import HistoryPanel from './components/HistoryPanel'
 import ResizeHandle from './components/ResizeHandle'
 import ImportPreviewDialog from './components/ImportPreviewDialog'
+import SkillImportPreview from './components/SkillImportPreview'
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
 const MIN_RIGHT = 240
-const MAX_RIGHT = 480
+const MAX_RIGHT = 800
 
 function loadWidth(key: string, fallback: number): number {
   try {
@@ -58,9 +59,14 @@ export default function App() {
 
   const handleRightResize = useCallback((delta: number) => {
     setRightWidth(prev => {
-      const next = Math.max(MIN_RIGHT, Math.min(MAX_RIGHT, prev - delta))
-      localStorage.setItem('nw-right-w', String(next))
-      return next
+      const next = prev - delta
+      if (next < MIN_RIGHT) {
+        useAppStore.getState().setRightPanel(null)
+        return prev
+      }
+      const clamped = Math.min(MAX_RIGHT, next)
+      localStorage.setItem('nw-right-w', String(clamped))
+      return clamped
     })
   }, [])
 
@@ -103,6 +109,7 @@ export default function App() {
       {showSettings && <Settings />}
       <HistoryPanel />
       <ImportPreviewDialog />
+      <SkillImportPreview />
     </div>
   )
 }

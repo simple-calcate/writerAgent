@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -108,6 +108,31 @@ const api: IPCAPI = {
 
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) =>
     ipcRenderer.invoke('import-book-confirm', bookName, chapters),
+
+  // Skills
+  getSkills: () =>
+    ipcRenderer.invoke('get-skills'),
+
+  saveSkill: (skill: WritingSkill) =>
+    ipcRenderer.invoke('save-skill', skill),
+
+  deleteSkill: (id: string) =>
+    ipcRenderer.invoke('delete-skill', id),
+
+  updateProjectEnabledSkills: (projectId: string, skillIds: string[]) =>
+    ipcRenderer.invoke('update-project-enabled-skills', projectId, skillIds),
+
+  updateProjectFeatureSkillIds: (projectId: string, featureSkillIds: any) =>
+    ipcRenderer.invoke('update-project-feature-skill-ids', projectId, featureSkillIds),
+
+  exportSkills: (skillIds?: string[]) =>
+    ipcRenderer.invoke('export-skills', skillIds),
+
+  importSkills: () =>
+    ipcRenderer.invoke('import-skills'),
+
+  importSkillsConfirm: (skills: WritingSkill[]) =>
+    ipcRenderer.invoke('import-skills-confirm', skills),
 
   // Continuation
   generateContinuation: (chapterId: string, cursorPosition: number, content: string) =>

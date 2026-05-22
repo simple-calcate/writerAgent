@@ -1,20 +1,161 @@
-# Novel Writer — AI-Powered Web Fiction Writing Tool
+# 网文写作助手 / Novel Writer
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
+[![Release](https://img.shields.io/github/v/release/simple-calcate/writerAgent)](../../releases)
 
-> **It doesn't write for you — it helps you write better.** A desktop writing companion that integrates AI into your entire workflow: polishing, outlining, summarizing, and creative dialogue.
+> **它不替你写，它帮你写得更好。**
+> **It doesn't write for you — it helps you write better.**
 
-## Why This Tool?
-
-The hardest part of writing web fiction isn't ideas — it's **editing** and **consistency**. Novel Writer weaves AI into your writing process. It's not a chatbot; it's your personal editor.
+AI 深度整合的桌面端网文写作工具，覆盖润色、大纲、摘要、对话、续写全流程。
+A desktop writing companion that integrates AI into your entire workflow: polishing, outlining, summarizing, dialogue, and continuation.
 
 ---
 
-## Core Features
+[English](#english) | 中文
+
+---
+
+## 功能概览
+
+### 💬 AI 对话 — 真正读懂你故事的写作顾问
+
+AI 不是通用聊天机器人，它**读过你写的一切**：书卷大纲、章节大纲、全文、摘要。
+
+**三级对话，精准指导：**
+
+| 层级 | 能力 | 典型场景 |
+|------|------|----------|
+| **书籍** | 规划下卷、世界观构建、整体节奏 | "新势力怎么跟前面的伏笔呼应？" |
+| **卷** | 章节规划、节奏分析、伏笔建议 | "高潮放在哪？过渡怎么处理？" |
+| **章节** | 场景展开、描写润色、对话风格 | "这场打斗怎么写得更生动？" |
+
+**内置工具 — AI 能直接操作你的小说：**
+
+| 工具 | 说明 |
+|------|------|
+| 创建章节 | AI 规划剧情后创建新章节并关联到对应卷 |
+| 写大纲 | 让 AI 撰写书籍/卷/章节大纲 |
+| 写正文 | AI 根据大纲和前文撰写章节正文 |
+| 读内容 | AI 可随时读取任意章节的正文和摘要 |
+
+每次操作都会弹出确认对话框 — 你始终掌控一切。
+
+**计划模式 — AI 自动执行复杂任务：**
+
+告诉 AI 你的想法，它会：
+1. 提出两个方案（稳妥路线 + 创意路线）
+2. 等你确认或调整
+3. 自动执行：创建章节 → 写大纲 → 填充正文，每一步都可干预
+
+### ✨ 智能润色 — 你的私人编辑
+
+选中章节，全篇扫描，AI 找出最需要改进的 5 个段落：
+- 点击建议卡片在编辑器中**预览**润色效果
+- 接受或跳过，原文始终保留
+- 每处修改附带理由，助你成长
+
+### ⚡ 智能续写 — 停笔后的灵感
+
+在章节末尾停笔，AI 根据正文和大纲自动建议续写：
+- 编辑器中以灰色幽灵文字显示，不打断思路
+- 按 `Tab` 接受，继续输入则消失
+- 输入 `//` 注释可触发解释模式
+
+### 📋 大纲系统 — 三级大纲管理
+
+- **书籍大纲** — 整体故事骨架
+- **卷大纲** — 每卷主线与支线
+- **章节大纲** — 每章关键事件与转折点
+
+AI 生成内容时自动参考相关大纲，确保剧情连贯。
+
+### 📝 摘要与精炼 — 快速回顾
+
+- **结构化摘要**：从人物、事件、伏笔、场景、情感五个维度分析章节
+- **精炼总结**：一段话概括章节核心内容
+- 支持批量精炼整卷摘要
+
+### 🕐 版本控制 — 一键撤回
+
+- 每次编辑自动保存
+- 手动创建版本快照
+- 浏览历史、对比差异、恢复任意版本
+
+### 🔧 文本格式化 — 8 种一键工具
+
+去除多余空格、删除空行、标点转换、段落缩进、引号规范化、数字转中文、句尾统一等。
+
+---
+
+### 🎯 技能系统 — 自定义 AI 写作风格
+
+从你的写作中提取技能，跨书复用：
+
+- **5 个内置技能**：对话风格、场景描写、节奏把控、文风特征、人物塑造
+- **自定义技能**：添加、编辑、删除、导入、导出
+- **按功能搭载**：AI 对话、智能润色、章节摘要、智能续写各自独立配置技能
+- **AI 提取**：对话中可自动提取和优化技能
+
+### 🔌 多 API 配置 — 灵活接入
+
+支持**多个 API 配置**，每个 AI 功能独立绑定不同供应商：
+
+```
+润色    → OpenAI GPT-4o
+摘要    → DeepSeek V3
+对话    → 本地 Ollama
+精炼    → Moonshot
+```
+
+**内置供应商快捷配置**，一键填入 Base URL 和默认模型：
+OpenRouter · DeepSeek · OpenAI · Claude · 通义千问 · Moonshot · Ollama（完全本地离线）
+
+---
+
+## 快速开始
+
+```bash
+npm install
+npm run dev
+```
+
+打开设置 → 配置 API Key → 选择模型 → 开始写作。
+
+首次启动会自动打开设置面板引导配置。
+
+## 快捷键
+
+| 快捷键 | 功能 |
+|--------|------|
+| `Ctrl+Z` | 撤销 |
+| `Ctrl+S` | 保存 |
+| `Tab` | 接受续写建议 |
+
+## 技术栈
+
+Electron + React 18 + TypeScript + Zustand + Tailwind CSS + OpenAI SDK
+
+---
+
+## 许可证
+
+本项目基于 [GNU AGPL v3.0](LICENSE) 许可。可自由使用、修改和分发，但修改后的代码也必须开源。
+
+[下载最新版本](../../releases) · [反馈问题](../../issues)
+
+---
+
+<a id="english"></a>
+
+# Novel Writer — AI-Powered Web Fiction Writing Tool
+
+> **It doesn't write for you — it helps you write better.** A desktop writing companion that integrates AI into your entire workflow: polishing, outlining, summarizing, dialogue, and continuation.
+
+## Features
 
 ### AI Dialogue — A Writing Advisor That Actually Knows Your Story
 
-This is the most powerful feature. The AI isn't a generic chatbot — it has **read everything you've written**: book outline, volume outlines, chapter outlines, full text, and summaries.
+The AI isn't a generic chatbot — it has **read everything you've written**: book outline, volume outlines, chapter outlines, full text, and summaries.
 
 **Three-level dialogue for precise guidance:**
 
@@ -25,8 +166,6 @@ This is the most powerful feature. The AI isn't a generic chatbot — it has **r
 | **Chapter** | Scene development, description polish, dialogue style | "How to make this fight scene more vivid?" |
 
 **Built-in tools — AI can directly operate on your novel:**
-
-During dialogue, the AI doesn't just give advice — it can **take action**:
 
 | Tool | Description |
 |------|-------------|
@@ -82,9 +221,16 @@ AI automatically references relevant outlines when generating content to ensure 
 
 Remove extra spaces, remove blank lines, convert punctuation, paragraph indentation, quote normalization, numbers to Chinese, sentence-ending unification, and more.
 
----
+### Skill System — Customize Your AI Writing Style
 
-## Multi-API Configuration — Flexible Integration
+Extract writing skills from your work and reuse them across books:
+
+- **5 built-in skills**: Dialogue style, scene description, pacing control, writing characteristics, character building
+- **Custom skills**: Add, edit, delete, import, export
+- **Per-feature assignment**: AI Dialogue, Smart Polish, Chapter Summary, and Smart Continuation each have independent skill configurations
+- **AI extraction**: Automatically extract and refine skills during dialogue
+
+### Multi-API Configuration — Flexible Integration
 
 Supports **multiple API configurations**, with each AI feature independently bound to a different provider:
 
@@ -96,25 +242,7 @@ Refine    → Moonshot
 ```
 
 **Built-in provider shortcuts** with one-click Base URL and default model fill:
-- OpenRouter — Large model aggregator, easy token purchasing
-- DeepSeek — Cost-effective Chinese-language model
-- OpenAI — GPT-4o series
-- Claude — By Anthropic
-- Qwen — Alibaba Cloud's LLM
-- Moonshot — Kimi with long context
-- Ollama — Fully local, completely offline
-
-Each provider includes a **top-up link** to the official recharge page.
-
-## Writing Guidelines — Customize Your AI
-
-Set description guidelines at the book level:
-- Dialogue style (casual / character-authentic)
-- Scene description (sensory details / vivid imagery)
-- Emotion writing (convey through actions / avoid direct statements)
-- Pacing (end chapters with suspense / alternate climax and transition)
-
-AI automatically references your guidelines when generating content.
+OpenRouter · DeepSeek · OpenAI · Claude · Qwen · Moonshot · Ollama (fully local, completely offline)
 
 ---
 

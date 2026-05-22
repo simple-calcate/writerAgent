@@ -1,167 +1,150 @@
-# 网文写作助手 — AI 驱动的网文创作工具
+# Novel Writer — AI-Powered Web Fiction Writing Tool
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 
-> **不替你写，只帮你写得更好。** 桌面端全能写作伙伴，从润色到大纲、从摘要到对话，AI 全流程辅助你的网文创作。
+> **It doesn't write for you — it helps you write better.** A desktop writing companion that integrates AI into your entire workflow: polishing, outlining, summarizing, and creative dialogue.
 
-## 为什么选它？
+## Why This Tool?
 
-写网文最痛苦的不是没灵感，而是**改稿**和**保持一致性**。网文写作助手把 AI 融入你的写作流程，不是让你和 AI 聊天，而是让 AI 成为你的贴身编辑。
-
----
-
-## 核心功能
-
-### AI 对话 — 真正懂你小说的创作顾问
-
-这是本工具最强大的功能。AI 不是通用聊天机器人，它**读过你写的所有内容**——书籍大纲、卷纲、章纲、每章正文和摘要，全都在上下文中。
-
-**三层级对话，精准定位：**
-
-| 层级 | 能力 | 典型场景 |
-|------|------|----------|
-| **书籍级** | 规划下一卷方向、梳理世界观、讨论整体节奏 | "第三卷要引入新势力，怎么和前面的伏笔衔接？" |
-| **卷级** | 规划章节发展、分析卷内节奏、伏笔埋设建议 | "这一卷高潮放在第几章合适？中间怎么过渡？" |
-| **章节级** | 推演下一章情节、打磨场景描写、优化对话风格 | "这场打斗怎么写才有画面感？" |
-
-**内置工具 — AI 能直接操作你的小说：**
-
-对话过程中，AI 不只是给建议，它可以**直接动手**：
-
-| 工具 | 说明 |
-|------|------|
-| **创建章节** | AI 规划好情节后，一键创建新章节并关联到对应卷 |
-| **撰写大纲** | 让 AI 为你撰写书籍大纲、卷纲或章纲 |
-| **填写正文** | AI 根据大纲和前文，直接撰写章节正文 |
-| **读取内容** | AI 可以随时读取任意章节的正文和摘要，做到真正的"读过你的小说" |
-
-每一步操作都会弹出确认框，你说了算。
-
-**计划模式 — AI 自动执行复杂任务：**
-
-告诉 AI 你的想法，它会：
-1. 提出两个方案（稳健路线 + 创意路线）
-2. 等你确认或调整
-3. 自动执行：创建章节 → 撰写章纲 → 填写正文，全程可干预
-
-### AI 润色 — 你的私人编辑
-
-选中章节，一键扫描全文，AI 自动找出 5 处最需要改进的片段：
-- 点击建议卡片，**编辑器实时预览**润色效果
-- 满意就采纳，不满意就忽略，原文永远可追溯
-- 每处改动附带理由，帮你提升写作认知
-
-### 智能续写 — 停笔后的灵感接续
-
-写到章节末尾停笔，AI 自动根据前文和大纲提供续写建议：
-- 以灰色幽灵文字显示在编辑器中，不干扰写作流
-- 按 `Tab` 采纳，继续输入自动取消
-- 写 `//` 注释还能触发注释解答模式
-
-### 大纲系统 — 三级大纲管理
-
-- **书籍大纲** — 全书骨架
-- **卷纲** — 每卷主线和支线
-- **章纲** — 每章核心事件和转折
-
-AI 撰写内容时自动参考相关大纲，确保情节连贯。
-
-### 摘要 & 精炼 — 快速回顾
-
-- **结构化摘要**：按人物、事件、伏笔、场景、情感五维分析章节
-- **精炼总结**：一段话概括章节核心，快速回顾前情
-- 支持批量精炼整卷摘要
-
-### 版本管理 — 写坏了一键恢复
-
-- 编辑后自动保存
-- 手动创建版本快照
-- 随时查看历史、对比差异、恢复任意版本
-
-### 文本格式化 — 8 种一键工具
-
-去多余空格、去空行、中英文标点转换、段首缩进、引号规范化、数字转中文、句尾统一...
+The hardest part of writing web fiction isn't ideas — it's **editing** and **consistency**. Novel Writer weaves AI into your writing process. It's not a chatbot; it's your personal editor.
 
 ---
 
-## 多 API 配置 — 灵活接入
+## Core Features
 
-支持保存**多套 API 配置**，每个 AI 功能可独立绑定不同接口：
+### AI Dialogue — A Writing Advisor That Actually Knows Your Story
+
+This is the most powerful feature. The AI isn't a generic chatbot — it has **read everything you've written**: book outline, volume outlines, chapter outlines, full text, and summaries.
+
+**Three-level dialogue for precise guidance:**
+
+| Level | Capabilities | Typical Scenarios |
+|-------|-------------|-------------------|
+| **Book** | Plan the next volume, world-building, overall pacing | "How should I connect the new faction to earlier foreshadowing?" |
+| **Volume** | Chapter planning, pacing analysis, foreshadowing advice | "Where should the climax be? How to handle transitions?" |
+| **Chapter** | Scene development, description polish, dialogue style | "How to make this fight scene more vivid?" |
+
+**Built-in tools — AI can directly operate on your novel:**
+
+During dialogue, the AI doesn't just give advice — it can **take action**:
+
+| Tool | Description |
+|------|-------------|
+| **Create Chapter** | AI plans the plot, then creates a new chapter linked to the right volume |
+| **Write Outline** | Have AI draft book outlines, volume outlines, or chapter outlines |
+| **Write Content** | AI writes chapter text based on outlines and previous content |
+| **Read Content** | AI can read any chapter's text and summary at any time |
+
+Every action triggers a confirmation dialog — you're always in control.
+
+**Plan Mode — AI executes complex tasks automatically:**
+
+Tell the AI your idea and it will:
+1. Propose two plans (safe route + creative route)
+2. Wait for your approval or adjustments
+3. Execute automatically: create chapter → write outline → fill content, with intervention at every step
+
+### AI Polish — Your Personal Editor
+
+Select a chapter, run a full scan, and AI identifies the 5 segments that need the most improvement:
+- Click a suggestion card to **preview** the polish in the editor
+- Accept what works, ignore what doesn't — the original is always preserved
+- Every change comes with a reason to help you grow as a writer
+
+### Smart Continuation — Inspiration After You Stop
+
+Pause at the end of a chapter and AI automatically suggests a continuation based on your text and outline:
+- Displayed as gray ghost text in the editor — no disruption to your flow
+- Press `Tab` to accept; keep typing to dismiss
+- Writing `//` comments triggers an explanation mode
+
+### Outline System — Three-Level Outline Management
+
+- **Book Outline** — The full story skeleton
+- **Volume Outlines** — Main and sub-plots per volume
+- **Chapter Outlines** — Key events and turning points per chapter
+
+AI automatically references relevant outlines when generating content to ensure plot coherence.
+
+### Summary & Refinement — Quick Recaps
+
+- **Structured Summary**: Analyzes chapters across five dimensions — characters, events, foreshadowing, scenes, and emotions
+- **Refined Summary**: One-paragraph recap of a chapter's core content
+- Batch refinement of entire volume summaries
+
+### Version Control — Undo with One Click
+
+- Auto-save after every edit
+- Manual version snapshots
+- Browse history, compare diffs, restore any version
+
+### Text Formatting — 8 One-Click Tools
+
+Remove extra spaces, remove blank lines, convert punctuation, paragraph indentation, quote normalization, numbers to Chinese, sentence-ending unification, and more.
+
+---
+
+## Multi-API Configuration — Flexible Integration
+
+Supports **multiple API configurations**, with each AI feature independently bound to a different provider:
 
 ```
-润色优化 → OpenAI GPT-4o
-章节摘要 → DeepSeek V3
-AI 对话  → 本地 Ollama
-精炼总结 → Moonshot
+Polish    → OpenAI GPT-4o
+Summary   → DeepSeek V3
+Dialogue  → Local Ollama
+Refine    → Moonshot
 ```
 
-**内置提供商快捷选择**，一键填充 Base URL 和默认模型：
-- OpenRouter — 海量模型聚合平台，方便购买 Token
-- DeepSeek — 高性价比中文模型
-- OpenAI — GPT-4o 系列
-- Claude — Anthropic 出品
-- 通义千问 — 阿里云大模型
-- Moonshot — Kimi 长上下文
-- Ollama — 本地部署，完全离线
+**Built-in provider shortcuts** with one-click Base URL and default model fill:
+- OpenRouter — Large model aggregator, easy token purchasing
+- DeepSeek — Cost-effective Chinese-language model
+- OpenAI — GPT-4o series
+- Claude — By Anthropic
+- Qwen — Alibaba Cloud's LLM
+- Moonshot — Kimi with long context
+- Ollama — Fully local, completely offline
 
-每个提供商都内置了**充值入口**，一键跳转官方充值页面。
+Each provider includes a **top-up link** to the official recharge page.
 
-## 写作指导 — 定制你的 AI
+## Writing Guidelines — Customize Your AI
 
-在书籍级配置中设置描写指导意见：
-- 对话风格（口语化 / 符合角色性格）
-- 场景描写（注重感官细节 / 营造画面感）
-- 情感描写（通过动作传达 / 避免直白陈述）
-- 节奏把控（每章结尾留悬念 / 高潮与过渡交替）
+Set description guidelines at the book level:
+- Dialogue style (casual / character-authentic)
+- Scene description (sensory details / vivid imagery)
+- Emotion writing (convey through actions / avoid direct statements)
+- Pacing (end chapters with suspense / alternate climax and transition)
 
-AI 撰写内容时自动参考你的指导。
+AI automatically references your guidelines when generating content.
 
 ---
 
-## 快速开始
+## Quick Start
 
 ```bash
 npm install
 npm run dev
 ```
 
-打开设置 → 配置 API Key → 选择模型 → 开始写作。
+Open Settings → Configure API Key → Select Model → Start Writing.
 
-首次启动时如果没有 API 配置，设置面板会自动弹出引导你完成配置。
+On first launch, the settings panel opens automatically to guide you through configuration.
 
-## 快捷键
+## Keyboard Shortcuts
 
-| 快捷键 | 功能 |
-|--------|------|
-| `Ctrl+Z` | 撤销 |
-| `Ctrl+S` | 保存 |
-| `Tab` | 接受续写建议 |
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+Z` | Undo |
+| `Ctrl+S` | Save |
+| `Tab` | Accept continuation suggestion |
 
-## 技术栈
+## Tech Stack
 
 Electron + React 18 + TypeScript + Zustand + Tailwind CSS + OpenAI SDK
 
 ---
 
-## 未来规划
+## License
 
-我们正在持续迭代，以下功能已在规划中：
+This project is licensed under [GNU AGPL v3.0](LICENSE). You are free to use, modify, and distribute, but modified code must also be open-sourced.
 
-- **角色档案系统** — AI 自动维护角色卡片（性格、关系、外貌），写作时实时参考
-- **世界观地图** — 可视化管理势力关系、地理设定、时间线
-- **多作品管理** — 同时创作多部小说，AI 能区分不同作品的上下文
-- **协作模式** — 多人协作创作，AI 辅助保持风格一致
-- **数据分析** — 追更数据、读者反馈分析，辅助创作决策
-- **更多 AI 模型支持** — 持续接入新模型，让创作者有更多选择
-
-我们的目标是：**让 AI 成为每一个网文创作者的贴身编辑**，不只是工具，而是真正理解你作品的创作伙伴。
-
----
-
-**内测招募中** — 如果你正在写网文，欢迎试用并反馈。我们关注的是：AI 怎样才能真正帮到你，而不是打扰你。
-
-[下载最新版本](../../releases) · [反馈问题](../../issues)
-
-## 开源协议
-
-本项目基于 [GNU AGPL v3.0](LICENSE) 开源。你可以自由使用、修改和分发，但修改后的代码必须同样开源。
+[Download Latest Release](../../releases) · [Report Issues](../../issues)

@@ -81,10 +81,6 @@ AI 生成内容时自动参考相关大纲，确保剧情连贯。
 - 手动创建版本快照
 - 浏览历史、对比差异、恢复任意版本
 
-### 🔧 文本格式化 — 8 种一键工具
-
-去除多余空格、删除空行、标点转换、段落缩进、引号规范化、数字转中文、句尾统一等。
-
 ---
 
 ### 🎯 技能系统 — 自定义 AI 写作风格
@@ -216,10 +212,6 @@ AI automatically references relevant outlines when generating content to ensure 
 - Auto-save after every edit
 - Manual version snapshots
 - Browse history, compare diffs, restore any version
-
-### Text Formatting — 8 One-Click Tools
-
-Remove extra spaces, remove blank lines, convert punctuation, paragraph indentation, quote normalization, numbers to Chinese, sentence-ending unification, and more.
 
 ### Skill System — Customize Your AI Writing Style
 

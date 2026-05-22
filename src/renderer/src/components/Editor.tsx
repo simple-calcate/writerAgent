@@ -76,20 +76,26 @@ function setCursorAtOffset(container: HTMLElement, targetOffset: number) {
     const paraLen = text.length
 
     if (accumulated + paraLen >= targetOffset) {
-      const localOffset = targetOffset - accumulated
+      const localOffset = Math.max(0, Math.min(targetOffset - accumulated, paraLen))
       const walker = document.createTreeWalker(p, NodeFilter.SHOW_TEXT)
       let charCount = 0
       while (walker.nextNode()) {
         const node = walker.currentNode as Text
         if (charCount + node.length >= localOffset) {
-          const range = document.createRange()
-          range.setStart(node, localOffset - charCount)
-          range.collapse(true)
-          const sel = window.getSelection()
-          if (sel) {
-            sel.removeAllRanges()
-            sel.addRange(range)
-          }
+          try {
+            const range = document.createRange()
+            range.setStart(node, localOffset - charCount)
+            range.collapse(true)
+            const sel = window.getSelection()
+            if (sel) {
+              sel.removeAllRanges()
+              sel.addRange(range)
+            }
+          } catch { /* ignore range errors */ }
+          // Scroll into view + flash highlight
+          p.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          p.classList.add('polish-preview-flash')
+          p.addEventListener('animationend', () => p.classList.remove('polish-preview-flash'), { once: true })
           return
         }
         charCount += node.length
@@ -488,12 +494,27 @@ export default function Editor() {
     return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current) }
   }, [])
 
+  // ── Sync editor content when polish preview activates/deactivates ──
+  useEffect(() => {
+    if (!editorRef.current || !currentChapter) return
+    const html = plainTextToHtml(currentChapter.content)
+    editorRef.current.innerHTML = html
+  }, [activeSuggestionId])
+
   // ── Scroll to polish suggestion position ────────────────
+  const pendingScrollRef = useRef<number | null>(null)
   useEffect(() => {
     if (scrollToPosition === null || !editorRef.current) return
-    setCursorAtOffset(editorRef.current, scrollToPosition)
-    editorRef.current.focus()
+    pendingScrollRef.current = scrollToPosition
     clearScrollToPosition()
+    requestAnimationFrame(() => {
+      const pos = pendingScrollRef.current
+      pendingScrollRef.current = null
+      if (pos === null || !editorRef.current) return
+      try {
+        setCursorAtOffset(editorRef.current, pos)
+      } catch { /* ignore cursor errors */ }
+    })
   }, [scrollToPosition, clearScrollToPosition])
 
   // ── Insert ghost text when continuation arrives ─────────

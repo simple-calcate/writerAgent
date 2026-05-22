@@ -1,6 +1,8 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
+import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider } from '../../shared/types'
+import { streamWithThinking } from './streaming'
 
 export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
@@ -73,34 +75,48 @@ export function hasThinkingParams(config: LLMConfigSingle): boolean {
 export async function polishText(
   config: LLMConfigSingle,
   original: string,
-  context: string
+  context: string,
+  mainWindow?: BrowserWindow,
+  signal?: AbortSignal
 ): Promise<PolishResult> {
   const client = createClient(config)
 
-  const response = await client.chat.completions.create({
-    model: config.model || 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位网文写作助手，专注于文风润色。你的任务是：
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `你是一位网文写作助手，专注于文风润色。你的任务是：
 - 保持原文意思完全不变
 - 改善用词精准度、句式节奏、描写生动度
 - 不要添加原文没有的情节、人物或信息
 - 不要删减原文的核心内容
 - 用一句话简要说明你做了什么改动（reason字段）
 - 返回严格 JSON：{"polished":"润色后文字","reason":"改动理由"}`
-      },
-      {
-        role: 'user',
-        content: `上下文（前后文，供参考风格一致性）：\n${context}\n\n请润色以下文字：\n${original}`
-      }
-    ],
-    temperature: 0.7,
-    ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-    response_format: { type: 'json_object' }
-  })
+    },
+    {
+      role: 'user' as const,
+      content: `上下文（前后文，供参考风格一致性）：\n${context}\n\n请润色以下文字：\n${original}`
+    }
+  ]
 
-  const content = response.choices[0]?.message?.content?.trim() || '{}'
+  let content: string
+  if (mainWindow) {
+    content = await streamWithThinking(mainWindow, client, config, {
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.7,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+      response_format: { type: 'json_object' }
+    }, signal)
+  } else {
+    const response = await client.chat.completions.create({
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.7,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+      response_format: { type: 'json_object' }
+    })
+    content = response.choices[0]?.message?.content?.trim() || '{}'
+  }
   let polished = original
   let reason = '未提供理由'
 
@@ -118,72 +134,82 @@ export async function polishText(
     original,
     polished,
     reason,
+    position: 0,
     diffs: computeDiff(original, polished),
     accepted: false
   }
 }
 
-// Auto-detect weak segments and polish them
+// Auto-detect weak paragraphs and polish them (single LLM call, index-based positioning)
 export async function autoPolish(
   config: LLMConfigSingle,
   content: string,
-  aiConfig?: Partial<BookAIConfig>
+  aiConfig?: Partial<BookAIConfig>,
+  mainWindow?: BrowserWindow,
+  signal?: AbortSignal
 ): Promise<AutoPolishResult> {
   const client = createClient(config)
 
-  // Step 1: Find weak segments
-  const detectResponse = await client.chat.completions.create({
-    model: config.model || 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位网文编辑，擅长发现文字中需要改进的地方。
-分析以下网文章节，找出需要润色的片段。重点关注：
-- 用词平淡、缺乏表现力的句子
-- 句式单一、节奏单调的段落
-- 描写空洞、缺少画面感的片段
-- 情感表达不够到位的地方
-- 过于口语化或不够凝练的表述
+  // Split into paragraphs and number them
+  const paragraphs = content.split('\n\n')
+  const numbered = paragraphs.map((p, i) => `[${i}] ${p}`).join('\n')
+
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `你是一位网文编辑，擅长发现并润色文字中需要改进的地方。
+
+以下是一个网文章节，已按段落编号。请分析每个段落，找出需要润色的段落并直接给出润色后的版本。
+
+要求：
+- 只选择确实需要改进的段落，不要改动已经好的部分
+- 最多选择5个最需要改进的段落
+- 润色时保持原文意思完全不变，只改善用词、句式、描写
+- 返回严格 JSON
+
+输出格式：
+{"results":[{"index":段落编号,"polished":"润色后的完整段落","reason":"改动理由"}]}
 ${aiConfig?.polishStandard ? '\n润色标准：' + aiConfig.polishStandard : ''}
-${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
+${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
+    },
+    { role: 'user' as const, content: numbered }
+  ]
 
-规则：
-- 只选择确实需要改进的片段，不要改动已经很好的部分
-- 每个片段应包含完整的句子或语义单元（至少10个字以上）
-- 最多找出5个最需要改进的片段
-- 返回严格 JSON：{"segments":[{"text":"原文片段","start_char":在原文中的起始位置}]}`
-      },
-      { role: 'user', content }
-    ],
-    temperature: 0.3,
-    ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-    response_format: { type: 'json_object' }
-  })
+  let rawContent: string | undefined
+  if (mainWindow) {
+    rawContent = await streamWithThinking(mainWindow, client, config, {
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.7,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+      response_format: { type: 'json_object' }
+    }, signal)
+  } else {
+    const response = await client.chat.completions.create({
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.7,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+      response_format: { type: 'json_object' }
+    })
+    rawContent = response.choices[0]?.message?.content ?? undefined
+  }
 
-  const rawContent = detectResponse.choices[0]?.message?.content
-  console.log('[polish] raw detect response:', rawContent?.substring(0, 500))
-  const detectContent = rawContent?.trim() || '{"segments":[]}'
-  let segments: { text: string; start_char: number }[] = []
+  console.log('[polish] raw response:', rawContent?.substring(0, 500))
+
+  const parseContent = rawContent?.trim() || '{"results":[]}'
+  let results: { index: number; polished: string; reason: string }[] = []
 
   try {
-    const parsed = JSON.parse(detectContent)
-    // 兼容多种返回格式
-    if (Array.isArray(parsed)) {
-      segments = parsed
-    } else if (parsed.segments) {
-      segments = parsed.segments
-    } else if (parsed.text && Array.isArray(parsed.text)) {
-      segments = parsed.text
-    }
-    console.log('[polish] detected segments:', segments.length)
+    const parsed = JSON.parse(parseContent)
+    results = parsed.results || []
   } catch (e) {
-    // 尝试从 markdown 代码块中提取 JSON
-    const jsonMatch = detectContent.match(/```(?:json)?\s*([\s\S]*?)```/)
+    // Try extracting JSON from markdown code block
+    const jsonMatch = parseContent.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (jsonMatch) {
       try {
         const parsed = JSON.parse(jsonMatch[1].trim())
-        segments = parsed.segments || []
-        console.log('[polish] extracted from code block, segments:', segments.length)
+        results = parsed.results || []
       } catch {
         console.log('[polish] failed to parse code block JSON')
         return { suggestions: [] }
@@ -194,44 +220,43 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
     }
   }
 
-  // Step 2: Polish each segment with surrounding context (parallel)
-  const validSegments = segments.filter(seg => seg.text && seg.text.length >= 5)
-  console.log('[polish] valid segments to polish:', validSegments.length)
-
-  const results = await Promise.allSettled(
-    validSegments.map(async (seg) => {
-      const segStart = content.indexOf(seg.text)
-      const ctxStart = Math.max(0, segStart - 150)
-      const ctxEnd = Math.min(content.length, segStart + seg.text.length + 150)
-      const context = content.slice(ctxStart, ctxEnd)
-
-      const polishResult = await polishText(config, seg.text, context)
-      polishResult.position = segStart >= 0 ? segStart : seg.start_char
-      return polishResult
-    })
-  )
-
+  // Build PolishResult[] with index-based position calculation
   const suggestions: PolishResult[] = results
-    .filter((r): r is PromiseFulfilledResult<PolishResult> => r.status === 'fulfilled')
-    .map(r => r.value)
+    .filter(r => r.index >= 0 && r.index < paragraphs.length && r.polished)
+    .map(r => {
+      let position = 0
+      for (let i = 0; i < r.index; i++) {
+        position += paragraphs[i].length + 2 // +2 for \n\n
+      }
+      const original = paragraphs[r.index]
+      return {
+        id: randomUUID(),
+        original,
+        polished: r.polished,
+        reason: r.reason || '未提供理由',
+        position,
+        diffs: computeDiff(original, r.polished),
+        accepted: false
+      }
+    })
 
-  console.log('[polish] final suggestions:', suggestions.length, 'rejected:', results.filter(r => r.status === 'rejected').length)
+  console.log('[polish] suggestions:', suggestions.length)
   return { suggestions }
 }
 
 export async function summarizeChapter(
   config: LLMConfigSingle,
   content: string,
-  aiConfig?: Partial<BookAIConfig>
+  aiConfig?: Partial<BookAIConfig>,
+  mainWindow?: BrowserWindow,
+  signal?: AbortSignal
 ): Promise<string> {
   const client = createClient(config)
 
-  const response = await client.chat.completions.create({
-    model: config.model || 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
 
 1. 主要人物
 - 人物名：状态/作用
@@ -251,9 +276,22 @@ ${aiConfig?.summaryStandard ? '\n摘要标准：' + aiConfig.summaryStandard : '
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 
 要求：条目简洁，每个条目一行，不要展开论述。`
-      },
-      { role: 'user', content }
-    ],
+    },
+    { role: 'user' as const, content }
+  ]
+
+  if (mainWindow) {
+    return streamWithThinking(mainWindow, client, config, {
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.3,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
+    }, signal) || '无法生成总结'
+  }
+
+  const response = await client.chat.completions.create({
+    model: config.model || 'gpt-4o-mini',
+    messages,
     temperature: 0.3,
     ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })

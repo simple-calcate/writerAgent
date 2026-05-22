@@ -309,6 +309,14 @@ export interface DialogueToolApprovalResponse {
   refreshCache?: boolean
 }
 
+// ─── AI Thinking (通用，非对话专属) ───
+
+export interface AIThinkingChunk {
+  chunk: string
+}
+
+export interface AIThinkingDone {}
+
 export type DialogueLevel = 'book' | 'volume' | 'chapter'
 
 export interface IPCAPI {
@@ -379,6 +387,11 @@ export interface IPCAPI {
   onDialogueThinkingChunk: (callback: (data: DialogueThinkingChunk) => void) => () => void
   onDialogueThinkingDone: (callback: (data: DialogueThinkingDone) => void) => () => void
   dialogueApproveTool: (response: DialogueToolApprovalResponse) => Promise<void>
+
+  // AI Thinking (通用)
+  onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => () => void
+  onAIThinkingDone: (callback: (data: AIThinkingDone) => void) => () => void
+  aiCancel: () => Promise<void>
 
   // Outlines
   getOutline: (level: DialogueLevel, entityId: string) => Promise<Outline | undefined>

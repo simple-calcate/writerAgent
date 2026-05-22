@@ -1,19 +1,21 @@
+import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, BookAIConfig } from '../../shared/types'
 import { createClient } from './client'
+import { streamWithThinking } from './streaming'
 
 export async function refineSummary(
   config: LLMConfigSingle,
   content: string,
-  aiConfig?: Partial<BookAIConfig>
+  aiConfig?: Partial<BookAIConfig>,
+  mainWindow?: BrowserWindow,
+  signal?: AbortSignal
 ): Promise<string> {
   const client = createClient(config)
 
-  const response = await client.chat.completions.create({
-    model: config.model || 'gpt-4o-mini',
-    messages: [
-      {
-        role: 'system',
-        content: `你是一位网文写作分析助手。请按场景梳理这一章的剧情脉络，输出一段连贯的总结。
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `你是一位网文写作分析助手。请按场景梳理这一章的剧情脉络，输出一段连贯的总结。
 
 要求：
 - 按场景顺序梳理：每个场景的核心事件、人物行动、情感变化
@@ -23,9 +25,22 @@ export async function refineSummary(
 - 语言精炼，信息密度高，避免废话
 ${aiConfig?.summaryStandard ? '\n摘要标准：' + aiConfig.summaryStandard : ''}
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
-      },
-      { role: 'user', content }
-    ],
+    },
+    { role: 'user' as const, content }
+  ]
+
+  if (mainWindow) {
+    return streamWithThinking(mainWindow, client, config, {
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.3,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
+    }, signal) || '无法生成总结'
+  }
+
+  const response = await client.chat.completions.create({
+    model: config.model || 'gpt-4o-mini',
+    messages,
     temperature: 0.3,
     ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })

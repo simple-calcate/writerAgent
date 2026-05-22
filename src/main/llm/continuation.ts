@@ -1,5 +1,7 @@
+import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, BookAIConfig } from '../../shared/types'
 import { createClient } from './client'
+import { streamWithThinking } from './streaming'
 
 export async function generateContinuation(
   config: LLMConfigSingle,
@@ -10,6 +12,8 @@ export async function generateContinuation(
     volumeOutline?: string | null
     bookOutline?: string | null
     aiConfig?: Partial<BookAIConfig>
+    mainWindow?: BrowserWindow
+    signal?: AbortSignal
   }
 ): Promise<string> {
   const client = createClient(config)
@@ -57,12 +61,24 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
     userMessage = `【章节末尾内容】\n${tailContent}${outlineSection}`
   }
 
+  const messages = [
+    { role: 'system' as const, content: systemPrompt },
+    { role: 'user' as const, content: userMessage }
+  ]
+
+  if (params.mainWindow) {
+    const result = await streamWithThinking(params.mainWindow, client, config, {
+      model: config.model || 'gpt-4o-mini',
+      messages,
+      temperature: 0.7,
+      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
+    }, params.signal)
+    return result?.trim() || ''
+  }
+
   const response = await client.chat.completions.create({
     model: config.model || 'gpt-4o-mini',
-    messages: [
-      { role: 'system', content: systemPrompt },
-      { role: 'user', content: userMessage }
-    ],
+    messages,
     temperature: 0.7,
     ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })

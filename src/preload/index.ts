@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -179,6 +179,22 @@ const api: IPCAPI = {
 
   dialogueApproveTool: (response: DialogueToolApprovalResponse) =>
     ipcRenderer.invoke('dialogue:approve-tool', response),
+
+  // AI Thinking (通用)
+  onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => {
+    const handler = (_event: any, data: AIThinkingChunk) => callback(data)
+    ipcRenderer.on('ai:thinking-chunk', handler)
+    return () => { ipcRenderer.removeListener('ai:thinking-chunk', handler) }
+  },
+
+  onAIThinkingDone: (callback: (data: AIThinkingDone) => void) => {
+    const handler = (_event: any, data: AIThinkingDone) => callback(data)
+    ipcRenderer.on('ai:thinking-done', handler)
+    return () => { ipcRenderer.removeListener('ai:thinking-done', handler) }
+  },
+
+  aiCancel: () =>
+    ipcRenderer.invoke('ai:cancel'),
 
   // Outlines
   getOutline: (level: DialogueLevel, entityId: string) =>

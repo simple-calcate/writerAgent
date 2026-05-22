@@ -10,6 +10,7 @@ import { generateContinuation } from './llm/continuation'
 import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse } from '../shared/types'
 
 let mainWindow: BrowserWindow | null = null
+let currentAIAbort: AbortController | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -34,6 +35,14 @@ function createWindow(): void {
 }
 
 function registerIPC(): void {
+  // AI Cancel
+  ipcMain.handle('ai:cancel', () => {
+    if (currentAIAbort) {
+      currentAIAbort.abort()
+      currentAIAbort = null
+    }
+  })
+
   // AI
   ipcMain.handle('auto-polish', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
     const config = resolveFeatureConfig('polish')
@@ -41,30 +50,45 @@ function registerIPC(): void {
     if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
     console.log('[auto-polish] content length:', content.length)
-    const result = await autoPolish(config, content, aiConfig)
-    console.log('[auto-polish] result suggestions:', result.suggestions.length)
-    return result
+    currentAIAbort = new AbortController()
+    try {
+      const result = await autoPolish(config, content, aiConfig, mainWindow!, currentAIAbort.signal)
+      console.log('[auto-polish] result suggestions:', result.suggestions.length)
+      return result
+    } finally {
+      currentAIAbort = null
+    }
   })
 
   ipcMain.handle('polish-text', async (_e, original: string, context: string) => {
     const config = resolveFeatureConfig('polish')
     if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
-    return polishText(config, original, context)
+    return polishText(config, original, context, mainWindow!)
   })
 
   ipcMain.handle('summarize-chapter', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
     const config = resolveFeatureConfig('summary')
     if (!config) throw new Error('摘要功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
-    return summarizeChapter(config, content, aiConfig)
+    currentAIAbort = new AbortController()
+    try {
+      return await summarizeChapter(config, content, aiConfig, mainWindow!, currentAIAbort.signal)
+    } finally {
+      currentAIAbort = null
+    }
   })
 
   ipcMain.handle('refine-summary', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
     const config = resolveFeatureConfig('refineSummary')
     if (!config) throw new Error('精炼总结功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
-    return refineSummary(config, content, aiConfig)
+    currentAIAbort = new AbortController()
+    try {
+      return await refineSummary(config, content, aiConfig, mainWindow!, currentAIAbort.signal)
+    } finally {
+      currentAIAbort = null
+    }
   })
 
   // Config
@@ -221,7 +245,8 @@ function registerIPC(): void {
       chapterOutline: chapterOutline?.content,
       volumeOutline: volumeOutline?.content,
       bookOutline: bookOutline?.content,
-      aiConfig
+      aiConfig,
+      mainWindow: mainWindow!
     })
   })
 

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
 
 type RightPanelType = 'polish' | 'summary' | 'dialogue' | 'outline' | null
@@ -90,6 +90,11 @@ interface AppState {
   refineProgress: { current: number; total: number } | null
   refineSummary: () => Promise<void>
   refineVolumeSummaries: () => Promise<void>
+
+  // AI Thinking (通用)
+  aiIsThinking: boolean
+  aiThinkingText: string
+  cancelAIFeature: () => void
 
   // Export
   exportTxt: () => void
@@ -469,12 +474,22 @@ export const useAppStore = create<AppState>((set, get) => ({
     const bookAI = state.currentProject?.aiConfig
     const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
 
-    set({ isAnalyzing: true, analyzeError: null, polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null })
+    set({ isAnalyzing: true, analyzeError: null, polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null, aiIsThinking: false, aiThinkingText: '' })
+    const unsubChunk = window.api.onAIThinkingChunk((data) => {
+      set(s => ({ aiIsThinking: true, aiThinkingText: s.aiThinkingText + data.chunk }))
+    })
+    const unsubDone = window.api.onAIThinkingDone(() => {
+      set({ aiIsThinking: false })
+    })
     try {
       const result = await window.api.autoPolish(currentChapter.content, mergedAI)
       set({ polishSuggestions: result.suggestions, isAnalyzing: false })
     } catch (e: any) {
       set({ analyzeError: e.message, isAnalyzing: false })
+    } finally {
+      unsubChunk()
+      unsubDone()
+      set({ aiIsThinking: false, aiThinkingText: '' })
     }
   },
 
@@ -486,6 +501,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Refine Summary
   isRefining: false,
   refineProgress: null,
+
+  // AI Thinking (通用)
+  aiIsThinking: false,
+  aiThinkingText: '',
+  cancelAIFeature: () => {
+    window.api.aiCancel()
+    set({ aiIsThinking: false, aiThinkingText: '', isAnalyzing: false, isSummarizing: false, isRefining: false })
+  },
 
   summarizeChapter: async () => {
     const { summaryResult } = get()
@@ -506,7 +529,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const bookAI = state.currentProject?.aiConfig
     const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
 
-    set({ isSummarizing: true, summaryError: null, summaryResult: null })
+    set({ isSummarizing: true, summaryError: null, summaryResult: null, aiIsThinking: false, aiThinkingText: '' })
+    const unsubChunk = window.api.onAIThinkingChunk((data) => {
+      set(s => ({ aiIsThinking: true, aiThinkingText: s.aiThinkingText + data.chunk }))
+    })
+    const unsubDone = window.api.onAIThinkingDone(() => {
+      set({ aiIsThinking: false })
+    })
     try {
       const result = await window.api.summarizeChapter(currentChapter.content, mergedAI)
       set({ summaryResult: result, isSummarizing: false })
@@ -514,6 +543,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       await window.api.updateChapterSummary(currentChapter.id, result)
     } catch (e: any) {
       set({ summaryError: e.message, isSummarizing: false })
+    } finally {
+      unsubChunk()
+      unsubDone()
+      set({ aiIsThinking: false, aiThinkingText: '' })
     }
   },
 
@@ -526,7 +559,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     const bookAI = state.currentProject?.aiConfig
     const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
 
-    set({ isRefining: true, refineProgress: null })
+    set({ isRefining: true, refineProgress: null, aiIsThinking: false, aiThinkingText: '' })
+    const unsubChunk = window.api.onAIThinkingChunk((data) => {
+      set(s => ({ aiIsThinking: true, aiThinkingText: s.aiThinkingText + data.chunk }))
+    })
+    const unsubDone = window.api.onAIThinkingDone(() => {
+      set({ aiIsThinking: false })
+    })
     try {
       const result = await window.api.refineSummary(currentChapter.content, mergedAI)
       await window.api.updateChapterSummary(currentChapter.id, result)
@@ -541,6 +580,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       }))
     } catch (e: any) {
       set({ isRefining: false })
+    } finally {
+      unsubChunk()
+      unsubDone()
+      set({ aiIsThinking: false, aiThinkingText: '' })
     }
   },
 
@@ -556,12 +599,18 @@ export const useAppStore = create<AppState>((set, get) => ({
     const bookAI = state.currentProject?.aiConfig
     const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
 
-    set({ isRefining: true, refineProgress: { current: 0, total: volumeChapters.length } })
+    set({ isRefining: true, refineProgress: { current: 0, total: volumeChapters.length }, aiIsThinking: false, aiThinkingText: '' })
+    const unsubChunk = window.api.onAIThinkingChunk((data) => {
+      set(s => ({ aiIsThinking: true, aiThinkingText: s.aiThinkingText + data.chunk }))
+    })
+    const unsubDone = window.api.onAIThinkingDone(() => {
+      set({ aiIsThinking: false })
+    })
     try {
       for (let i = 0; i < volumeChapters.length; i++) {
         const ch = volumeChapters[i]
         if (!ch.content.trim()) continue
-        set({ refineProgress: { current: i + 1, total: volumeChapters.length } })
+        set({ refineProgress: { current: i + 1, total: volumeChapters.length }, aiThinkingText: '' })
         const result = await window.api.refineSummary(ch.content, mergedAI)
         await window.api.updateChapterSummary(ch.id, result)
         // Update chapter in store
@@ -572,6 +621,10 @@ export const useAppStore = create<AppState>((set, get) => ({
       set({ isRefining: false, refineProgress: null })
     } catch (e: any) {
       set({ isRefining: false, refineProgress: null })
+    } finally {
+      unsubChunk()
+      unsubDone()
+      set({ aiIsThinking: false, aiThinkingText: '' })
     }
   },
 

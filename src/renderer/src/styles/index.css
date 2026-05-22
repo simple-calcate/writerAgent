@@ -56,3 +56,24 @@ body {
   opacity: 0.5;
   pointer-events: none;
 }
+
+/* Thinking indicator: clip-path reveal for streaming text */
+.thinking-tail {
+  display: inline;
+  animation: thinking-reveal 400ms ease-out forwards;
+}
+
+@keyframes thinking-reveal {
+  from { clip-path: inset(0 100% 0 0); }
+  to   { clip-path: inset(0 0% 0 0); }
+}
+
+/* Polish preview: slow blink on target paragraph */
+.polish-preview-flash {
+  animation: polish-flash 2s ease-in-out 3;
+}
+
+@keyframes polish-flash {
+  0%, 100% { background-color: transparent; }
+  50%      { background-color: rgba(59, 130, 246, 0.2); }
+}

@@ -7,6 +7,7 @@ import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
 import { parseTxtContent } from './import-parser'
 import { generateContinuation } from './llm/continuation'
+import { initUpdater, checkForUpdates, downloadUpdate, installUpdate, getUpdateStatus } from './updater'
 import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, WritingSkill } from '../shared/types'
 import { randomUUID } from 'crypto'
 
@@ -414,12 +415,29 @@ function registerIPC(): void {
   ipcMain.handle('import-skills-confirm', (_e, skills: WritingSkill[]) => {
     saveSkills(skills)
   })
+
+  // Update
+  ipcMain.handle('update:check', () => checkForUpdates())
+  ipcMain.handle('update:download', () => downloadUpdate())
+  ipcMain.handle('update:install', () => installUpdate())
+  ipcMain.handle('update:get-status', () => getUpdateStatus())
+  ipcMain.handle('get-app-version', () => app.getVersion())
 }
 
 app.whenReady().then(() => {
   initDB()
   registerIPC()
   createWindow()
+
+  if (mainWindow) {
+    initUpdater(mainWindow)
+    // Delay auto-check 5 seconds after window is ready (only in packaged mode)
+    if (app.isPackaged) {
+      mainWindow.webContents.on('did-finish-load', () => {
+        setTimeout(() => { checkForUpdates() }, 5000)
+      })
+    }
+  }
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

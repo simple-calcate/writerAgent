@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig, WritingSkill, SkillCategory } from '../../../shared/types'
+import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig, WritingSkill, SkillCategory, UpdateStatus } from '../../../shared/types'
 import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, SKILL_CATEGORIES } from '../../../shared/types'
 
 type TabKey = 'api' | 'ai' | 'keys' | 'data' | 'skills'
@@ -61,6 +61,97 @@ function detectPreset(baseUrl: string): string {
     if (p.value && p.baseUrl && baseUrl === p.baseUrl) return p.value
   }
   return ''
+}
+
+// ─── Update Check Button ───
+
+function UpdateCheckButton() {
+  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' })
+
+  useEffect(() => {
+    const unsub = window.api.onUpdateStatus(setUpdateStatus)
+    window.api.getUpdateStatus().then(setUpdateStatus)
+    return unsub
+  }, [])
+
+  const handleCheck = () => {
+    setUpdateStatus({ status: 'checking' })
+    window.api.checkForUpdates()
+  }
+
+  const handleDownload = () => {
+    window.api.downloadUpdate()
+  }
+
+  const handleInstall = () => {
+    window.api.installUpdate()
+  }
+
+  const statusUI: Record<string, { text: string; color: string }> = {
+    idle: { text: '尚未检查', color: 'text-gray-500' },
+    checking: { text: '正在检查 GitHub Releases...', color: 'text-blue-400' },
+    available: { text: `发现新版本 v${updateStatus.version}`, color: 'text-blue-400' },
+    downloading: { text: `正在下载 v${updateStatus.version}...`, color: 'text-amber-400' },
+    downloaded: { text: `v${updateStatus.version} 已下载完成`, color: 'text-emerald-400' },
+    'not-available': { text: '当前已是最新版本', color: 'text-gray-400' },
+    error: { text: '检查失败', color: 'text-red-400' }
+  }
+
+  const current = statusUI[updateStatus.status] || statusUI.idle
+
+  return (
+    <div className="space-y-2">
+      {/* Status line */}
+      <div className="flex items-center gap-2">
+        {updateStatus.status === 'checking' && (
+          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0" />
+        )}
+        <span className={`text-[10px] ${current.color}`}>{current.text}</span>
+      </div>
+
+      {/* Download progress */}
+      {updateStatus.status === 'downloading' && updateStatus.progress && (
+        <div className="flex items-center gap-2">
+          <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+            <div
+              className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
+              style={{ width: `${updateStatus.progress.percent}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-gray-500 shrink-0">
+            {updateStatus.progress.percent}% · {(updateStatus.progress.transferred / 1024 / 1024).toFixed(1)}/{(updateStatus.progress.total / 1024 / 1024).toFixed(1)} MB
+          </span>
+        </div>
+      )}
+
+      {/* Error detail */}
+      {updateStatus.status === 'error' && updateStatus.error && (
+        <p className="text-[10px] text-red-400/70 break-all">{updateStatus.error}</p>
+      )}
+
+      {/* Action buttons */}
+      <div className="flex items-center gap-2">
+        {(updateStatus.status === 'idle' || updateStatus.status === 'not-available' || updateStatus.status === 'error') && (
+          <button
+            onClick={handleCheck}
+            className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+          >
+            {updateStatus.status === 'error' ? '重新检查' : '检查更新'}
+          </button>
+        )}
+        {updateStatus.status === 'available' && (
+          <button onClick={handleDownload} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">
+            下载更新
+          </button>
+        )}
+        {updateStatus.status === 'downloaded' && (
+          <button onClick={handleInstall} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors">
+            退出并安装
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 // ─── Skills Tab Content ───
@@ -262,6 +353,7 @@ export default function Settings() {
   const [defaultPath, setDefaultPath] = useState('')
   const [customPath, setCustomPath] = useState('')
   const [recordingKey, setRecordingKey] = useState<keyof KeyBindings | null>(null)
+  const [appVersion, setAppVersion] = useState('')
 
   // API profile editing state
   const [editingProfile, setEditingProfile] = useState<APIProfile | null>(null)
@@ -271,6 +363,7 @@ export default function Settings() {
     setForm(llmConfig)
     window.api.getDataPath().then(setDataPath)
     window.api.getDataPathDefault().then(setDefaultPath)
+    window.api.getAppVersion().then(setAppVersion)
   }, [llmConfig])
 
   const handleSave = () => {
@@ -913,6 +1006,16 @@ export default function Settings() {
                       恢复默认路径
                     </button>
                   )}
+                </div>
+
+                <div className="border-t border-gray-700/50 pt-4 mt-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-xs text-gray-400">应用更新</p>
+                      <p className="text-[10px] text-gray-500 mt-0.5">当前版本 v{appVersion || '...'}</p>
+                    </div>
+                    <UpdateCheckButton />
+                  </div>
                 </div>
               </div>
             )}

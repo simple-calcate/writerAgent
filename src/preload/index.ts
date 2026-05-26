@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -229,7 +229,29 @@ const api: IPCAPI = {
     ipcRenderer.invoke('save-outline', outline),
 
   deleteOutline: (level: DialogueLevel, entityId: string) =>
-    ipcRenderer.invoke('delete-outline', level, entityId)
+    ipcRenderer.invoke('delete-outline', level, entityId),
+
+  // Update
+  checkForUpdates: () =>
+    ipcRenderer.invoke('update:check'),
+
+  downloadUpdate: () =>
+    ipcRenderer.invoke('update:download'),
+
+  installUpdate: () =>
+    ipcRenderer.invoke('update:install'),
+
+  getUpdateStatus: () =>
+    ipcRenderer.invoke('update:get-status'),
+
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
+    const handler = (_event: any, status: UpdateStatus) => callback(status)
+    ipcRenderer.on('update:status', handler)
+    return () => { ipcRenderer.removeListener('update:status', handler) }
+  },
+
+  getAppVersion: () =>
+    ipcRenderer.invoke('get-app-version')
 }
 
 contextBridge.exposeInMainWorld('api', api)

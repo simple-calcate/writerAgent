@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider } from '../../shared/types'
 import { streamWithThinking } from './streaming'
+import { getFeatureSkillContent } from './feature-skills'
 
 export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
@@ -154,10 +155,8 @@ export async function autoPolish(
   const paragraphs = content.split('\n\n')
   const numbered = paragraphs.map((p, i) => `[${i}] ${p}`).join('\n')
 
-  const messages = [
-    {
-      role: 'system' as const,
-      content: `你是一位网文编辑，擅长发现并润色文字中需要改进的地方。
+  const skillPrompt = getFeatureSkillContent('polish')
+  const basePrompt = skillPrompt || `你是一位网文编辑，擅长发现并润色文字中需要改进的地方。
 
 以下是一个网文章节，已按段落编号。请分析每个段落，找出需要润色的段落并直接给出润色后的版本。
 
@@ -168,7 +167,12 @@ export async function autoPolish(
 - 返回严格 JSON
 
 输出格式：
-{"results":[{"index":段落编号,"polished":"润色后的完整段落","reason":"改动理由"}]}
+{"results":[{"index":段落编号,"polished":"润色后的完整段落","reason":"改动理由"}]}`
+
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `${basePrompt}
 ${aiConfig?.polishStandard ? '\n润色标准：' + aiConfig.polishStandard : ''}
 ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     },
@@ -253,10 +257,8 @@ export async function summarizeChapter(
 ): Promise<string> {
   const client = createClient(config)
 
-  const messages = [
-    {
-      role: 'system' as const,
-      content: `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
+  const skillPrompt = getFeatureSkillContent('summary')
+  const basePrompt = skillPrompt || `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
 
 1. 主要人物
 - 人物名：状态/作用
@@ -272,10 +274,15 @@ export async function summarizeChapter(
 
 5. 情感
 - 情感基调描述
-${aiConfig?.summaryStandard ? '\n摘要标准：' + aiConfig.summaryStandard : ''}
-${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}
 
 要求：条目简洁，每个条目一行，不要展开论述。`
+
+  const messages = [
+    {
+      role: 'system' as const,
+      content: `${basePrompt}
+${aiConfig?.summaryStandard ? '\n摘要标准：' + aiConfig.summaryStandard : ''}
+${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     },
     { role: 'user' as const, content }
   ]

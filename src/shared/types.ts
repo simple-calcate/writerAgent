@@ -251,6 +251,73 @@ export const BUILTIN_SKILLS: Omit<WritingSkill, 'id' | 'createdAt' | 'updatedAt'
 ### 3. 成长弧线
 - 主角应有清晰的成长轨迹
 - 配角也应有自己的目标和动机`
+  },
+  // ─── AI 功能指导（可自定义各功能的系统提示词） ───
+  {
+    name: '智能润色指导',
+    category: 'formatting',
+    builtin: true,
+    content: `你是一位网文编辑，擅长发现并润色文字中需要改进的地方。
+
+以下是一个网文章节，已按段落编号。请分析每个段落，找出需要润色的段落并直接给出润色后的版本。
+
+要求：
+- 只选择确实需要改进的段落，不要改动已经好的部分
+- 最多选择5个最需要改进的段落
+- 润色时保持原文意思完全不变，只改善用词、句式、描写
+- 返回严格 JSON
+
+输出格式：
+{"results":[{"index":段落编号,"polished":"润色后的完整段落","reason":"改动理由"}]}`
+  },
+  {
+    name: '结构化摘要指导',
+    category: 'formatting',
+    builtin: true,
+    content: `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
+
+1. 主要人物
+- 人物名：状态/作用
+
+2. 关键事件
+- 事件描述
+
+3. 伏笔
+- 伏笔内容
+
+4. 场景
+- 场景描述
+
+5. 情感
+- 情感基调描述
+
+要求：条目简洁，每个条目一行，不要展开论述。`
+  },
+  {
+    name: '精炼总结指导',
+    category: 'formatting',
+    builtin: true,
+    content: `你是一位网文写作分析助手。请按场景梳理这一章的剧情脉络，输出一段连贯的总结。
+
+要求：
+- 按场景顺序梳理：每个场景的核心事件、人物行动、情感变化
+- 保留关键转折点和剧情推进的关键信息
+- 如果有伏笔或悬念，明确指出
+- 写成连贯段落，不要分条目
+- 语言精炼，信息密度高，避免废话`
+  },
+  {
+    name: '智能续写指导',
+    category: 'formatting',
+    builtin: true,
+    content: `你是一位网文写作助手。作者正在写到章节末尾，需要你提供续写建议。不要解释、不要评论。
+
+【注释模式】如果作者留下 // 注释，则根据上下文和大纲，直接输出能解答困惑的正文。
+
+输出规则：
+- 默认只写 1-2 句话，自然衔接前文
+- 仅当大纲中明确描述了后续详细剧情时，才可以写 1 个自然段
+- 保持与前文一致的文风和人称`
   }
 ]
 
@@ -459,6 +526,16 @@ export interface AIThinkingDone {}
 
 export type DialogueLevel = 'book' | 'volume' | 'chapter'
 
+// ─── App Update ───
+
+export interface UpdateStatus {
+  status: 'idle' | 'checking' | 'available' | 'downloading' | 'downloaded' | 'not-available' | 'error'
+  version?: string
+  releaseNotes?: string
+  progress?: { percent: number; transferred: number; total: number }
+  error?: string
+}
+
 export interface IPCAPI {
   // AI
   autoPolish: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<AutoPolishResult>
@@ -547,4 +624,12 @@ export interface IPCAPI {
   getOutline: (level: DialogueLevel, entityId: string) => Promise<Outline | undefined>
   saveOutline: (outline: Outline) => Promise<void>
   deleteOutline: (level: DialogueLevel, entityId: string) => Promise<void>
+
+  // Update
+  checkForUpdates: () => Promise<void>
+  downloadUpdate: () => Promise<void>
+  installUpdate: () => Promise<void>
+  getUpdateStatus: () => Promise<UpdateStatus>
+  onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
+  getAppVersion: () => Promise<string>
 }

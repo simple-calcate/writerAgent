@@ -1,9 +1,10 @@
 import type OpenAI from 'openai'
-import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel, WritingSkill } from '../../shared/types'
+import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel, WritingSkill, FeatureSkillIds } from '../../shared/types'
+import { DEFAULT_FEATURE_SKILL_IDS } from '../../shared/types'
 import { summarizeChapter } from './client'
 import { polishText } from './client'
 import { refineSummary } from './refine-summary'
-import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills } from '../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds } from '../store/db'
 import { randomUUID } from 'crypto'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
@@ -19,11 +20,13 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   write_chapter_content: '撰写章节内容',
   create_volume: '创建卷',
   extract_skill: '提取写作技能',
-  refine_skill: '修正写作技能'
+  refine_skill: '修正写作技能',
+  list_skills: '查看技能列表',
+  toggle_feature_skill: '调整技能挂载'
 }
 
 // Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill'])
+const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill'])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
@@ -58,6 +61,8 @@ export function getToolApprovalDescription(toolName: string, args: Record<string
       return `提取写作技能「${args.name || '未命名'}」（${args.category || 'custom'}）`
     case 'refine_skill':
       return `修正写作技能（${(args.content?.length || 0)} 字）`
+    case 'toggle_feature_skill':
+      return `${args.enabled === 'true' ? '启用' : '禁用'}技能在${args.feature || '某功能'}上的挂载`
     default:
       return `执行 ${toolName}`
   }
@@ -282,6 +287,33 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           required: ['skillId', 'content']
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_skills',
+        description: '查看所有写作技能列表及其在各 AI 功能上的挂载状态。返回技能的 ID、名称、分类、是否内置、以及在对话/润色/摘要/续写四个功能上的启用状态。只读操作，无需用户确认。',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'toggle_feature_skill',
+        description: '调整写作技能在指定 AI 功能上的挂载状态（启用或禁用）。需要用户确认后执行。可以用来为某个功能添加或移除特定的写作风格技能。',
+        parameters: {
+          type: 'object',
+          properties: {
+            skillId: { type: 'string', description: '技能 ID' },
+            feature: { type: 'string', enum: ['dialogue', 'polish', 'summary', 'continuation'], description: '目标功能：dialogue(AI对话)、polish(智能润色)、summary(章节摘要)、continuation(智能续写)' },
+            enabled: { type: 'boolean', description: 'true 为启用（挂载），false 为禁用（卸载）' }
+          },
+          required: ['skillId', 'feature', 'enabled']
+        }
+      }
     }
   ]
 }
@@ -463,6 +495,72 @@ export async function executeTool(
       }
       saveSkill(updatedSkill)
       return `已修正技能「${targetSkill.name}」${args.reason ? '\n\n修正理由：' + args.reason : ''}\n\n${args.content.substring(0, 200)}${args.content.length > 200 ? '...' : ''}`
+    }
+
+    case 'list_skills': {
+      const allSkills = getSkills()
+      const projects = getProjects()
+      const project = projects.find(p => p.id === projectId)
+      const featureSkillIds = project?.featureSkillIds || DEFAULT_FEATURE_SKILL_IDS
+
+      const featureNames: Record<string, string> = {
+        dialogue: 'AI 对话',
+        polish: '智能润色',
+        summary: '章节摘要',
+        continuation: '智能续写'
+      }
+
+      const lines = allSkills.map(skill => {
+        const features = Object.entries(featureSkillIds)
+          .filter(([, ids]) => ids.includes(skill.id))
+          .map(([key]) => featureNames[key] || key)
+        const mountStatus = features.length > 0 ? `已挂载：${features.join('、')}` : '未挂载到任何功能'
+        const builtinTag = skill.builtin ? ' [内置]' : ''
+        return `- 「${skill.name}」${builtinTag}（${skill.category}）${mountStatus}\n  ${skill.content.substring(0, 100)}${skill.content.length > 100 ? '...' : ''}`
+      })
+
+      return `共 ${allSkills.length} 个写作技能：\n\n${lines.join('\n\n')}`
+    }
+
+    case 'toggle_feature_skill': {
+      if (!args.skillId) return '错误：未提供技能 ID'
+      if (!args.feature) return '错误：未提供目标功能'
+      if (args.enabled === undefined) return '错误：未提供启用/禁用状态'
+
+      const allSkills = getSkills()
+      const skill = allSkills.find(s => s.id === args.skillId)
+      if (!skill) return '错误：找不到指定技能'
+
+      const projects = getProjects()
+      const project = projects.find(p => p.id === projectId)
+      const current = project?.featureSkillIds || { ...DEFAULT_FEATURE_SKILL_IDS }
+      const feature = args.feature as keyof FeatureSkillIds
+
+      if (!(feature in current)) return `错误：不支持的功能「${args.feature}」`
+
+      const ids = [...(current[feature] || [])]
+      const isEnabled = ids.includes(args.skillId)
+
+      if (args.enabled === 'true' && !isEnabled) {
+        ids.push(args.skillId)
+      } else if (args.enabled === 'false' && isEnabled) {
+        const idx = ids.indexOf(args.skillId)
+        ids.splice(idx, 1)
+      }
+
+      const newFeatureSkillIds = { ...current, [feature]: ids }
+      updateProjectFeatureSkillIds(projectId, newFeatureSkillIds)
+
+      const featureNames: Record<string, string> = {
+        dialogue: 'AI 对话',
+        polish: '智能润色',
+        summary: '章节摘要',
+        continuation: '智能续写'
+      }
+      const action = args.enabled === 'true' ? '启用' : '禁用'
+      const mountedSkills = ids.map(id => allSkills.find(s => s.id === id)?.name || id).join('、')
+
+      return `已${action}技能「${skill.name}」在${featureNames[feature] || feature}上的挂载。\n\n当前${featureNames[feature] || feature}已挂载技能：${mountedSkills || '无'}`
     }
 
     default:

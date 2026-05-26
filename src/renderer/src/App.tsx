@@ -8,6 +8,7 @@ import HistoryPanel from './components/HistoryPanel'
 import ResizeHandle from './components/ResizeHandle'
 import ImportPreviewDialog from './components/ImportPreviewDialog'
 import SkillImportPreview from './components/SkillImportPreview'
+import UpdateBanner from './components/UpdateBanner'
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
@@ -84,12 +85,15 @@ export default function App() {
           </button>
           <h1 className="text-xs font-medium text-gray-400">网文写作助手</h1>
         </div>
-        <button
-          onClick={toggleSettings}
-          className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded hover:bg-gray-700 transition-colors"
-        >
-          ⚙ 设置
-        </button>
+        <div className="flex items-center gap-2">
+          <UpdateBanner />
+          <button
+            onClick={toggleSettings}
+            className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded hover:bg-gray-700 transition-colors"
+          >
+            ⚙ 设置
+          </button>
+        </div>
       </div>
 
       {/* Main content */}

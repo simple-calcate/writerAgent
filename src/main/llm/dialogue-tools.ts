@@ -308,7 +308,7 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           type: 'object',
           properties: {
             skillId: { type: 'string', description: '技能 ID' },
-            feature: { type: 'string', enum: ['dialogue', 'polish', 'summary', 'continuation'], description: '目标功能：dialogue(AI对话)、polish(智能润色)、summary(章节摘要)、continuation(智能续写)' },
+            feature: { type: 'string', enum: ['dialogue', 'polish', 'summary', 'continuation', 'outline', 'chapterContent'], description: '目标功能：dialogue(AI对话)、polish(智能润色)、summary(章节摘要)、continuation(智能续写)、outline(大纲撰写)、chapterContent(正文撰写)' },
             enabled: { type: 'boolean', description: 'true 为启用（挂载），false 为禁用（卸载）' }
           },
           required: ['skillId', 'feature', 'enabled']

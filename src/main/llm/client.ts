@@ -82,16 +82,21 @@ export async function polishText(
 ): Promise<PolishResult> {
   const client = createClient(config)
 
-  const messages = [
-    {
-      role: 'system' as const,
-      content: `你是一位网文写作助手，专注于文风润色。你的任务是：
+  const skillContent = getFeatureSkillContent('polish')
+  const systemPrompt = skillContent
+    ? `${skillContent}\n\n返回严格 JSON：{"polished":"润色后文字","reason":"改动理由"}`
+    : `你是一位网文写作助手，专注于文风润色。你的任务是：
 - 保持原文意思完全不变
 - 改善用词精准度、句式节奏、描写生动度
 - 不要添加原文没有的情节、人物或信息
 - 不要删减原文的核心内容
 - 用一句话简要说明你做了什么改动（reason字段）
 - 返回严格 JSON：{"polished":"润色后文字","reason":"改动理由"}`
+
+  const messages = [
+    {
+      role: 'system' as const,
+      content: systemPrompt
     },
     {
       role: 'user' as const,

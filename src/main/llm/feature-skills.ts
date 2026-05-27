@@ -5,7 +5,9 @@ const FEATURE_SKILL_NAMES: Record<string, string> = {
   polish: '智能润色指导',
   summary: '结构化摘要指导',
   refineSummary: '精炼总结指导',
-  continuation: '智能续写指导'
+  continuation: '智能续写指导',
+  outline: '大纲撰写指导',
+  chapterContent: '正文撰写指导'
 }
 
 /**

@@ -318,6 +318,41 @@ export const BUILTIN_SKILLS: Omit<WritingSkill, 'id' | 'createdAt' | 'updatedAt'
 - 默认只写 1-2 句话，自然衔接前文
 - 仅当大纲中明确描述了后续详细剧情时，才可以写 1 个自然段
 - 保持与前文一致的文风和人称`
+  },
+  {
+    name: '大纲撰写指导',
+    category: 'formatting',
+    builtin: true,
+    content: `你是一位网文大纲策划师。撰写大纲时请遵循以下原则：
+
+### 大纲结构
+- 书籍大纲：世界观设定、核心冲突、角色体系、卷际节奏规划
+- 卷纲：本卷主线/支线、关键转折点、章节分布、伏笔规划
+- 章纲：核心事件、涉及人物、情感走向、与前后章的衔接
+
+### 撰写要求
+- 条目清晰，层次分明
+- 保留足够的创作空间，不过度细化
+- 标注伏笔的埋设和回收位置
+- 考虑节奏起伏：高潮→缓冲→铺垫→高潮`
+  },
+  {
+    name: '正文撰写指导',
+    category: 'formatting',
+    builtin: true,
+    content: `你是一位网文写作助手，正在根据大纲为章节撰写正文。
+
+### 撰写原则
+- 严格遵循大纲中的核心事件和人物行为
+- 保持与已有章节一致的文风、人称、叙述视角
+- 场景描写调动感官细节，避免纯粹的静态描述
+- 对话口语化，体现角色性格差异
+- 章节结尾留悬念或钩子
+
+### 输出格式
+- 直接输出正文内容，不要加标题、编号或元描述
+- 段落之间用空行分隔
+- 对话用引号标注`
   }
 ]
 
@@ -337,13 +372,17 @@ export interface FeatureSkillIds {
   polish: string[]
   summary: string[]
   continuation: string[]
+  outline: string[]
+  chapterContent: string[]
 }
 
 export const DEFAULT_FEATURE_SKILL_IDS: FeatureSkillIds = {
   dialogue: [],
   polish: [],
   summary: [],
-  continuation: []
+  continuation: [],
+  outline: [],
+  chapterContent: []
 }
 
 export interface Project {

@@ -688,7 +688,9 @@ function AIConfigLevel() {
     { key: 'dialogue', icon: '💬', label: 'AI 对话', desc: '对话系统中使用的技能', color: 'from-blue-500/20 to-blue-600/5 border-blue-500/30' },
     { key: 'polish', icon: '✨', label: '智能润色', desc: '润色功能中使用的技能', color: 'from-amber-500/20 to-amber-600/5 border-amber-500/30' },
     { key: 'summary', icon: '📋', label: '章节摘要', desc: '摘要功能中使用的技能', color: 'from-green-500/20 to-green-600/5 border-green-500/30' },
-    { key: 'continuation', icon: '⚡', label: '智能续写', desc: '续写功能中使用的技能', color: 'from-purple-500/20 to-purple-600/5 border-purple-500/30' }
+    { key: 'continuation', icon: '⚡', label: '智能续写', desc: '续写功能中使用的技能', color: 'from-purple-500/20 to-purple-600/5 border-purple-500/30' },
+    { key: 'outline', icon: '📝', label: '大纲撰写', desc: '撰写大纲时使用的技能', color: 'from-teal-500/20 to-teal-600/5 border-teal-500/30' },
+    { key: 'chapterContent', icon: '📖', label: '正文撰写', desc: '撰写正文时使用的技能', color: 'from-rose-500/20 to-rose-600/5 border-rose-500/30' }
   ]
 
   return (

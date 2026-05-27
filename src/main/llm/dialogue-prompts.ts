@@ -1,5 +1,6 @@
 import type { Project, Volume, Chapter, BookAIConfig, DialogueLevel, Outline, WritingSkill, SkillCategory, SKILL_CATEGORIES } from '../../shared/types'
 import { formatKnowledgeForPrompt } from '../../shared/novel-knowledge'
+import { getFeatureSkillContent } from './feature-skills'
 
 interface PromptParams {
   level: DialogueLevel
@@ -385,6 +386,17 @@ function buildToolInstructions(chapters: Chapter[], level: DialogueLevel, curren
   parts.push('**计划执行流程**：当用户确认计划后，按以下顺序执行：')
   parts.push('1. create_chapter → 2. write_chapter_outline → 3. write_chapter_content')
   parts.push('每个步骤都会请求用户确认。完成一步后继续下一步，直到计划全部完成。')
+
+  // Inject skill content for outline and chapter writing
+  const outlineSkill = getFeatureSkillContent('outline')
+  if (outlineSkill) {
+    parts.push(`\n**大纲撰写指导：**\n${outlineSkill}`)
+  }
+
+  const chapterContentSkill = getFeatureSkillContent('chapterContent')
+  if (chapterContentSkill) {
+    parts.push(`\n**正文撰写指导：**\n${chapterContentSkill}`)
+  }
 
   if (chapters.length > 0) {
     parts.push('\n可操作的章节列表：')

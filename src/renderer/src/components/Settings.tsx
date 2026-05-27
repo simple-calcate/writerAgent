@@ -141,9 +141,17 @@ function UpdateCheckButton() {
             {updateStatus.status === 'error' ? '重新检查' : '检查更新'}
           </button>
         )}
+        {(updateStatus.status === 'error' || updateStatus.status === 'available') && (
+          <button
+            onClick={() => window.api.openExternal('https://gitee.com/simple-calcate/writerAgent/releases')}
+            className="px-3 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
+          >
+            从 Gitee 下载
+          </button>
+        )}
         {updateStatus.status === 'available' && (
           <button onClick={handleDownload} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">
-            下载更新
+            从 GitHub 下载
           </button>
         )}
         {updateStatus.status === 'downloaded' && (

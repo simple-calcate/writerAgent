@@ -36,6 +36,12 @@ export default function UpdateBanner() {
     window.api.installUpdate()
   }
 
+  const GITEE_RELEASES = 'https://gitee.com/simple-calcate/writerAgent/releases'
+
+  const openGitee = () => {
+    window.api.openExternal(GITEE_RELEASES)
+  }
+
   // Don't show anything during idle or checking
   if (status.status === 'idle' || status.status === 'checking') return null
   // Don't show error for "no update available" on auto-check
@@ -102,6 +108,12 @@ export default function UpdateBanner() {
                 >
                   下载更新
                 </button>
+                <button
+                  onClick={openGitee}
+                  className="w-full py-1.5 text-xs font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 rounded transition-colors mt-1"
+                >
+                  从 Gitee 下载
+                </button>
               </>
             )}
 
@@ -148,12 +160,20 @@ export default function UpdateBanner() {
                   <button onClick={() => setExpanded(false)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
                 </div>
                 <p className="text-xs text-gray-400 mb-3">{status.error || '网络连接失败，请稍后重试。'}</p>
-                <button
-                  onClick={handleCheck}
-                  className="w-full py-1.5 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-                >
-                  重试
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleCheck}
+                    className="flex-1 py-1.5 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                  >
+                    重试
+                  </button>
+                  <button
+                    onClick={openGitee}
+                    className="flex-1 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded transition-colors"
+                  >
+                    从 Gitee 下载
+                  </button>
+                </div>
               </>
             )}
           </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useAppStore } from './stores/useAppStore'
+import { useVisualTheme } from './hooks/useVisualTheme'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import RightPanel from './components/RightPanel'
@@ -9,6 +10,9 @@ import ResizeHandle from './components/ResizeHandle'
 import ImportPreviewDialog from './components/ImportPreviewDialog'
 import SkillImportPreview from './components/SkillImportPreview'
 import UpdateBanner from './components/UpdateBanner'
+import BackgroundLayer from './components/BackgroundLayer'
+import MouseGlow from './components/MouseGlow'
+import RainEffect from './components/RainEffect'
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
@@ -27,6 +31,7 @@ function loadWidth(key: string, fallback: number): number {
 }
 
 export default function App() {
+  useVisualTheme()
   const {
     loadProjects,
     loadLLMConfig,
@@ -73,8 +78,12 @@ export default function App() {
 
   return (
     <div className="h-screen flex flex-col">
+      <BackgroundLayer />
+      <MouseGlow />
+      <RainEffect />
+
       {/* Title bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-gray-800/80 border-b border-gray-700/60 select-none">
+      <div className="relative z-[1] flex items-center justify-between px-3 py-1.5 glass-panel border-b select-none">
         <div className="flex items-center gap-2">
           <button
             onClick={() => useAppStore.getState().toggleSidebar()}
@@ -97,7 +106,7 @@ export default function App() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="relative z-[1] flex-1 flex overflow-hidden">
         {showSidebar && (
           <>
             <Sidebar width={sidebarWidth} />

@@ -632,4 +632,7 @@ export interface IPCAPI {
   getUpdateStatus: () => Promise<UpdateStatus>
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void
   getAppVersion: () => Promise<string>
+
+  // Visual Effects
+  selectBackgroundImage: () => Promise<string | null>
 }

@@ -90,7 +90,7 @@ function SlidePanel({ active, direction, children }: { active: boolean; directio
       : 'translate-x-full'
 
   return (
-    <div className={`absolute inset-0 transition-transform duration-200 ease-in-out ${translateClass} flex flex-col bg-gray-800`}>
+    <div className={`absolute inset-0 transition-transform duration-200 ease-out ${translateClass} flex flex-col`}>
       {children}
     </div>
   )
@@ -816,17 +816,22 @@ function AIConfigLevel() {
 
 // ─── Main Sidebar ───
 
+const LEVEL_ORDER = ['projects', 'project', 'volume', 'chapter', 'ai-config']
+
 export default function Sidebar({ width }: { width?: number }) {
   const { navLevel } = useAppStore()
   const prevLevel = useRef(navLevel)
-  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>('right')
+  const [slideDirection, setSlideDirection] = useState<'left' | 'right'>(() => {
+    const idx = LEVEL_ORDER.indexOf(navLevel)
+    return idx >= 1 ? 'left' : 'right'
+  })
 
-  // Determine slide direction based on level hierarchy
-  const levelOrder = ['projects', 'project', 'volume', 'chapter', 'ai-config']
   useEffect(() => {
-    const prevIdx = levelOrder.indexOf(prevLevel.current)
-    const nextIdx = levelOrder.indexOf(navLevel)
-    setSlideDirection(nextIdx >= prevIdx ? 'left' : 'right')
+    const prevIdx = LEVEL_ORDER.indexOf(prevLevel.current)
+    const nextIdx = LEVEL_ORDER.indexOf(navLevel)
+    if (prevIdx !== nextIdx) {
+      setSlideDirection(nextIdx >= prevIdx ? 'left' : 'right')
+    }
     prevLevel.current = navLevel
   }, [navLevel])
 
@@ -840,7 +845,7 @@ export default function Sidebar({ width }: { width?: number }) {
   ]
 
   return (
-    <div className="bg-gray-800 border-r border-gray-700 flex flex-col h-full select-none shrink-0 relative overflow-hidden" style={{ width: width ?? 256 }}>
+    <div className="glass-panel border-r flex flex-col h-full select-none shrink-0 relative overflow-hidden" style={{ width: width ?? 256 }}>
       {panels.map(p => (
         <SlidePanel key={p.key} active={navLevel === p.level} direction={slideDirection}>
           {p.component}

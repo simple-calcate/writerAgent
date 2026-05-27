@@ -502,7 +502,7 @@ export default function RightPanel({ width }: { width?: number }) {
   })
 
   return (
-    <div className="border-l border-gray-700 bg-gray-800 flex shrink-0" style={{ width: width ?? 320 }}>
+    <div className="border-l glass-panel flex shrink-0" style={{ width: width ?? 320 }}>
       {/* 竖向标签栏 */}
       <div className="w-8 bg-gray-900/60 border-r border-gray-700/60 flex flex-col items-center py-2 gap-1 shrink-0">
         {visibleTabs.map(tab => (

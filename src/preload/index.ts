@@ -251,7 +251,11 @@ const api: IPCAPI = {
   },
 
   getAppVersion: () =>
-    ipcRenderer.invoke('get-app-version')
+    ipcRenderer.invoke('get-app-version'),
+
+  // Visual Effects
+  selectBackgroundImage: () =>
+    ipcRenderer.invoke('visual:select-background')
 }
 
 contextBridge.exposeInMainWorld('api', api)

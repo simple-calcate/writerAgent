@@ -1,16 +1,18 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
+import VisualEffectsTab from './VisualEffectsTab'
 import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig, WritingSkill, SkillCategory, UpdateStatus } from '../../../shared/types'
 import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, SKILL_CATEGORIES } from '../../../shared/types'
 
-type TabKey = 'api' | 'ai' | 'keys' | 'data' | 'skills'
+type TabKey = 'api' | 'ai' | 'keys' | 'data' | 'skills' | 'visual'
 
 const TABS: { key: TabKey; label: string }[] = [
   { key: 'api', label: 'API 配置' },
   { key: 'ai', label: 'AI 功能' },
   { key: 'keys', label: '快捷键' },
   { key: 'data', label: '数据存储' },
-  { key: 'skills', label: '技能库' }
+  { key: 'skills', label: '技能库' },
+  { key: 'visual', label: '视觉效果' }
 ]
 
 const KEY_BINDING_ITEMS: { key: keyof KeyBindings; label: string; desc: string }[] = [
@@ -1022,6 +1024,10 @@ export default function Settings() {
 
             {activeTab === 'skills' && (
               <SkillsTabContent />
+            )}
+
+            {activeTab === 'visual' && (
+              <VisualEffectsTab />
             )}
           </div>
 

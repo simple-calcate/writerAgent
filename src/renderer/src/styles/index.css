@@ -2,9 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --nw-bg-color: #111827;
+  --nw-panel-bg-glass: rgba(31,41,55,1);
+  --nw-panel-border: rgba(55,65,81,0.6);
+  --nw-glass-blur: 0px;
+}
+
 body {
-  @apply bg-gray-900 text-gray-100 antialiased;
+  background: var(--nw-bg-color);
+  @apply text-gray-100 antialiased;
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+@layer components {
+  .glass-panel {
+    background: var(--nw-panel-bg-glass);
+    backdrop-filter: blur(var(--nw-glass-blur));
+    -webkit-backdrop-filter: blur(var(--nw-glass-blur));
+    border-color: var(--nw-panel-border);
+  }
 }
 
 ::-webkit-scrollbar {

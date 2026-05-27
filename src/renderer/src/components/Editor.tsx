@@ -574,7 +574,7 @@ export default function Editor() {
   return (
     <div className="flex-1 flex flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b border-gray-700/60 bg-gray-800/40">
+      <div className="flex items-center justify-between px-3 py-1.5 border-b glass-panel">
         <div className="flex items-center gap-3 min-w-0">
           <h2 className="text-sm font-medium text-gray-300 truncate">{currentChapter.title}</h2>
           <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${

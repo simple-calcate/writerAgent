@@ -422,6 +422,36 @@ function registerIPC(): void {
   ipcMain.handle('update:install', () => installUpdate())
   ipcMain.handle('update:get-status', () => getUpdateStatus())
   ipcMain.handle('get-app-version', () => app.getVersion())
+
+  // Visual Effects
+  ipcMain.handle('visual:select-background', async () => {
+    if (!mainWindow) return null
+    const result = await dialog.showOpenDialog(mainWindow, {
+      title: '选择背景图片或视频',
+      filters: [
+        { name: '媒体文件', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'mp4', 'webm'] }
+      ],
+      properties: ['openFile']
+    })
+    if (result.canceled || !result.filePaths[0]) return null
+    const filePath = result.filePaths[0]
+    const isVideo = /\.(mp4|webm)$/i.test(filePath)
+    const maxSize = isVideo ? 200 * 1024 * 1024 : 5 * 1024 * 1024
+    const { statSync, copyFileSync } = require('fs')
+    const stat = statSync(filePath)
+    if (stat.size <= maxSize && !isVideo) {
+      const buffer = readFileSync(filePath)
+      const ext = filePath.split('.').pop()?.toLowerCase() || 'png'
+      const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+      return `data:${mime};base64,${buffer.toString('base64')}`
+    }
+    const bgDir = join(app.getPath('userData'), 'backgrounds')
+    mkdirSync(bgDir, { recursive: true })
+    const destName = `bg-${Date.now()}-${filePath.split(/[/\\]/).pop()}`
+    const dest = join(bgDir, destName)
+    copyFileSync(filePath, dest)
+    return dest
+  })
 }
 
 app.whenReady().then(() => {

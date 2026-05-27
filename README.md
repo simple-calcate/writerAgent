@@ -89,7 +89,7 @@ AI 生成内容时自动参考相关大纲，确保剧情连贯。
 
 - **5 个内置技能**：对话风格、场景描写、节奏把控、文风特征、人物塑造
 - **自定义技能**：添加、编辑、删除、导入、导出
-- **按功能搭载**：AI 对话、智能润色、章节摘要、智能续写各自独立配置技能
+- **按功能搭载**：AI 对话、智能润色、章节摘要、智能续写、大纲撰写、正文撰写各自独立配置技能
 - **AI 提取**：对话中可自动提取和优化技能
 
 ### 🔌 多 API 配置 — 灵活接入
@@ -105,6 +105,29 @@ AI 生成内容时自动参考相关大纲，确保剧情连贯。
 
 **内置供应商快捷配置**，一键填入 Base URL 和默认模型：
 OpenRouter · DeepSeek · OpenAI · Claude · 通义千问 · Moonshot · Ollama（完全本地离线）
+
+### 🎨 视觉效果 — 打造你的写作空间
+
+- **自定义背景**：支持图片和视频背景，可调节透明度和模糊度
+- **毛玻璃效果**：面板采用毛玻璃设计，优雅通透
+- **鼠标光晕**：鼠标周围淡淡的光晕，营造沉浸感
+- **雨滴效果**：细密的雨滴动画，适合深夜码字
+- **壁纸引擎接入**：可对接 Wallpaper Engine 的壁纸文件
+
+---
+
+## 下载
+
+| 版本 | 说明 |
+|------|------|
+| [GitHub 下载](https://github.com/simple-calcate/writerAgent/releases) | 国际源 |
+| [Gitee 下载](https://gitee.com/simple-calcate/writerAgent/releases) | 国内源，更稳定 |
+
+**安装包**：
+- `网文写作助手 Setup 0.2.2.exe` — 安装版，可选择安装目录
+- `网文写作助手 0.2.2.exe` — 便携版，双击即用
+
+**系统要求**：Windows 10/11 64位
 
 ---
 
@@ -219,7 +242,7 @@ Extract writing skills from your work and reuse them across books:
 
 - **5 built-in skills**: Dialogue style, scene description, pacing control, writing characteristics, character building
 - **Custom skills**: Add, edit, delete, import, export
-- **Per-feature assignment**: AI Dialogue, Smart Polish, Chapter Summary, and Smart Continuation each have independent skill configurations
+- **Per-feature assignment**: AI Dialogue, Smart Polish, Chapter Summary, Smart Continuation, Outline Writing, and Content Writing each have independent skill configurations
 - **AI extraction**: Automatically extract and refine skills during dialogue
 
 ### Multi-API Configuration — Flexible Integration
@@ -235,6 +258,29 @@ Refine    → Moonshot
 
 **Built-in provider shortcuts** with one-click Base URL and default model fill:
 OpenRouter · DeepSeek · OpenAI · Claude · Qwen · Moonshot · Ollama (fully local, completely offline)
+
+### Visual Effects — Create Your Writing Space
+
+- **Custom Background**: Support image and video backgrounds with adjustable opacity and blur
+- **Frosted Glass**: Panels use frosted glass design for an elegant, translucent look
+- **Mouse Glow**: Subtle glow around the cursor for an immersive feel
+- **Rain Effect**: Delicate rain drop animation, perfect for late-night writing sessions
+- **Wallpaper Engine Integration**: Can connect to Wallpaper Engine wallpaper files
+
+---
+
+## Download
+
+| Version | Description |
+|---------|-------------|
+| [GitHub Releases](https://github.com/simple-calcate/writerAgent/releases) | International source |
+| [Gitee Releases](https://gitee.com/simple-calcate/writerAgent/releases) | China mirror, more stable |
+
+**Packages**:
+- `网文写作助手 Setup 0.2.2.exe` — Installer, choose installation directory
+- `网文写作助手 0.2.2.exe` — Portable version, double-click to run
+
+**System Requirements**: Windows 10/11 64-bit
 
 ---
 

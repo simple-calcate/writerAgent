@@ -1,4 +1,6 @@
+import { useState, useEffect } from 'react'
 import { useVisualStore } from '../stores/useVisualStore'
+import type { WallpaperInfo } from '../../../shared/types'
 
 const GLOW_PRESETS = [
   { label: '蓝', color: 'rgba(100,150,255,0.15)' },
@@ -53,6 +55,8 @@ function Section({ title, enabled, onToggle, children }: {
 
 export default function VisualEffectsTab() {
   const settings = useVisualStore()
+  const [wallpapers, setWallpapers] = useState<WallpaperInfo[]>([])
+  const [scanning, setScanning] = useState(false)
 
   const handleSelectBackground = async () => {
     const path = await window.api.selectBackgroundImage()
@@ -60,6 +64,46 @@ export default function VisualEffectsTab() {
       settings.updateSettings({ backgroundImage: path, effectsEnabled: true })
     }
   }
+
+  const handleDetectSteam = async () => {
+    const path = await window.api.detectSteamPath()
+    if (path) {
+      const wePath = path + '\\steamapps\\workshop\\content\\431960'
+      settings.updateSettings({ wallpaperEnginePath: wePath })
+    }
+    return path
+  }
+
+  const handleSelectFolder = async () => {
+    const path = await window.api.selectFolder()
+    if (path) {
+      settings.updateSettings({ wallpaperEnginePath: path })
+    }
+  }
+
+  const handleScanWallpapers = async () => {
+    if (!settings.wallpaperEnginePath) return
+    setScanning(true)
+    try {
+      const result = await window.api.scanWallpapers(settings.wallpaperEnginePath)
+      setWallpapers(result)
+    } finally {
+      setScanning(false)
+    }
+  }
+
+  const handleSelectWallpaper = async (wp: WallpaperInfo) => {
+    const processed = await window.api.prepareWallpaper(wp.file)
+    if (processed) {
+      settings.updateSettings({ backgroundImage: processed, effectsEnabled: true })
+    }
+  }
+
+  useEffect(() => {
+    if (settings.wallpaperEngineEnabled && settings.wallpaperEnginePath) {
+      handleScanWallpapers()
+    }
+  }, [settings.wallpaperEngineEnabled, settings.wallpaperEnginePath])
 
   return (
     <div className="space-y-3">
@@ -113,6 +157,32 @@ export default function VisualEffectsTab() {
                     onChange={e => settings.updateSettings({ backgroundColor: e.target.value })}
                     className="w-8 h-5 rounded border-0 cursor-pointer"
                   />
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-500 block mb-1">适应方式</label>
+                  <div className="flex gap-1.5">
+                    {[
+                      { value: 'cover' as const, label: '填充' },
+                      { value: 'contain' as const, label: '适应' },
+                      { value: 'fill' as const, label: '拉伸' }
+                    ].map(opt => (
+                      <button
+                        key={opt.value}
+                        onClick={() => settings.updateSettings({ backgroundFit: opt.value })}
+                        className={`px-2 py-0.5 text-[11px] rounded transition-colors ${
+                          settings.backgroundFit === opt.value
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-700 text-gray-400 hover:text-gray-200'
+                        }`}
+                      >
+                        {opt.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <label className="text-[11px] text-gray-500 block mb-1">缩放</label>
+                  <Slider value={settings.backgroundScale} onChange={v => settings.updateSettings({ backgroundScale: v })} min={20} max={200} unit="%" />
                 </div>
               </>
             ) : (
@@ -176,6 +246,73 @@ export default function VisualEffectsTab() {
             <div>
               <label className="text-[11px] text-gray-500 block mb-1">透明度</label>
               <Slider value={settings.rainOpacity} onChange={v => settings.updateSettings({ rainOpacity: v })} min={0.1} max={0.8} step={0.05} />
+            </div>
+          </Section>
+
+          {/* Wallpaper Engine */}
+          <Section title="壁纸引擎" enabled={settings.wallpaperEngineEnabled} onToggle={v => settings.updateSettings({ wallpaperEngineEnabled: v })}>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={settings.wallpaperEnginePath || ''}
+                  placeholder="Wallpaper Engine 壁纸目录路径"
+                  className="flex-1 bg-gray-800 border border-gray-700 rounded px-2 py-1 text-xs text-gray-300 placeholder-gray-600"
+                  readOnly
+                />
+                <button
+                  onClick={handleDetectSteam}
+                  className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors shrink-0"
+                >
+                  自动检测
+                </button>
+                <button
+                  onClick={handleSelectFolder}
+                  className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors shrink-0"
+                >
+                  手动选择
+                </button>
+              </div>
+              {settings.wallpaperEnginePath && (
+                <p className="text-[10px] text-gray-600 truncate">路径：{settings.wallpaperEnginePath}</p>
+              )}
+              {settings.wallpaperEnginePath && (
+                <button
+                  onClick={handleScanWallpapers}
+                  disabled={scanning}
+                  className="w-full py-1.5 text-xs text-gray-400 bg-gray-800 hover:bg-gray-700 rounded transition-colors disabled:opacity-50"
+                >
+                  {scanning ? '扫描中...' : '扫描壁纸'}
+                </button>
+              )}
+              {wallpapers.length > 0 && (
+                <div className="max-h-48 overflow-y-auto space-y-1">
+                  {wallpapers.map(wp => (
+                    <div
+                      key={wp.id}
+                      onClick={() => handleSelectWallpaper(wp)}
+                      className="flex items-center gap-2 p-2 bg-gray-800 rounded cursor-pointer hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="w-12 h-8 rounded overflow-hidden bg-gray-700 shrink-0">
+                        {wp.preview ? (
+                          <img src={wp.preview} className="w-full h-full object-cover" />
+                        ) : /\.(mp4|webm)$/i.test(wp.file) ? (
+                          <video src={wp.file} className="w-full h-full object-cover" muted />
+                        ) : (
+                          <img src={wp.file} className="w-full h-full object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-xs text-gray-300 truncate">{wp.name}</p>
+                        <p className="text-[10px] text-gray-600">{wp.type}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {wallpapers.length === 0 && settings.wallpaperEnginePath && !scanning && (
+                <p className="text-[11px] text-gray-600 text-center py-2">未找到壁纸，请检查路径是否正确</p>
+              )}
             </div>
           </Section>
         </>

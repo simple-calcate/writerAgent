@@ -674,4 +674,16 @@ export interface IPCAPI {
 
   // Visual Effects
   selectBackgroundImage: () => Promise<string | null>
+  detectSteamPath: () => Promise<string | null>
+  selectFolder: () => Promise<string | null>
+  scanWallpapers: (path: string) => Promise<WallpaperInfo[]>
+  prepareWallpaper: (filePath: string) => Promise<string | null>
+}
+
+export interface WallpaperInfo {
+  id: string
+  name: string
+  file: string
+  type: string
+  preview?: string
 }

@@ -255,7 +255,19 @@ const api: IPCAPI = {
 
   // Visual Effects
   selectBackgroundImage: () =>
-    ipcRenderer.invoke('visual:select-background')
+    ipcRenderer.invoke('visual:select-background'),
+
+  detectSteamPath: () =>
+    ipcRenderer.invoke('visual:detect-steam'),
+
+  selectFolder: () =>
+    ipcRenderer.invoke('visual:select-folder'),
+
+  scanWallpapers: (path: string) =>
+    ipcRenderer.invoke('visual:scan-wallpapers', path),
+
+  prepareWallpaper: (filePath: string) =>
+    ipcRenderer.invoke('visual:prepare-wallpaper', filePath)
 }
 
 contextBridge.exposeInMainWorld('api', api)

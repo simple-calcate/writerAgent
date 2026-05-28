@@ -8,6 +8,8 @@ export interface VisualSettings {
   backgroundOpacity: number
   backgroundBlur: number
   backgroundColor: string
+  backgroundFit: 'cover' | 'contain' | 'fill'
+  backgroundScale: number
   // Frosted glass
   frostedGlass: boolean
   glassBlur: number
@@ -38,6 +40,8 @@ const DEFAULT_SETTINGS: VisualSettings = {
   backgroundOpacity: 0.3,
   backgroundBlur: 0,
   backgroundColor: '#111827',
+  backgroundFit: 'cover',
+  backgroundScale: 100,
   frostedGlass: false,
   glassBlur: 12,
   glassTint: 'rgba(17,24,39,0.7)',

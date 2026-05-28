@@ -491,7 +491,7 @@ function registerIPC(): void {
   })
 
   ipcMain.handle('visual:scan-wallpapers', (_e, workshopPath: string) => {
-    const { existsSync, readdirSync, readFileSync } = require('fs')
+    const { existsSync, readdirSync, readFileSync, statSync } = require('fs')
     const wallpapers: Array<{ id: string; name: string; file: string; type: string; preview?: string }> = []
     if (!existsSync(workshopPath)) return wallpapers
     try {
@@ -513,12 +513,25 @@ function registerIPC(): void {
         const mediaFile = files.find((f: string) => /\.(mp4|webm|jpg|jpeg|png|gif|webp)$/i.test(f))
         if (mediaFile) {
           const previewFile = files.find((f: string) => /^preview\.(jpg|jpeg|png|gif|webp)$/i.test(f))
+          let previewDataUrl: string | undefined
+          if (previewFile) {
+            try {
+              const previewPath = join(dirPath, previewFile)
+              const stat = statSync(previewPath)
+              if (stat.size <= 2 * 1024 * 1024) {
+                const buffer = readFileSync(previewPath)
+                const ext = previewFile.split('.').pop()?.toLowerCase() || 'jpg'
+                const mime = ext === 'jpg' ? 'image/jpeg' : `image/${ext}`
+                previewDataUrl = `data:${mime};base64,${buffer.toString('base64')}`
+              }
+            } catch {}
+          }
           wallpapers.push({
             id: dir.name,
             name: projectName,
             file: join(dirPath, mediaFile),
             type: projectType,
-            preview: previewFile ? join(dirPath, previewFile) : undefined
+            preview: previewDataUrl
           })
         }
       }

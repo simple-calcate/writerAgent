@@ -4,7 +4,7 @@ import { DEFAULT_FEATURE_SKILL_IDS } from '../../shared/types'
 import { summarizeChapter } from './client'
 import { polishText } from './client'
 import { refineSummary } from './refine-summary'
-import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds } from '../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary } from '../store/db'
 import { randomUUID } from 'crypto'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
@@ -22,11 +22,12 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   extract_skill: '提取写作技能',
   refine_skill: '修正写作技能',
   list_skills: '查看技能列表',
-  toggle_feature_skill: '调整技能挂载'
+  toggle_feature_skill: '调整技能挂载',
+  batch_refine_summaries: '批量精炼摘要'
 }
 
 // Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill'])
+const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill', 'batch_refine_summaries'])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
@@ -63,6 +64,8 @@ export function getToolApprovalDescription(toolName: string, args: Record<string
       return `修正写作技能（${(args.content?.length || 0)} 字）`
     case 'toggle_feature_skill':
       return `${args.enabled === 'true' ? '启用' : '禁用'}技能在${args.feature || '某功能'}上的挂载`
+    case 'batch_refine_summaries':
+      return `批量精炼整卷章节摘要`
     default:
       return `执行 ${toolName}`
   }
@@ -314,6 +317,19 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           required: ['skillId', 'feature', 'enabled']
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'batch_refine_summaries',
+        description: '对指定卷的所有章节进行批量精炼总结（一段话概括核心情节）。适合快速了解整卷内容。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            volumeId: { type: 'string', description: '卷 ID（可选，不传则使用当前对话的卷）' }
+          }
+        }
+      }
     }
   ]
 }
@@ -460,6 +476,14 @@ export async function executeTool(
       if (!args.content) return '错误：未提供内容'
       const target = allChapters.find(c => c.id === args.chapterId)
       if (!target) return '错误：找不到指定章节'
+      // 覆盖前自动保存版本
+      if (target.content) {
+        saveVersion(args.chapterId, {
+          content: target.content,
+          polishingMarks: [],
+          timestamp: new Date().toISOString()
+        })
+      }
       updateChapter(args.chapterId, { content: args.content })
       const contentPreview = args.content.length > 500 ? args.content.substring(0, 500) + '...' : args.content
       return `已为章节「${target.title}」写入内容（${args.content.length} 字）\n\n${contentPreview}`
@@ -561,6 +585,34 @@ export async function executeTool(
       const mountedSkills = ids.map(id => allSkills.find(s => s.id === id)?.name || id).join('、')
 
       return `已${action}技能「${skill.name}」在${featureNames[feature] || feature}上的挂载。\n\n当前${featureNames[feature] || feature}已挂载技能：${mountedSkills || '无'}`
+    }
+
+    case 'batch_refine_summaries': {
+      const targetVolumeId = args.volumeId || params.volume?.id
+      if (!targetVolumeId) return '错误：未指定卷 ID，且当前没有上下文卷'
+      const volume = params.allVolumes.find(v => v.id === targetVolumeId)
+      if (!volume) return '错误：找不到指定卷'
+      const volChapters = allChapters
+        .filter(c => c.volumeId === targetVolumeId)
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+      if (volChapters.length === 0) return `卷「${volume.name}」下没有章节`
+
+      const results: string[] = []
+      for (const ch of volChapters) {
+        if (!ch.content) {
+          results.push(`- 「${ch.title}」：无内容，跳过`)
+          continue
+        }
+        try {
+          const summary = await refineSummary(config, ch.content, aiConfig)
+          updateChapterSummary(ch.id, summary)
+          results.push(`- 「${ch.title}」：已完成`)
+        } catch {
+          results.push(`- 「${ch.title}」：精炼失败`)
+        }
+      }
+
+      return `已对卷「${volume.name}」的 ${volChapters.length} 个章节进行精炼总结：\n\n${results.join('\n')}`
     }
 
     default:

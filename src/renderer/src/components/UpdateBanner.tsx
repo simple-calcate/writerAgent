@@ -32,14 +32,16 @@ export default function UpdateBanner() {
     window.api.downloadUpdate()
   }
 
+  const handleDownloadGitee = () => {
+    window.api.downloadFromGitee()
+  }
+
   const handleInstall = () => {
     window.api.installUpdate()
   }
 
-  const GITEE_RELEASES = 'https://gitee.com/simple-calcate/writerAgent/releases'
-
-  const openGitee = () => {
-    window.api.openExternal(GITEE_RELEASES)
+  const handleInstallGitee = () => {
+    window.api.installGiteeUpdate()
   }
 
   // Don't show anything during idle or checking
@@ -106,13 +108,13 @@ export default function UpdateBanner() {
                   onClick={handleDownload}
                   className="w-full py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded transition-colors"
                 >
-                  下载更新
+                  从 GitHub 下载
                 </button>
                 <button
-                  onClick={openGitee}
+                  onClick={handleDownloadGitee}
                   className="w-full py-1.5 text-xs font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 rounded transition-colors mt-1"
                 >
-                  从 Gitee 下载
+                  从 Gitee 下载（国内更快）
                 </button>
               </>
             )}
@@ -144,7 +146,7 @@ export default function UpdateBanner() {
                 </div>
                 <p className="text-xs text-gray-400 mb-3">v{status.version} 已准备好安装，重启后生效。</p>
                 <button
-                  onClick={handleInstall}
+                  onClick={status.giteeInstallerPath ? handleInstallGitee : handleInstall}
                   className="w-full py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded transition-colors"
                 >
                   重启安装
@@ -168,7 +170,7 @@ export default function UpdateBanner() {
                     重试
                   </button>
                   <button
-                    onClick={openGitee}
+                    onClick={handleDownloadGitee}
                     className="flex-1 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded transition-colors"
                   >
                     从 Gitee 下载

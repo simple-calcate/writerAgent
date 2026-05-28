@@ -7,7 +7,7 @@ import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
 import { parseTxtContent } from './import-parser'
 import { generateContinuation } from './llm/continuation'
-import { initUpdater, checkForUpdates, downloadUpdate, installUpdate, getUpdateStatus } from './updater'
+import { initUpdater, checkForUpdates, downloadUpdate, downloadFromGitee, cancelGiteeDownload, installGiteeUpdate, installUpdate, getUpdateStatus } from './updater'
 import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, WritingSkill } from '../shared/types'
 import { randomUUID } from 'crypto'
 
@@ -419,6 +419,9 @@ function registerIPC(): void {
   // Update
   ipcMain.handle('update:check', () => checkForUpdates())
   ipcMain.handle('update:download', () => downloadUpdate())
+  ipcMain.handle('update:download-gitee', () => downloadFromGitee())
+  ipcMain.handle('update:cancel-gitee', () => cancelGiteeDownload())
+  ipcMain.handle('update:install-gitee', () => installGiteeUpdate())
   ipcMain.handle('update:install', () => installUpdate())
   ipcMain.handle('update:get-status', () => getUpdateStatus())
   ipcMain.handle('get-app-version', () => app.getVersion())

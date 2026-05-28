@@ -573,6 +573,7 @@ export interface UpdateStatus {
   releaseNotes?: string
   progress?: { percent: number; transferred: number; total: number }
   error?: string
+  giteeInstallerPath?: string
 }
 
 export interface IPCAPI {
@@ -667,6 +668,9 @@ export interface IPCAPI {
   // Update
   checkForUpdates: () => Promise<void>
   downloadUpdate: () => Promise<void>
+  downloadFromGitee: () => Promise<void>
+  cancelGiteeDownload: () => Promise<void>
+  installGiteeUpdate: () => Promise<void>
   installUpdate: () => Promise<void>
   getUpdateStatus: () => Promise<UpdateStatus>
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => () => void

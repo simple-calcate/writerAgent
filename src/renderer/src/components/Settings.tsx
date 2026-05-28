@@ -86,8 +86,16 @@ function UpdateCheckButton() {
     window.api.downloadUpdate()
   }
 
+  const handleDownloadGitee = () => {
+    window.api.downloadFromGitee()
+  }
+
   const handleInstall = () => {
     window.api.installUpdate()
+  }
+
+  const handleInstallGitee = () => {
+    window.api.installGiteeUpdate()
   }
 
   const statusUI: Record<string, { text: string; color: string }> = {
@@ -144,7 +152,7 @@ function UpdateCheckButton() {
         )}
         {(updateStatus.status === 'error' || updateStatus.status === 'available') && (
           <button
-            onClick={() => window.api.openExternal('https://gitee.com/simple-calcate/writerAgent/releases')}
+            onClick={handleDownloadGitee}
             className="px-3 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
           >
             从 Gitee 下载
@@ -156,7 +164,7 @@ function UpdateCheckButton() {
           </button>
         )}
         {updateStatus.status === 'downloaded' && (
-          <button onClick={handleInstall} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors">
+          <button onClick={updateStatus.giteeInstallerPath ? handleInstallGitee : handleInstall} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors">
             退出并安装
           </button>
         )}

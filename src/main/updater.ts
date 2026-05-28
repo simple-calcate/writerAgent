@@ -1,11 +1,16 @@
 import { autoUpdater } from 'electron-updater'
 import { BrowserWindow, app } from 'electron'
+import { createWriteStream, existsSync, mkdirSync, unlinkSync } from 'fs'
+import { join } from 'path'
 import type { UpdateStatus } from '../shared/types'
+
+const GITEE_RELEASES_API = 'https://gitee.com/api/v5/repos/simple-calcate/writerAgent/releases/latest'
 
 let mainWindow: BrowserWindow | null = null
 let currentStatus: UpdateStatus = { status: 'idle' }
 let isPortable = false
 let checkTimeout: ReturnType<typeof setTimeout> | null = null
+let giteeDownloadAbort: AbortController | null = null
 
 export function initUpdater(win: BrowserWindow): void {
   mainWindow = win
@@ -128,4 +133,86 @@ export function installUpdate(): void {
 
 export function getIsPortable(): boolean {
   return isPortable
+}
+
+export async function downloadFromGitee(): Promise<void> {
+  if (currentStatus.status !== 'available') return
+
+  giteeDownloadAbort = new AbortController()
+
+  try {
+    // Fetch latest release info from Gitee
+    const res = await fetch(GITEE_RELEASES_API, { signal: giteeDownloadAbort.signal })
+    if (!res.ok) throw new Error(`Gitee API 返回 ${res.status}`)
+    const release = await res.json() as any
+
+    // Find Setup exe
+    const asset = release.assets?.find((a: any) =>
+      a.name?.includes('Setup') && a.name?.endsWith('.exe')
+    )
+    if (!asset) throw new Error('未找到安装包')
+
+    const downloadUrl = asset.browser_download_url
+    const version = release.tag_name?.replace('v', '') || currentStatus.version
+
+    currentStatus = { status: 'downloading', version }
+    sendStatus()
+
+    // Download file
+    const downloadRes = await fetch(downloadUrl, { signal: giteeDownloadAbort.signal })
+    if (!downloadRes.ok) throw new Error(`下载失败: ${downloadRes.status}`)
+
+    const total = Number(downloadRes.headers.get('content-length')) || 0
+    let transferred = 0
+
+    const tempDir = join(app.getPath('temp'), 'novel-writer-update')
+    if (!existsSync(tempDir)) mkdirSync(tempDir, { recursive: true })
+    const filePath = join(tempDir, asset.name)
+
+    const fileStream = createWriteStream(filePath)
+    const reader = downloadRes.body?.getReader()
+    if (!reader) throw new Error('无法读取下载流')
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      fileStream.write(value)
+      transferred += value.length
+      if (total > 0) {
+        currentStatus = {
+          status: 'downloading',
+          version,
+          progress: { percent: Math.round((transferred / total) * 100), transferred, total }
+        }
+        sendStatus()
+      }
+    }
+
+    fileStream.end()
+    await new Promise<void>((resolve, reject) => {
+      fileStream.on('finish', resolve)
+      fileStream.on('error', reject)
+    })
+
+    currentStatus = { status: 'downloaded', version, giteeInstallerPath: filePath }
+    sendStatus()
+  } catch (err: any) {
+    if (err.name === 'AbortError') return
+    currentStatus = { status: 'error', error: `Gitee 下载失败: ${err.message}` }
+    sendStatus()
+  }
+}
+
+export function cancelGiteeDownload(): void {
+  if (giteeDownloadAbort) {
+    giteeDownloadAbort.abort()
+    giteeDownloadAbort = null
+  }
+}
+
+export function installGiteeUpdate(): void {
+  if (currentStatus.status !== 'downloaded' || !currentStatus.giteeInstallerPath) return
+  const { exec } = require('child_process')
+  exec(`start "" "${currentStatus.giteeInstallerPath}"`)
+  app.quit()
 }

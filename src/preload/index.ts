@@ -238,6 +238,15 @@ const api: IPCAPI = {
   downloadUpdate: () =>
     ipcRenderer.invoke('update:download'),
 
+  downloadFromGitee: () =>
+    ipcRenderer.invoke('update:download-gitee'),
+
+  cancelGiteeDownload: () =>
+    ipcRenderer.invoke('update:cancel-gitee'),
+
+  installGiteeUpdate: () =>
+    ipcRenderer.invoke('update:install-gitee'),
+
   installUpdate: () =>
     ipcRenderer.invoke('update:install'),
 

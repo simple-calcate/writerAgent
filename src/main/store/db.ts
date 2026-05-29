@@ -23,14 +23,8 @@ const defaultStore: Store = {
   volumes: [],
   chapters: [],
   llmConfig: {
-    profiles: [{
-      id: defaultProfileId,
-      name: '默认',
-      apiKey: '',
-      baseUrl: 'https://api.openai.com/v1',
-      model: 'gpt-4o-mini'
-    }],
-    defaultProfileId,
+    profiles: [],
+    defaultProfileId: null,
     aiFeatures: {
       polish: { enabled: true, profileId: null },
       summary: { enabled: true, profileId: null },

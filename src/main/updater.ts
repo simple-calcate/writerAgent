@@ -217,7 +217,12 @@ export function cancelGiteeDownload(): void {
 
 export function installGiteeUpdate(): void {
   if (currentStatus.status !== 'downloaded' || !currentStatus.giteeInstallerPath) return
-  const { exec } = require('child_process')
-  exec(`start "" "${currentStatus.giteeInstallerPath}"`)
+  const { spawn } = require('child_process')
+  const child = spawn('cmd', ['/c', 'start', '', currentStatus.giteeInstallerPath], {
+    detached: true,
+    stdio: 'ignore',
+    windowsHide: true
+  })
+  child.unref()
   app.quit()
 }

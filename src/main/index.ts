@@ -2,7 +2,7 @@ import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync, readFileSync } from 'fs'
 import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills } from './store/db'
-import { autoPolish, polishText, summarizeChapter } from './llm/client'
+import { autoPolish, polishText, summarizeChapter, diagnoseLocalModel } from './llm/client'
 import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
 import { parseTxtContent } from './import-parser'
@@ -96,6 +96,9 @@ function registerIPC(): void {
   // Config
   ipcMain.handle('get-llm-config', () => getLLMConfig())
   ipcMain.handle('save-llm-config', (_e, config) => saveLLMConfig(config))
+  ipcMain.handle('diagnose-local-model', async (_e, config) => {
+    return diagnoseLocalModel(config)
+  })
 
   // Projects
   ipcMain.handle('get-projects', () => getProjects())

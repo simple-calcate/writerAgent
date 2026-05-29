@@ -586,6 +586,7 @@ export interface IPCAPI {
   // Config
   getLLMConfig: () => Promise<LLMConfig>
   saveLLMConfig: (config: LLMConfig) => Promise<void>
+  diagnoseLocalModel: (config: LLMConfigSingle) => Promise<string[]>
   getDataPath: () => Promise<string>
   getDataPathDefault: () => Promise<string>
   setDataPath: (newPath: string) => Promise<void>

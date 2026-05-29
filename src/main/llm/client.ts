@@ -7,9 +7,92 @@ import { getFeatureSkillContent } from './feature-skills'
 
 export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
-    apiKey: config.apiKey,
+    apiKey: config.apiKey || 'ollama',
     baseURL: config.baseUrl || 'https://api.openai.com/v1'
   })
+}
+
+// 本地模型诊断
+export async function diagnoseLocalModel(config: LLMConfigSingle): Promise<string[]> {
+  const results: string[] = []
+  const baseUrl = config.baseUrl || ''
+  const provider = detectProvider(config)
+
+  if (provider !== 'ollama') return ['非本地模型，跳过诊断']
+
+  // Stage 1: Check URL format
+  if (!baseUrl.includes('/v1')) {
+    results.push('❌ Base URL 缺少 /v1 后缀，应为 http://localhost:11434/v1')
+  } else {
+    results.push('✅ URL 格式正确')
+  }
+
+  // Stage 2: Test connection
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(baseUrl.replace('/v1', '/api/tags'), { signal: controller.signal })
+    clearTimeout(timeout)
+
+    if (res.ok) {
+      const data = await res.json() as any
+      const models = data.models || []
+      results.push(`✅ Ollama 服务连接成功，已安装 ${models.length} 个模型`)
+
+      // Stage 3: Check if target model exists
+      const targetModel = config.model || ''
+      const found = models.find((m: any) =>
+        m.name === targetModel || m.name.startsWith(targetModel + ':')
+      )
+      if (found) {
+        results.push(`✅ 模型「${targetModel}」已找到`)
+      } else {
+        results.push(`❌ 模型「${targetModel}」未安装。可用模型：${models.map((m: any) => m.name).join(', ') || '无'}`)
+      }
+    } else {
+      results.push(`❌ Ollama 服务返回 ${res.status}`)
+    }
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      results.push('❌ 连接超时（5秒），Ollama 服务可能未启动')
+    } else {
+      results.push(`❌ 无法连接 Ollama：${err.message}`)
+    }
+    results.push('💡 请确保 Ollama 已启动：运行 `ollama serve`')
+    results.push('💡 如果是 Electron 应用，可能需要设置 OLLAMA_ORIGINS=* 环境变量')
+  }
+
+  // Stage 4: Test chat completions
+  try {
+    const client = createClient(config)
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 10000)
+    const res = await client.chat.completions.create({
+      model: config.model || 'llama3',
+      messages: [{ role: 'user', content: 'Hi' }],
+      max_tokens: 5
+    }, { signal: controller.signal })
+    clearTimeout(timeout)
+
+    if (res.choices?.[0]?.message?.content) {
+      results.push('✅ Chat API 测试成功')
+    } else {
+      results.push('⚠️ Chat API 返回了空响应')
+    }
+  } catch (err: any) {
+    if (err.name === 'AbortError') {
+      results.push('❌ Chat API 超时（10秒），模型可能正在加载中')
+    } else {
+      results.push(`❌ Chat API 测试失败：${err.message}`)
+    }
+  }
+
+  return results
+}
+
+// 是否为本地模型（不支持某些参数）
+export function isLocalProvider(config: LLMConfigSingle): boolean {
+  return detectProvider(config) === 'ollama'
 }
 
 // 思考深度预设 → token 预算映射
@@ -104,6 +187,9 @@ export async function polishText(
     }
   ]
 
+  const isOllama = isLocalProvider(config)
+  const jsonFormat = isOllama ? {} : { response_format: { type: 'json_object' } }
+
   let content: string
   if (mainWindow) {
     content = await streamWithThinking(mainWindow, client, config, {
@@ -111,7 +197,7 @@ export async function polishText(
       messages,
       temperature: 0.7,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      response_format: { type: 'json_object' }
+      ...jsonFormat
     }, signal)
   } else {
     const response = await client.chat.completions.create({
@@ -119,7 +205,7 @@ export async function polishText(
       messages,
       temperature: 0.7,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      response_format: { type: 'json_object' }
+      ...jsonFormat
     })
     content = response.choices[0]?.message?.content?.trim() || '{}'
   }
@@ -184,6 +270,9 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     { role: 'user' as const, content: numbered }
   ]
 
+  const isOllama = isLocalProvider(config)
+  const jsonFormat = isOllama ? {} : { response_format: { type: 'json_object' } }
+
   let rawContent: string | undefined
   if (mainWindow) {
     rawContent = await streamWithThinking(mainWindow, client, config, {
@@ -191,7 +280,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       messages,
       temperature: 0.7,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      response_format: { type: 'json_object' }
+      ...jsonFormat
     }, signal)
   } else {
     const response = await client.chat.completions.create({
@@ -199,7 +288,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       messages,
       temperature: 0.7,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      response_format: { type: 'json_object' }
+      ...jsonFormat
     })
     rawContent = response.choices[0]?.message?.content ?? undefined
   }

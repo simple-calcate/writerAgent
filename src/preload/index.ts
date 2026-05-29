@@ -22,6 +22,9 @@ const api: IPCAPI = {
   saveLLMConfig: (config) =>
     ipcRenderer.invoke('save-llm-config', config),
 
+  diagnoseLocalModel: (config) =>
+    ipcRenderer.invoke('diagnose-local-model', config),
+
   getDataPath: () =>
     ipcRenderer.invoke('get-data-path'),
 

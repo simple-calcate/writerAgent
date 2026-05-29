@@ -364,6 +364,53 @@ function SkillsTabContent() {
   )
 }
 
+// ─── Local Model Diagnostics ───
+
+function LocalModelDiagnostics({ config }: { config: { apiKey: string; baseUrl: string; model: string; thinkingDepth?: ThinkingDepth } }) {
+  const [results, setResults] = useState<string[]>([])
+  const [running, setRunning] = useState(false)
+
+  const handleDiagnose = async () => {
+    setRunning(true)
+    setResults([])
+    try {
+      const res = await window.api.diagnoseLocalModel(config)
+      setResults(res)
+    } catch (err: any) {
+      setResults([`❌ 诊断失败: ${err.message}`])
+    } finally {
+      setRunning(false)
+    }
+  }
+
+  return (
+    <div className="mt-3 border-t border-gray-700 pt-3">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs text-gray-400">本地模型诊断</span>
+        <button
+          onClick={handleDiagnose}
+          disabled={running}
+          className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors disabled:opacity-50"
+        >
+          {running ? '诊断中...' : '开始诊断'}
+        </button>
+      </div>
+      {results.length > 0 && (
+        <div className="bg-gray-900 rounded p-2 space-y-1">
+          {results.map((r, i) => (
+            <p key={i} className={`text-[11px] ${
+              r.startsWith('✅') ? 'text-emerald-400' :
+              r.startsWith('❌') ? 'text-red-400' :
+              r.startsWith('💡') ? 'text-amber-400' :
+              'text-gray-400'
+            }`}>{r}</p>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
   const [form, setForm] = useState(llmConfig)
@@ -657,6 +704,14 @@ export default function Settings() {
                     >
                       保存配置
                     </button>
+                    {editingProfile.baseUrl.includes('localhost:11434') && (
+                      <LocalModelDiagnostics config={{
+                        apiKey: editingProfile.apiKey,
+                        baseUrl: editingProfile.baseUrl,
+                        model: editingProfile.model,
+                        thinkingDepth: editingProfile.thinkingDepth
+                      }} />
+                    )}
                   </div>
                 ) : (
                   /* Profile list */

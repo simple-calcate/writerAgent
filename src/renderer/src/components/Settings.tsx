@@ -51,7 +51,7 @@ interface ProviderPreset {
 const PROVIDER_PRESETS: ProviderPreset[] = [
   { value: '', label: '自定义', baseUrl: '', model: '', rechargeUrl: '' },
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'deepseek/deepseek-chat', rechargeUrl: 'https://openrouter.ai/settings/credits' },
-  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com/v1', model: 'deepseek-v4-pro', rechargeUrl: 'https://platform.deepseek.com/top_up' },
+  { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-pro', rechargeUrl: 'https://platform.deepseek.com/top_up' },
   { value: 'openai', label: 'OpenAI', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini', rechargeUrl: 'https://platform.openai.com/settings/organization/billing/overview' },
   { value: 'claude', label: 'Claude', baseUrl: 'https://api.anthropic.com/v1', model: 'claude-sonnet-4-20250514', rechargeUrl: 'https://console.anthropic.com/settings/billing' },
   { value: 'qwen', label: '通义千问', baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen-plus', rechargeUrl: 'https://usercenter2.aliyun.com' },
@@ -641,7 +641,7 @@ export default function Settings() {
                           id: crypto.randomUUID(),
                           name: 'DeepSeek',
                           apiKey: '',
-                          baseUrl: 'https://api.deepseek.com/v1',
+                          baseUrl: 'https://api.deepseek.com',
                           model: 'deepseek-v4-pro',
                           thinkingDepth: { preset: 'off' }
                         }

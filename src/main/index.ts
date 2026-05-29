@@ -21,6 +21,7 @@ function createWindow(): void {
     minWidth: 800,
     minHeight: 600,
     autoHideMenuBar: true,
+    show: false, // Don't show until ready
     webPreferences: {
       preload: join(__dirname, '../preload/index.js'),
       contextIsolation: true,
@@ -34,6 +35,11 @@ function createWindow(): void {
   } else {
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'))
   }
+
+  // Show window when content is ready
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show()
+  })
 }
 
 function registerIPC(): void {

@@ -45,22 +45,23 @@ export default function App() {
   const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth('nw-sidebar-w', 256))
   const [rightWidth, setRightWidth] = useState(() => loadWidth('nw-right-w', 320))
   const [whatsNewVersion, setWhatsNewVersion] = useState<string | null>(null)
+  const [ready, setReady] = useState(false)
 
   useEffect(() => {
+    // Load critical data first
     loadProjects()
     loadLLMConfig().then(() => {
+      setReady(true)
       const config = useAppStore.getState().llmConfig
       const hasValidProfile = config.profiles.some(p => p.apiKey.trim())
 
       if (!hasValidProfile) {
-        // First time: show setup guide, don't show What's New
         useAppStore.getState().toggleSettings()
       } else {
-        // Check if app was updated
+        // Check version after UI is ready
         window.api.getAppVersion().then(currentVersion => {
           const lastSeen = localStorage.getItem('nw-last-version')
           if (lastSeen && lastSeen !== currentVersion) {
-            // App was updated - show What's New
             setWhatsNewVersion(currentVersion)
           }
           localStorage.setItem('nw-last-version', currentVersion)

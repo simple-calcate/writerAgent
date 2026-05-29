@@ -586,19 +586,25 @@ export default function Settings() {
             <h2 className="text-sm font-semibold text-gray-300">设置</h2>
           </div>
           <nav className="flex-1 space-y-0.5 px-2">
-            {TABS.map(tab => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
-                  activeTab === tab.key
-                    ? 'bg-gray-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
+            {TABS.map(tab => {
+              const needsAttention = tab.key === 'api' && !form.profiles.some(p => p.apiKey.trim())
+              return (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
+                    activeTab === tab.key
+                      ? 'bg-gray-700 text-white'
+                      : 'text-gray-400 hover:text-gray-200 hover:bg-gray-700/50'
+                  }`}
+                >
+                  <span className="flex items-center gap-2">
+                    {tab.label}
+                    {needsAttention && <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />}
+                  </span>
+                </button>
+              )
+            })}
           </nav>
         </div>
 

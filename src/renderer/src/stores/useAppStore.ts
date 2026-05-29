@@ -903,8 +903,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   toggleSettings: () => set(s => ({ showSettings: !s.showSettings })),
 
   llmConfig: {
-    profiles: [{ id: 'default-profile', name: '默认', apiKey: '', baseUrl: 'https://api.openai.com/v1', model: 'gpt-4o-mini' }],
-    defaultProfileId: 'default-profile',
+    profiles: [],
+    defaultProfileId: null,
     aiFeatures: {
       polish: { enabled: true, profileId: null },
       summary: { enabled: true, profileId: null },

@@ -70,12 +70,20 @@ function detectPreset(baseUrl: string): string {
 
 function UpdateCheckButton() {
   const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' })
+  const [giteeLoading, setGiteeLoading] = useState(false)
 
   useEffect(() => {
     const unsub = window.api.onUpdateStatus(setUpdateStatus)
     window.api.getUpdateStatus().then(setUpdateStatus)
     return unsub
   }, [])
+
+  // Reset giteeLoading when status changes
+  useEffect(() => {
+    if (updateStatus.status === 'downloading' || updateStatus.status === 'downloaded' || updateStatus.status === 'error') {
+      setGiteeLoading(false)
+    }
+  }, [updateStatus.status])
 
   const handleCheck = () => {
     setUpdateStatus({ status: 'checking' })
@@ -87,6 +95,7 @@ function UpdateCheckButton() {
   }
 
   const handleDownloadGitee = () => {
+    setGiteeLoading(true)
     window.api.downloadFromGitee()
   }
 
@@ -100,7 +109,7 @@ function UpdateCheckButton() {
 
   const statusUI: Record<string, { text: string; color: string }> = {
     idle: { text: '尚未检查', color: 'text-gray-500' },
-    checking: { text: '正在检查 GitHub Releases...', color: 'text-blue-400' },
+    checking: { text: '正在检查更新...', color: 'text-blue-400' },
     available: { text: `发现新版本 v${updateStatus.version}`, color: 'text-blue-400' },
     downloading: { text: `正在下载 v${updateStatus.version}...`, color: 'text-amber-400' },
     downloaded: { text: `v${updateStatus.version} 已下载完成`, color: 'text-emerald-400' },
@@ -153,9 +162,10 @@ function UpdateCheckButton() {
         {(updateStatus.status === 'error' || updateStatus.status === 'available') && (
           <button
             onClick={handleDownloadGitee}
-            className="px-3 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors"
+            disabled={giteeLoading}
+            className="px-3 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors disabled:opacity-50"
           >
-            从 Gitee 下载
+            {giteeLoading ? '连接中...' : '从 Gitee 下载'}
           </button>
         )}
         {updateStatus.status === 'available' && (

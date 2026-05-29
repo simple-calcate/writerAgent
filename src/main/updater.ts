@@ -136,9 +136,14 @@ export function getIsPortable(): boolean {
 }
 
 export async function downloadFromGitee(): Promise<void> {
-  if (currentStatus.status !== 'available') return
+  // Allow download from 'available' or 'error' states
+  if (currentStatus.status !== 'available' && currentStatus.status !== 'error') return
 
   giteeDownloadAbort = new AbortController()
+
+  // Show immediate feedback
+  currentStatus = { status: 'checking' }
+  sendStatus()
 
   try {
     // Fetch latest release info from Gitee

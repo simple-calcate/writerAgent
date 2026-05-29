@@ -4,6 +4,7 @@ import type { UpdateStatus } from '../../../shared/types'
 export default function UpdateBanner() {
   const [status, setStatus] = useState<UpdateStatus>({ status: 'idle' })
   const [expanded, setExpanded] = useState(false)
+  const [giteeLoading, setGiteeLoading] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -33,8 +34,16 @@ export default function UpdateBanner() {
   }
 
   const handleDownloadGitee = () => {
+    setGiteeLoading(true)
     window.api.downloadFromGitee()
   }
+
+  // Reset giteeLoading when status changes
+  useEffect(() => {
+    if (status.status === 'downloading' || status.status === 'downloaded' || status.status === 'error') {
+      setGiteeLoading(false)
+    }
+  }, [status.status])
 
   const handleInstall = () => {
     window.api.installUpdate()
@@ -112,9 +121,10 @@ export default function UpdateBanner() {
                 </button>
                 <button
                   onClick={handleDownloadGitee}
-                  className="w-full py-1.5 text-xs font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 rounded transition-colors mt-1"
+                  disabled={giteeLoading}
+                  className="w-full py-1.5 text-xs font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 rounded transition-colors mt-1 disabled:opacity-50"
                 >
-                  从 Gitee 下载（国内更快）
+                  {giteeLoading ? '正在连接 Gitee...' : '从 Gitee 下载（国内更快）'}
                 </button>
               </>
             )}
@@ -171,9 +181,10 @@ export default function UpdateBanner() {
                   </button>
                   <button
                     onClick={handleDownloadGitee}
-                    className="flex-1 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded transition-colors"
+                    disabled={giteeLoading}
+                    className="flex-1 py-1.5 text-xs font-medium text-white bg-emerald-700 hover:bg-emerald-600 rounded transition-colors disabled:opacity-50"
                   >
-                    从 Gitee 下载
+                    {giteeLoading ? '连接中...' : '从 Gitee 下载'}
                   </button>
                 </div>
               </>

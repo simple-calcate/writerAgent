@@ -597,6 +597,47 @@ export default function Settings() {
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {activeTab === 'api' && (
               <>
+                {/* 新手引导 */}
+                {!form.profiles.some(p => p.apiKey.trim()) && !editingProfile && (
+                  <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 space-y-3">
+                    <h3 className="text-sm font-medium text-blue-300">👋 欢迎使用网文写作助手</h3>
+                    <p className="text-xs text-gray-400">
+                      本软件需要接入 AI 才能使用。你只需要一个 <span className="text-blue-300">API Key</span> 就能开始。
+                    </p>
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-300 font-medium">什么是 API Key？</p>
+                      <p className="text-xs text-gray-500">
+                        API Key 相当于 AI 服务的"通行证"。你去 AI 平台注册账号，获取一个 Key，填到这里，软件就能调用 AI 帮你写作了。
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-300 font-medium">推荐：DeepSeek（便宜好用）</p>
+                      <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+                        <li>打开 <button onClick={() => window.api.openExternal('https://platform.deepseek.com')} className="text-blue-400 hover:underline">platform.deepseek.com</button> 注册账号</li>
+                        <li>充值几块钱（大概 1 块钱能用很久）</li>
+                        <li>在"API Keys"页面创建一个 Key</li>
+                        <li>复制 Key，粘贴到下面的配置里</li>
+                      </ol>
+                    </div>
+                    <button
+                      onClick={() => {
+                        const newProfile: APIProfile = {
+                          id: crypto.randomUUID(),
+                          name: 'DeepSeek',
+                          apiKey: '',
+                          baseUrl: 'https://api.deepseek.com/v1',
+                          model: 'deepseek-chat',
+                          thinkingDepth: { preset: 'off' }
+                        }
+                        setEditingProfile(newProfile)
+                        setIsAdding(true)
+                      }}
+                      className="w-full py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded transition-colors"
+                    >
+                      一键配置 DeepSeek
+                    </button>
+                  </div>
+                )}
                 {editingProfile ? (
                   /* Profile edit form */
                   <div className="space-y-3">

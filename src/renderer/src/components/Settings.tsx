@@ -149,6 +149,13 @@ function UpdateCheckButton() {
         <p className="text-[10px] text-red-400/70 break-all">{updateStatus.error}</p>
       )}
 
+      {/* Release notes */}
+      {updateStatus.status === 'available' && updateStatus.releaseNotes && (
+        <div className="text-[11px] text-gray-400 bg-gray-900/50 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+          {updateStatus.releaseNotes}
+        </div>
+      )}
+
       {/* Action buttons */}
       <div className="flex items-center gap-2">
         {(updateStatus.status === 'idle' || updateStatus.status === 'not-available' || updateStatus.status === 'error') && (

@@ -13,6 +13,7 @@ import UpdateBanner from './components/UpdateBanner'
 import BackgroundLayer from './components/BackgroundLayer'
 import MouseGlow from './components/MouseGlow'
 import RainEffect from './components/RainEffect'
+import WhatsNewDialog from './components/WhatsNewDialog'
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
@@ -43,14 +44,27 @@ export default function App() {
 
   const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth('nw-sidebar-w', 256))
   const [rightWidth, setRightWidth] = useState(() => loadWidth('nw-right-w', 320))
+  const [whatsNewVersion, setWhatsNewVersion] = useState<string | null>(null)
 
   useEffect(() => {
     loadProjects()
     loadLLMConfig().then(() => {
       const config = useAppStore.getState().llmConfig
       const hasValidProfile = config.profiles.some(p => p.apiKey.trim())
+
       if (!hasValidProfile) {
+        // First time: show setup guide, don't show What's New
         useAppStore.getState().toggleSettings()
+      } else {
+        // Check if app was updated
+        window.api.getAppVersion().then(currentVersion => {
+          const lastSeen = localStorage.getItem('nw-last-version')
+          if (lastSeen && lastSeen !== currentVersion) {
+            // App was updated - show What's New
+            setWhatsNewVersion(currentVersion)
+          }
+          localStorage.setItem('nw-last-version', currentVersion)
+        })
       }
     })
   }, [loadProjects, loadLLMConfig])
@@ -120,6 +134,12 @@ export default function App() {
 
       {/* Modals */}
       {showSettings && <Settings />}
+      {whatsNewVersion && (
+        <WhatsNewDialog
+          version={whatsNewVersion}
+          onClose={() => setWhatsNewVersion(null)}
+        />
+      )}
       <HistoryPanel />
       <ImportPreviewDialog />
       <SkillImportPreview />

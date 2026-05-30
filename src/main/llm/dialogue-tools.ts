@@ -1,10 +1,10 @@
 import type OpenAI from 'openai'
-import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel, WritingSkill, FeatureSkillIds } from '../../shared/types'
+import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel, WritingSkill, FeatureSkillIds, ReasoningChain } from '../../shared/types'
 import { DEFAULT_FEATURE_SKILL_IDS } from '../../shared/types'
 import { summarizeChapter } from './client'
 import { polishText } from './client'
 import { refineSummary } from './refine-summary'
-import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary } from '../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain, getReasoningChains as getCustomChains } from '../store/db'
 import { randomUUID } from 'crypto'
 import { getReasoningChains, getReasoningChainById } from './reasoning-chains'
 
@@ -24,11 +24,17 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   refine_skill: '修正写作技能',
   list_skills: '查看技能列表',
   toggle_feature_skill: '调整技能挂载',
-  batch_refine_summaries: '批量精炼摘要'
+  batch_refine_summaries: '批量精炼摘要',
+  list_reasoning_chains: '查看推理链',
+  get_reasoning_chain: '获取推理链详情',
+  create_reasoning_chain: '创建推理链',
+  update_reasoning_chain: '修改推理链',
+  delete_reasoning_chain: '删除推理链',
+  toggle_reasoning_context: '调整推理上下文'
 }
 
 // Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill', 'batch_refine_summaries'])
+const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill', 'batch_refine_summaries', 'create_reasoning_chain', 'update_reasoning_chain', 'delete_reasoning_chain', 'toggle_reasoning_context'])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
@@ -67,6 +73,14 @@ export function getToolApprovalDescription(toolName: string, args: Record<string
       return `${args.enabled === 'true' ? '启用' : '禁用'}技能在${args.feature || '某功能'}上的挂载`
     case 'batch_refine_summaries':
       return `批量精炼整卷章节摘要`
+    case 'create_reasoning_chain':
+      return `创建推理链「${args.name || '未命名'}」`
+    case 'update_reasoning_chain':
+      return `修改推理链配置`
+    case 'delete_reasoning_chain':
+      return `删除推理链`
+    case 'toggle_reasoning_context':
+      return `${args.includeInContext === 'true' ? '启用' : '禁用'}推理结果纳入上下文`
     default:
       return `执行 ${toolName}`
   }
@@ -340,6 +354,95 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
         parameters: {
           type: 'object',
           properties: {}
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'get_reasoning_chain',
+        description: '获取指定推理链的详细信息，包括所有步骤的提示词。只读操作，无需用户确认。',
+        parameters: {
+          type: 'object',
+          properties: {
+            chainId: { type: 'string', description: '推理链 ID' }
+          },
+          required: ['chainId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'create_reasoning_chain',
+        description: '创建一个新的推理链。推理链定义了 AI 在执行特定任务时的思考流程。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            name: { type: 'string', description: '推理链名称' },
+            description: { type: 'string', description: '推理链描述' },
+            trigger: { type: 'string', enum: ['auto', 'manual', 'both'], description: '触发方式' },
+            triggerKeywords: { type: 'string', description: '触发关键词，逗号分隔' },
+            steps: {
+              type: 'array',
+              description: '推理步骤列表',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: '步骤名称' },
+                  prompt: { type: 'string', description: '步骤提示词' }
+                },
+                required: ['name', 'prompt']
+              }
+            },
+            includeInContext: { type: 'boolean', description: '推理结果是否纳入上下文' }
+          },
+          required: ['name', 'steps']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'update_reasoning_chain',
+        description: '修改现有推理链的配置。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            chainId: { type: 'string', description: '要修改的推理链 ID' },
+            name: { type: 'string', description: '新的名称' },
+            description: { type: 'string', description: '新的描述' },
+            trigger: { type: 'string', enum: ['auto', 'manual', 'both'], description: '新的触发方式' },
+            triggerKeywords: { type: 'string', description: '新的触发关键词，逗号分隔' },
+            steps: {
+              type: 'array',
+              description: '新的推理步骤列表',
+              items: {
+                type: 'object',
+                properties: {
+                  name: { type: 'string', description: '步骤名称' },
+                  prompt: { type: 'string', description: '步骤提示词' }
+                },
+                required: ['name', 'prompt']
+              }
+            },
+            includeInContext: { type: 'boolean', description: '推理结果是否纳入上下文' }
+          },
+          required: ['chainId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'delete_reasoning_chain',
+        description: '删除指定的推理链。内置推理链无法删除。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            chainId: { type: 'string', description: '要删除的推理链 ID' }
+          },
+          required: ['chainId']
         }
       }
     },
@@ -651,6 +754,100 @@ export async function executeTool(
         return `- 「${chain.name}」（${triggerLabel}，${contextLabel}）\n  ${chain.description}\n  步骤：\n${steps}`
       })
       return `共 ${chains.length} 个推理链：\n\n${lines.join('\n\n')}`
+    }
+
+    case 'get_reasoning_chain': {
+      if (!args.chainId) return '错误：未提供推理链 ID'
+
+      const chain = getReasoningChainById(args.chainId)
+      if (!chain) return '错误：找不到指定推理链'
+
+      const triggerLabel = chain.trigger === 'auto' ? '自动触发' : chain.trigger === 'manual' ? '手动触发' : '自动/手动'
+      const contextLabel = chain.includeInContext ? '纳入上下文' : '不纳入上下文'
+      const steps = chain.steps.map((s, i) => `${i + 1}. ${s.name}\n   提示词：${s.prompt}`).join('\n')
+
+      return `推理链「${chain.name}」详情：\n\n描述：${chain.description}\n触发方式：${triggerLabel}\n上下文设置：${contextLabel}\n触发关键词：${chain.triggerKeywords?.join(', ') || '无'}\n\n步骤：\n${steps}`
+    }
+
+    case 'create_reasoning_chain': {
+      if (!args.name) return '错误：未提供推理链名称'
+      if (!args.steps) return '错误：未提供推理步骤'
+
+      let steps: { name: string; prompt: string }[]
+      try {
+        steps = JSON.parse(args.steps)
+      } catch {
+        return '错误：推理步骤格式不正确'
+      }
+
+      if (!Array.isArray(steps) || steps.length === 0) return '错误：至少需要一个推理步骤'
+
+      const newChain: ReasoningChain = {
+        id: randomUUID(),
+        name: args.name,
+        description: args.description || '',
+        trigger: (args.trigger as any) || 'both',
+        triggerKeywords: args.triggerKeywords ? args.triggerKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+        steps: steps.map((s, i) => ({
+          id: `step-${Date.now()}-${i}`,
+          name: s.name,
+          prompt: s.prompt,
+          outputKey: `step${i + 1}`
+        })),
+        includeInContext: args.includeInContext === 'true',
+        builtin: false
+      }
+
+      saveReasoningChain(newChain)
+      return `已创建推理链「${newChain.name}」，包含 ${newChain.steps.length} 个步骤。`
+    }
+
+    case 'update_reasoning_chain': {
+      if (!args.chainId) return '错误：未提供推理链 ID'
+
+      const existingChain = getReasoningChainById(args.chainId)
+      if (!existingChain) return '错误：找不到指定推理链'
+      if (existingChain.builtin) return '错误：内置推理链无法修改'
+
+      const updates: Partial<ReasoningChain> = {}
+      if (args.name) updates.name = args.name
+      if (args.description) updates.description = args.description
+      if (args.trigger) updates.trigger = args.trigger as any
+      if (args.triggerKeywords) updates.triggerKeywords = args.triggerKeywords.split(',').map(k => k.trim()).filter(Boolean)
+      if (args.includeInContext !== undefined) updates.includeInContext = args.includeInContext === 'true'
+
+      if (args.steps) {
+        let steps: { name: string; prompt: string }[]
+        try {
+          steps = JSON.parse(args.steps)
+        } catch {
+          return '错误：推理步骤格式不正确'
+        }
+
+        if (!Array.isArray(steps) || steps.length === 0) return '错误：至少需要一个推理步骤'
+
+        updates.steps = steps.map((s, i) => ({
+          id: existingChain.steps[i]?.id || `step-${Date.now()}-${i}`,
+          name: s.name,
+          prompt: s.prompt,
+          outputKey: existingChain.steps[i]?.outputKey || `step${i + 1}`
+        }))
+      }
+
+      const updatedChain = { ...existingChain, ...updates }
+      saveReasoningChain(updatedChain)
+      return `已更新推理链「${updatedChain.name}」。`
+    }
+
+    case 'delete_reasoning_chain': {
+      if (!args.chainId) return '错误：未提供推理链 ID'
+
+      const chainToDelete = getReasoningChainById(args.chainId)
+      if (!chainToDelete) return '错误：找不到指定推理链'
+      if (chainToDelete.builtin) return '错误：内置推理链无法删除'
+
+      deleteReasoningChain(args.chainId)
+      return `已删除推理链「${chainToDelete.name}」。`
     }
 
     case 'toggle_reasoning_context': {

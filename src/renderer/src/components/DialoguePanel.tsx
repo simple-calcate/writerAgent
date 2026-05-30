@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
-import type { DialogueLevel, ToolCallInfo, DialogueToolApproval } from '../../../shared/types'
+import type { DialogueLevel, ToolCallInfo, DialogueToolApproval, ReasoningChain } from '../../../shared/types'
 
 const LEVEL_META: Record<DialogueLevel, { label: string; icon: string }> = {
   book: { label: '书籍对话', icon: '📚' },
@@ -568,13 +568,33 @@ export default function DialoguePanel() {
   } = useAppStore()
 
   const [input, setInput] = useState('')
+  const [reasoningChains, setReasoningChains] = useState<ReasoningChain[]>([])
+  const [showChainSelector, setShowChainSelector] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+  const chainSelectorRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [dialogueMessages, streamingText, thinkingText])
+
+  // Load reasoning chains
+  useEffect(() => {
+    window.api.getReasoningChains().then(setReasoningChains)
+  }, [])
+
+  // Click outside to close chain selector
+  useEffect(() => {
+    if (!showChainSelector) return
+    const handler = (e: MouseEvent) => {
+      if (chainSelectorRef.current && !chainSelectorRef.current.contains(e.target as Node)) {
+        setShowChainSelector(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showChainSelector])
 
   const handleSend = () => {
     const text = input.trim()
@@ -586,6 +606,14 @@ export default function DialoguePanel() {
   const handleQuickReply = (value: string) => {
     if (!value || isStreaming) return
     sendDialogueMessage(value)
+  }
+
+  const handleTriggerReasoning = (chain: ReasoningChain) => {
+    setShowChainSelector(false)
+    // Send a message that triggers the reasoning chain
+    const triggerMsg = `[触发推理链: ${chain.name}] ${input.trim() || '请执行推理分析'}`
+    setInput('')
+    sendDialogueMessage(triggerMsg)
   }
 
   // Extract quick replies from the last assistant message
@@ -715,15 +743,52 @@ export default function DialoguePanel() {
       {/* Input */}
       <div className="p-2 border-t border-gray-700/60 shrink-0">
         <div className="flex gap-1.5">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="输入你的想法..."
-            rows={2}
-            className="flex-1 bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
-          />
+          <div className="relative flex-1" ref={chainSelectorRef}>
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="输入你的想法..."
+              rows={2}
+              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 pr-8 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
+            />
+            {/* Reasoning chain button */}
+            <button
+              onClick={() => setShowChainSelector(!showChainSelector)}
+              className="absolute right-1.5 bottom-1.5 w-6 h-6 flex items-center justify-center text-gray-500 hover:text-purple-400 hover:bg-gray-700/50 rounded transition-colors"
+              title="触发推理链"
+            >
+              🧠
+            </button>
+
+            {/* Chain selector dropdown */}
+            {showChainSelector && (
+              <div className="absolute bottom-full left-0 right-0 mb-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden z-10">
+                <div className="p-2 border-b border-gray-700">
+                  <p className="text-[10px] text-gray-500">选择推理链</p>
+                </div>
+                <div className="max-h-48 overflow-y-auto">
+                  {reasoningChains.map(chain => (
+                    <button
+                      key={chain.id}
+                      onClick={() => handleTriggerReasoning(chain)}
+                      className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-gray-300">{chain.name}</span>
+                        <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
+                      </div>
+                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{chain.description}</p>
+                    </button>
+                  ))}
+                </div>
+                {reasoningChains.length === 0 && (
+                  <p className="text-[11px] text-gray-600 text-center py-3">暂无推理链</p>
+                )}
+              </div>
+            )}
+          </div>
           {isStreaming ? (
             <button
               onClick={cancelDialogueStream}

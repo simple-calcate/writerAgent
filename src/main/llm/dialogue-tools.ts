@@ -526,7 +526,9 @@ export async function executeTool(
     : currentChapter
 
   // Execute reasoning chains before tool execution
+  // Returns reasoning results to be injected into AI context
   const REASONING_TOOLS = ['write_chapter_content', 'write_chapter_outline', 'write_volume_outline', 'write_outline']
+  let reasoningResults = ''
   if (REASONING_TOOLS.includes(toolName) && mainWindow) {
     const chainsToExecute: ReasoningChain[] = []
 
@@ -563,8 +565,13 @@ export async function executeTool(
         const session = await executeReasoningChain(chain, context, config, mainWindow)
         const reasoningResult = buildReasoningContext(session)
         if (reasoningResult) {
-          params.reasoningContext = (params.reasoningContext || '') + reasoningResult
+          reasoningResults += reasoningResult
         }
+      }
+
+      // Clear message chain IDs after execution to prevent re-execution
+      if (params.messageChainIds) {
+        params.messageChainIds = []
       }
     }
   }
@@ -616,6 +623,12 @@ export async function executeTool(
 
     case 'write_outline': {
       if (!args.content) return '错误：未提供大纲内容'
+
+      // If reasoning was executed, return results and ask AI to regenerate
+      if (reasoningResults) {
+        return `推理分析已完成，请根据以下分析结果重新撰写书籍大纲，然后再次调用 write_outline：\n\n${reasoningResults}\n\n请基于以上分析，重新生成更完善的大纲。`
+      }
+
       const existing = getOutline('book', projectId)
       const outline = {
         id: existing?.id || randomUUID(),
@@ -635,6 +648,12 @@ export async function executeTool(
     case 'write_volume_outline': {
       if (!args.volumeId) return '错误：未提供卷 ID'
       if (!args.content) return '错误：未提供卷纲内容'
+
+      // If reasoning was executed, return results and ask AI to regenerate
+      if (reasoningResults) {
+        return `推理分析已完成，请根据以下分析结果重新撰写卷纲，然后再次调用 write_volume_outline：\n\n${reasoningResults}\n\n请基于以上分析，重新生成更完善的卷纲。`
+      }
+
       const existingVol = getOutline('volume', args.volumeId)
       const volOutline = {
         id: existingVol?.id || randomUUID(),
@@ -654,6 +673,12 @@ export async function executeTool(
     case 'write_chapter_outline': {
       if (!args.chapterId) return '错误：未提供章节 ID'
       if (!args.content) return '错误：未提供章纲内容'
+
+      // If reasoning was executed, return results and ask AI to regenerate
+      if (reasoningResults) {
+        return `推理分析已完成，请根据以下分析结果重新撰写章纲，然后再次调用 write_chapter_outline：\n\n${reasoningResults}\n\n请基于以上分析，重新生成更完善的章纲。`
+      }
+
       const existingCh = getOutline('chapter', args.chapterId)
       const chOutline = {
         id: existingCh?.id || randomUUID(),
@@ -688,6 +713,12 @@ export async function executeTool(
       if (!args.content) return '错误：未提供内容'
       const target = allChapters.find(c => c.id === args.chapterId)
       if (!target) return '错误：找不到指定章节'
+
+      // If reasoning was executed, return results and ask AI to regenerate
+      if (reasoningResults) {
+        return `推理分析已完成，请根据以下分析结果重新撰写章节内容，然后再次调用 write_chapter_content：\n\n${reasoningResults}\n\n请基于以上分析，重新生成更优质的章节内容。`
+      }
+
       // 覆盖前自动保存版本
       if (target.content) {
         saveVersion(args.chapterId, {
@@ -698,8 +729,7 @@ export async function executeTool(
       }
       updateChapter(args.chapterId, { content: args.content })
       const contentPreview = args.content.length > 500 ? args.content.substring(0, 500) + '...' : args.content
-      const reasoningNote = params.reasoningContext ? '\n\n（已基于推理分析结果生成内容）' : ''
-      return `已为章节「${target.title}」写入内容（${args.content.length} 字）${reasoningNote}\n\n${contentPreview}`
+      return `已为章节「${target.title}」写入内容（${args.content.length} 字）\n\n${contentPreview}`
     }
 
     case 'extract_skill': {

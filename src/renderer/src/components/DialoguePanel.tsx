@@ -8,6 +8,124 @@ const LEVEL_META: Record<DialogueLevel, { label: string; icon: string }> = {
   chapter: { label: '章节对话', icon: '📝' }
 }
 
+// ─── Quick Reply Extraction ───
+
+interface QuickReply {
+  label: string
+  value: string
+}
+
+function extractQuickReplies(text: string): QuickReply[] {
+  if (!text) return []
+
+  const replies: QuickReply[] = []
+  const lines = text.split('\n')
+
+  // Pattern 1: Numbered options like "1. xxx" or "1、xxx" or "1) xxx"
+  const numberedPattern = /^[\s]*(\d+)[\.\)、]\s+(.+)/
+
+  // Pattern 2: Lettered options like "A. xxx" or "A、xxx"
+  const letteredPattern = /^[\s]*([A-Z])[\.、]\s+(.+)/i
+
+  // Pattern 3: Options with markers like "【选项】xxx" or "[选项]xxx"
+  const markerPattern = /^[\s]*[【\[](.*?)[】\]]\s*(.*)/
+
+  // Pattern 4: Options with quotes like "> xxx" (used as suggestions)
+  const quotePattern = /^[\s]*>\s+(.+)/
+
+  // Pattern 5: Options with dashes that look like choices "- xxx"
+  const dashPattern = /^[\s]*[-–—]\s+(.+)/
+
+  // First pass: look for numbered/lettered options
+  for (const line of lines) {
+    const numMatch = line.match(numberedPattern)
+    if (numMatch) {
+      replies.push({
+        label: `${numMatch[1]}. ${numMatch[2].trim()}`,
+        value: numMatch[2].trim()
+      })
+      continue
+    }
+
+    const letMatch = line.match(letteredPattern)
+    if (letMatch) {
+      replies.push({
+        label: `${letMatch[1].toUpperCase()}. ${letMatch[2].trim()}`,
+        value: letMatch[2].trim()
+      })
+      continue
+    }
+  }
+
+  // If we found numbered/lettered options, return them
+  if (replies.length >= 2) return replies.slice(0, 5) // Max 5 options
+
+  // Second pass: look for marker options
+  replies.length = 0
+  for (const line of lines) {
+    const markerMatch = line.match(markerPattern)
+    if (markerMatch && markerMatch[1]) {
+      replies.push({
+        label: markerMatch[1].trim(),
+        value: markerMatch[2]?.trim() || markerMatch[1].trim()
+      })
+    }
+  }
+
+  if (replies.length >= 2) return replies.slice(0, 5)
+
+  // Third pass: look for quoted suggestions
+  replies.length = 0
+  for (const line of lines) {
+    const quoteMatch = line.match(quotePattern)
+    if (quoteMatch) {
+      replies.push({
+        label: quoteMatch[1].trim(),
+        value: quoteMatch[1].trim()
+      })
+    }
+  }
+
+  if (replies.length >= 2) return replies.slice(0, 5)
+
+  // Fourth pass: look for dash options (only if they appear to be choices)
+  replies.length = 0
+  const dashLines = lines.filter(l => l.match(dashPattern))
+  // Only use dash pattern if there are 2-5 dash lines (likely choices, not regular list)
+  if (dashLines.length >= 2 && dashLines.length <= 5) {
+    for (const line of dashLines) {
+      const dashMatch = line.match(dashPattern)
+      if (dashMatch) {
+        replies.push({
+          label: dashMatch[1].trim(),
+          value: dashMatch[1].trim()
+        })
+      }
+    }
+  }
+
+  return replies
+}
+
+// Quick Reply Buttons Component
+function QuickReplyButtons({ replies, onSelect }: { replies: QuickReply[]; onSelect: (value: string) => void }) {
+  if (replies.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-2">
+      {replies.map((reply, i) => (
+        <button
+          key={i}
+          onClick={() => onSelect(reply.value)}
+          className="px-2.5 py-1 text-[11px] bg-blue-600/20 hover:bg-blue-600/40 text-blue-300 hover:text-blue-200 border border-blue-600/30 hover:border-blue-500/50 rounded-full transition-colors"
+        >
+          {reply.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function renderMarkdown(text: string): React.ReactNode[] {
   if (!text) return []
   const lines = text.split('\n')
@@ -465,6 +583,16 @@ export default function DialoguePanel() {
     sendDialogueMessage(text)
   }
 
+  const handleQuickReply = (value: string) => {
+    if (!value || isStreaming) return
+    sendDialogueMessage(value)
+  }
+
+  // Extract quick replies from the last assistant message
+  const lastAssistantMsg = [...dialogueMessages].reverse().find(m => m.role === 'assistant')
+  const quickReplies = lastAssistantMsg ? extractQuickReplies(lastAssistantMsg.content) : []
+  const showQuickReplies = quickReplies.length > 0 && !isStreaming
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -576,6 +704,13 @@ export default function DialoguePanel() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Quick Replies */}
+      {showQuickReplies && (
+        <div className="px-3 py-2 border-t border-gray-700/40 bg-gray-800/30">
+          <QuickReplyButtons replies={quickReplies} onSelect={handleQuickReply} />
+        </div>
+      )}
 
       {/* Input */}
       <div className="p-2 border-t border-gray-700/60 shrink-0">

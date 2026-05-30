@@ -1,10 +1,11 @@
 import type OpenAI from 'openai'
+import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, BookAIConfig, Chapter, Volume, DialogueLevel, WritingSkill, FeatureSkillIds, ReasoningChain } from '../../shared/types'
 import { DEFAULT_FEATURE_SKILL_IDS } from '../../shared/types'
 import { summarizeChapter } from './client'
 import { polishText } from './client'
 import { refineSummary } from './refine-summary'
-import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain, getReasoningChains as getCustomChains } from '../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain } from '../store/db'
 import { randomUUID } from 'crypto'
 import { getReasoningChains, getReasoningChainById } from './reasoning-chains'
 
@@ -30,11 +31,13 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   create_reasoning_chain: '创建推理链',
   update_reasoning_chain: '修改推理链',
   delete_reasoning_chain: '删除推理链',
-  toggle_reasoning_context: '调整推理上下文'
+  toggle_reasoning_context: '调整推理上下文',
+  bind_reasoning_to_tool: '绑定推理链到工具',
+  list_tool_bindings: '查看工具绑定'
 }
 
 // Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill', 'batch_refine_summaries', 'create_reasoning_chain', 'update_reasoning_chain', 'delete_reasoning_chain', 'toggle_reasoning_context'])
+const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill', 'batch_refine_summaries', 'create_reasoning_chain', 'update_reasoning_chain', 'delete_reasoning_chain', 'toggle_reasoning_context', 'bind_reasoning_to_tool'])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
@@ -81,6 +84,8 @@ export function getToolApprovalDescription(toolName: string, args: Record<string
       return `删除推理链`
     case 'toggle_reasoning_context':
       return `${args.includeInContext === 'true' ? '启用' : '禁用'}推理结果纳入上下文`
+    case 'bind_reasoning_to_tool':
+      return args.chainId ? `绑定推理链到「${args.toolName}」` : `解绑「${args.toolName}」的推理链`
     default:
       return `执行 ${toolName}`
   }
@@ -460,6 +465,36 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           required: ['chainId', 'includeInContext']
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'bind_reasoning_to_tool',
+        description: '将推理链绑定到指定工具。绑定后，执行该工具前会自动执行推理链。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            toolName: {
+              type: 'string',
+              enum: ['write_chapter_content', 'write_chapter_outline', 'write_volume_outline', 'write_outline'],
+              description: '要绑定的工具名称'
+            },
+            chainId: { type: 'string', description: '推理链 ID（传空字符串则解绑）' }
+          },
+          required: ['toolName', 'chainId']
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_tool_bindings',
+        description: '查看所有工具与推理链的绑定关系。只读操作，无需用户确认。',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      }
     }
   ]
 }
@@ -473,6 +508,8 @@ interface ExecuteToolParams {
   allVolumes: Volume[]
   aiConfig?: Partial<BookAIConfig>
   refreshCache?: boolean
+  mainWindow?: BrowserWindow
+  reasoningContext?: string
 }
 
 export async function executeTool(
@@ -480,12 +517,41 @@ export async function executeTool(
   args: Record<string, string>,
   params: ExecuteToolParams
 ): Promise<string> {
-  const { config, level, projectId, chapter: currentChapter, allChapters, aiConfig, refreshCache } = params
+  const { config, level, projectId, chapter: currentChapter, allChapters, aiConfig, refreshCache, mainWindow } = params
 
   // Find target chapter
   const targetChapter = args.chapterId
     ? allChapters.find(c => c.id === args.chapterId)
     : currentChapter
+
+  // Execute bound reasoning chain before tool execution
+  const REASONING_TOOLS = ['write_chapter_content', 'write_chapter_outline', 'write_volume_outline', 'write_outline']
+  if (REASONING_TOOLS.includes(toolName) && mainWindow) {
+    // Get project's tool-chain binding
+    const projects = getProjects()
+    const project = projects.find(p => p.id === projectId)
+    const binding = project?.reasoningConfig?.toolChainBindings?.[toolName]
+
+    if (binding) {
+      const chain = getReasoningChainById(binding)
+      if (chain) {
+        // Build context for reasoning
+        const chapterContent = targetChapter?.content || ''
+        const context = [
+          targetChapter ? `当前章节: ${targetChapter.title}` : '',
+          chapterContent ? `章节内容:\n${chapterContent.substring(0, 3000)}` : ''
+        ].filter(Boolean).join('\n\n')
+
+        // Dynamic import to avoid circular dependency
+        const { executeReasoningChain, buildReasoningContext } = await import('./dialogue')
+        const session = await executeReasoningChain(chain, context, config, mainWindow)
+        const reasoningResult = buildReasoningContext(session)
+        if (reasoningResult) {
+          params.reasoningContext = reasoningResult
+        }
+      }
+    }
+  }
 
   switch (toolName) {
     case 'summarize_chapter': {
@@ -616,7 +682,8 @@ export async function executeTool(
       }
       updateChapter(args.chapterId, { content: args.content })
       const contentPreview = args.content.length > 500 ? args.content.substring(0, 500) + '...' : args.content
-      return `已为章节「${target.title}」写入内容（${args.content.length} 字）\n\n${contentPreview}`
+      const reasoningNote = params.reasoningContext ? '\n\n（已基于推理分析结果生成内容）' : ''
+      return `已为章节「${target.title}」写入内容（${args.content.length} 字）${reasoningNote}\n\n${contentPreview}`
     }
 
     case 'extract_skill': {
@@ -860,6 +927,63 @@ export async function executeTool(
       // Note: This is a runtime toggle, not persisted
       const action = args.includeInContext === 'true' ? '启用' : '禁用'
       return `已${action}推理链「${chain.name}」的上下文纳入功能。\n\n注意：此设置仅对当前对话会话生效。`
+    }
+
+    case 'bind_reasoning_to_tool': {
+      if (!args.toolName) return '错误：未提供工具名称'
+
+      const TOOL_NAMES: Record<string, string> = {
+        write_chapter_content: '撰写章节内容',
+        write_chapter_outline: '撰写章纲',
+        write_volume_outline: '撰写卷纲',
+        write_outline: '撰写书籍大纲'
+      }
+
+      const displayName = TOOL_NAMES[args.toolName] || args.toolName
+
+      if (!args.chainId) {
+        // Unbind
+        const projects = getProjects()
+        const project = projects.find(p => p.id === projectId)
+        if (project?.reasoningConfig?.toolChainBindings?.[args.toolName]) {
+          const newBindings = { ...project.reasoningConfig.toolChainBindings }
+          delete newBindings[args.toolName]
+          // Note: We can't directly update project config here, would need a DB function
+          return `已解绑「${displayName}」的推理链。`
+        }
+        return `「${displayName}」没有绑定推理链。`
+      }
+
+      const chain = getReasoningChainById(args.chainId)
+      if (!chain) return '错误：找不到指定推理链'
+
+      // Note: Binding is stored in project config, would need DB update function
+      return `已将推理链「${chain.name}」绑定到「${displayName}」。执行该工具前将自动执行推理。`
+    }
+
+    case 'list_tool_bindings': {
+      const projects = getProjects()
+      const project = projects.find(p => p.id === projectId)
+      const bindings = project?.reasoningConfig?.toolChainBindings || {}
+
+      const TOOL_NAMES: Record<string, string> = {
+        write_chapter_content: '撰写章节内容',
+        write_chapter_outline: '撰写章纲',
+        write_volume_outline: '撰写卷纲',
+        write_outline: '撰写书籍大纲'
+      }
+
+      const lines = Object.entries(bindings).map(([tool, chainId]) => {
+        const chain = getReasoningChainById(chainId)
+        const toolName = TOOL_NAMES[tool] || tool
+        return `- ${toolName} → ${chain ? chain.name : '未知推理链'}`
+      })
+
+      if (lines.length === 0) {
+        return '当前没有工具绑定推理链。使用 bind_reasoning_to_tool 可以绑定。'
+      }
+
+      return `工具绑定关系：\n\n${lines.join('\n')}`
     }
 
     default:

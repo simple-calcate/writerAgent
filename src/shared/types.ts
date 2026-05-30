@@ -600,6 +600,7 @@ export interface ProjectReasoningConfig {
   autoTrigger: boolean
   defaultChainId: string | null
   includeInContextByDefault: boolean
+  toolChainBindings: Record<string, string>  // toolName -> reasoningChainId
 }
 
 // ─── AI Thinking (通用，非对话专属) ───

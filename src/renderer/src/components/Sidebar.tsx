@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { getGenreList } from '../../../shared/novel-knowledge'
-import type { BookAIConfig, FeatureSkillIds } from '../../../shared/types'
+import type { BookAIConfig, FeatureSkillIds, ReasoningChain, ProjectReasoningConfig } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_FEATURE_SKILL_IDS, SKILL_CATEGORIES } from '../../../shared/types'
 
 // ─── Context Menu ───
@@ -393,17 +393,6 @@ function VolumeLevel() {
       <BackButton label={label} onClick={navBack} />
 
       <div className="flex-1 overflow-y-auto">
-        {/* Volume AI config (not for unassigned) */}
-        {!isUnassigned && volume && (
-          <button
-            onClick={() => setEditingAIConfig('volume', volume.id)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-amber-400 hover:bg-amber-600/10 transition-colors border-b border-gray-700/50"
-          >
-            <span className="text-[11px]">⚙</span>
-            <span>卷 AI 配置</span>
-          </button>
-        )}
-
         {/* Volume dialogue */}
         <button
           onClick={() => openDialogue('volume')}
@@ -620,47 +609,45 @@ function ChapterLevel() {
 
 function AIConfigLevel() {
   const {
-    editingAIConfig, editingVolumeId,
-    currentProject, volumes, skills,
-    saveBookAIConfig, saveVolumeAIConfig, updateProjectFeatureSkillIds, loadSkills, navBack
+    currentProject, skills,
+    updateProjectFeatureSkillIds, updateProjectReasoningConfig, loadSkills, navBack
   } = useAppStore()
 
-  const isBookLevel = editingAIConfig === 'book'
-
-  const existingConfig = isBookLevel
-    ? (currentProject?.aiConfig || DEFAULT_BOOK_AI_CONFIG)
-    : (volumes.find(v => v.id === editingVolumeId)?.aiConfig || {})
-
-  const [polishStandard, setPolishStandard] = useState(existingConfig.polishStandard || '')
-  const [summaryStandard, setSummaryStandard] = useState(existingConfig.summaryStandard || '')
-  const [customPrompt, setCustomPrompt] = useState(existingConfig.customPrompt || '')
   const [featureSkillIds, setFeatureSkillIds] = useState<FeatureSkillIds>(
     currentProject?.featureSkillIds || { ...DEFAULT_FEATURE_SKILL_IDS }
   )
+  const [reasoningConfig, setReasoningConfig] = useState<ProjectReasoningConfig>(
+    currentProject?.reasoningConfig || {
+      enabled: true,
+      autoTrigger: true,
+      defaultChainId: null,
+      includeInContextByDefault: false,
+      toolChainBindings: {}
+    }
+  )
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null)
+  const [chains, setChains] = useState<ReasoningChain[]>([])
 
   useEffect(() => {
     loadSkills()
+    window.api.getReasoningChains().then(setChains)
   }, [loadSkills])
 
   useEffect(() => {
-    setPolishStandard(existingConfig.polishStandard || '')
-    setSummaryStandard(existingConfig.summaryStandard || '')
-    setCustomPrompt(existingConfig.customPrompt || '')
     setFeatureSkillIds(currentProject?.featureSkillIds || { ...DEFAULT_FEATURE_SKILL_IDS })
-  }, [isBookLevel, editingVolumeId, currentProject?.featureSkillIds])
+    setReasoningConfig(currentProject?.reasoningConfig || {
+      enabled: true,
+      autoTrigger: true,
+      defaultChainId: null,
+      includeInContextByDefault: false,
+      toolChainBindings: {}
+    })
+  }, [currentProject?.featureSkillIds, currentProject?.reasoningConfig])
 
   const handleSave = async () => {
-    const config: Partial<BookAIConfig> = {
-      polishStandard: polishStandard.trim(),
-      summaryStandard: summaryStandard.trim(),
-      customPrompt: customPrompt.trim()
-    }
-    if (isBookLevel) {
-      await saveBookAIConfig(config)
+    if (currentProject) {
       await updateProjectFeatureSkillIds(featureSkillIds)
-    } else if (editingVolumeId) {
-      await saveVolumeAIConfig(editingVolumeId, config)
+      await updateProjectReasoningConfig(reasoningConfig)
     }
     navBack()
   }
@@ -682,7 +669,15 @@ function AIConfigLevel() {
     }))
   }
 
-  const title = isBookLevel ? '书籍 AI 配置' : '卷 AI 配置'
+  const bindToolChain = (toolName: string, chainId: string) => {
+    setReasoningConfig(prev => ({
+      ...prev,
+      toolChainBindings: {
+        ...prev.toolChainBindings,
+        [toolName]: chainId || undefined
+      }
+    }))
+  }
 
   const FEATURES: { key: keyof FeatureSkillIds; icon: string; label: string; desc: string; color: string }[] = [
     { key: 'dialogue', icon: '💬', label: 'AI 对话', desc: '对话系统中使用的技能', color: 'from-blue-500/20 to-blue-600/5 border-blue-500/30' },
@@ -693,48 +688,24 @@ function AIConfigLevel() {
     { key: 'chapterContent', icon: '📖', label: '正文撰写', desc: '撰写正文时使用的技能', color: 'from-rose-500/20 to-rose-600/5 border-rose-500/30' }
   ]
 
+  const TOOL_OPTIONS = [
+    { value: 'write_chapter_content', label: '撰写章节内容' },
+    { value: 'write_chapter_outline', label: '撰写章纲' },
+    { value: 'write_volume_outline', label: '撰写卷纲' },
+    { value: 'write_outline', label: '撰写书籍大纲' }
+  ]
+
   return (
     <div className="flex flex-col h-full">
-      <BackButton label={title} onClick={navBack} />
+      <BackButton label="书籍 AI 配置" onClick={navBack} />
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         <p className="text-[10px] text-gray-500">
-          {isBookLevel ? '以下配置将作为所有卷和章节的默认值' : '以下配置将覆盖书籍级配置，仅对本卷生效'}
+          配置技能搭载和推理链绑定，影响所有卷和章节
         </p>
 
-        {/* Basic Config */}
-        <div className="space-y-3">
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">润色标准</label>
-            <textarea
-              value={polishStandard}
-              onChange={e => setPolishStandard(e.target.value)}
-              placeholder="描述你期望的润色风格和标准..."
-              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">摘要标准</label>
-            <textarea
-              value={summaryStandard}
-              onChange={e => setSummaryStandard(e.target.value)}
-              placeholder="描述你期望的摘要关注点..."
-              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-            />
-          </div>
-          <div>
-            <label className="block text-xs text-gray-400 mb-1">自定义补充指令</label>
-            <textarea
-              value={customPrompt}
-              onChange={e => setCustomPrompt(e.target.value)}
-              placeholder="其他对 AI 的补充要求..."
-              className="w-full bg-gray-900/50 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-amber-500 resize-none h-16"
-            />
-          </div>
-        </div>
-
-        {/* Per-Feature Skill Assignment */}
-        {isBookLevel && skills.length > 0 && (
+        {/* Skill Assignment */}
+        {skills.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center gap-2 mb-1">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
@@ -805,6 +776,43 @@ function AIConfigLevel() {
             })}
           </div>
         )}
+
+        {/* Reasoning Chain Bindings */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
+            <span className="text-[10px] text-gray-500 font-medium tracking-wider">推理链绑定</span>
+            <div className="h-px flex-1 bg-gradient-to-r from-transparent via-gray-600 to-transparent" />
+          </div>
+          <p className="text-[10px] text-gray-600">绑定推理链后，执行工具前会自动执行推理分析</p>
+
+          {TOOL_OPTIONS.map(tool => {
+            const boundChainId = reasoningConfig.toolChainBindings?.[tool.value]
+            const boundChain = chains.find(c => c.id === boundChainId)
+            return (
+              <div key={tool.value} className="bg-gray-900/30 rounded-lg p-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-gray-300">{tool.label}</span>
+                </div>
+                <select
+                  value={boundChainId || ''}
+                  onChange={e => bindToolChain(tool.value, e.target.value)}
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                >
+                  <option value="">不绑定</option>
+                  {chains.map(chain => (
+                    <option key={chain.id} value={chain.id}>{chain.name}</option>
+                  ))}
+                </select>
+                {boundChain && (
+                  <p className="text-[10px] text-gray-600 mt-1">
+                    已绑定：{boundChain.name}（{boundChain.steps.length} 步）
+                  </p>
+                )}
+              </div>
+            )
+          })}
+        </div>
       </div>
 
       <div className="p-3 border-t border-gray-700/50 shrink-0">

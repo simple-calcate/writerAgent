@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline, WritingSkill, FeatureSkillIds, ReasoningChain } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline, WritingSkill, FeatureSkillIds, ReasoningChain, ProjectReasoningConfig } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, BUILTIN_SKILLS } from '../../shared/types'
 
 interface Store {
@@ -285,10 +285,8 @@ function save(): void {
 
 // ─── AI 配置继承 ───
 
-export function resolveAIConfig(project: Project, volume?: Volume | null): BookAIConfig {
-  const base = project.aiConfig || DEFAULT_BOOK_AI_CONFIG
-  if (!volume?.aiConfig || Object.keys(volume.aiConfig).length === 0) return base
-  return { ...base, ...volume.aiConfig }
+export function resolveAIConfig(project: Project): BookAIConfig {
+  return project.aiConfig || DEFAULT_BOOK_AI_CONFIG
 }
 
 // ─── Projects ───
@@ -361,6 +359,14 @@ export function updateProjectFeatureSkillIds(projectId: string, featureSkillIds:
   const project = store.projects.find(p => p.id === projectId)
   if (!project) return
   project.featureSkillIds = featureSkillIds
+  project.updatedAt = new Date().toISOString()
+  save()
+}
+
+export function updateProjectReasoningConfig(projectId: string, config: ProjectReasoningConfig): void {
+  const project = store.projects.find(p => p.id === projectId)
+  if (!project) return
+  project.reasoningConfig = config
   project.updatedAt = new Date().toISOString()
   save()
 }

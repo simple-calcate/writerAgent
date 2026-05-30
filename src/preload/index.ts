@@ -128,6 +128,9 @@ const api: IPCAPI = {
   updateProjectFeatureSkillIds: (projectId: string, featureSkillIds: any) =>
     ipcRenderer.invoke('update-project-feature-skill-ids', projectId, featureSkillIds),
 
+  updateProjectReasoningConfig: (projectId: string, config: any) =>
+    ipcRenderer.invoke('update-project-reasoning-config', projectId, config),
+
   exportSkills: (skillIds?: string[]) =>
     ipcRenderer.invoke('export-skills', skillIds),
 

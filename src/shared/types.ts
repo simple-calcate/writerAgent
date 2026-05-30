@@ -361,7 +361,6 @@ export interface Volume {
   id: string
   projectId: string
   name: string
-  aiConfig: Partial<BookAIConfig>
   orderIndex: number
   createdAt: string
   updatedAt: string
@@ -392,6 +391,7 @@ export interface Project {
   aiConfig: BookAIConfig
   enabledSkillIds?: string[] // legacy, migrated to featureSkillIds
   featureSkillIds?: FeatureSkillIds
+  reasoningConfig?: ProjectReasoningConfig
   createdAt: string
   updatedAt: string
 }
@@ -649,6 +649,7 @@ export interface IPCAPI {
   updateProjectAIConfig: (projectId: string, config: Partial<BookAIConfig>) => Promise<void>
   updateProjectEnabledSkills: (projectId: string, skillIds: string[]) => Promise<void>
   updateProjectFeatureSkillIds: (projectId: string, featureSkillIds: FeatureSkillIds) => Promise<void>
+  updateProjectReasoningConfig: (projectId: string, config: ProjectReasoningConfig) => Promise<void>
 
   // Volumes
   getVolumes: (projectId: string) => Promise<Volume[]>

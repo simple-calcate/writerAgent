@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, ReasoningStepResult } from '../../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, PolishResult, PolishMark, VersionSnapshot, ExportOptions, BookAIConfig, ConversationMessage, Conversation, DialogueLevel, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, ToolCallInfo, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, ReasoningStepResult, ProjectReasoningConfig } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
 
 type RightPanelType = 'polish' | 'summary' | 'dialogue' | 'outline' | null
@@ -56,11 +56,11 @@ interface AppState {
   navBack: () => void
 
   // AI Config editing
-  editingAIConfig: 'book' | 'volume' | null
+  editingAIConfig: 'book' | null
   editingVolumeId: string | null
-  setEditingAIConfig: (level: 'book' | 'volume' | null, volumeId?: string | null) => void
+  setEditingAIConfig: (level: 'book' | null, volumeId?: string | null) => void
   saveBookAIConfig: (config: Partial<BookAIConfig>) => Promise<void>
-  saveVolumeAIConfig: (volumeId: string, config: Partial<BookAIConfig>) => Promise<void>
+  updateProjectReasoningConfig: (config: ProjectReasoningConfig) => Promise<void>
 
   // Auto Polish
   isAnalyzing: boolean
@@ -201,13 +201,6 @@ interface AppState {
   _handleReasoningDone: (data: any) => void
 }
 
-// 获取当前章节所属卷的 AI 配置
-function getVolumeAIConfig(state: AppState): Partial<BookAIConfig> | undefined {
-  const { currentChapter, volumes } = state
-  if (!currentChapter?.volumeId) return undefined
-  const volume = volumes.find(v => v.id === currentChapter.volumeId)
-  return volume?.aiConfig
-}
 
 export const useAppStore = create<AppState>((set, get) => ({
   // Projects
@@ -476,6 +469,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     set(s => ({ volumes: s.volumes.map(v => v.id === volumeId ? { ...v, aiConfig: newConfig } : v) }))
   },
 
+  updateProjectReasoningConfig: async (config) => {
+    const { currentProject } = get()
+    if (!currentProject) return
+    await window.api.updateProjectReasoningConfig(currentProject.id, config)
+    set(s => ({
+      currentProject: s.currentProject ? { ...s.currentProject, reasoningConfig: config } : null,
+      projects: s.projects.map(p => p.id === currentProject.id ? { ...p, reasoningConfig: config } : p)
+    }))
+  },
+
   // Auto Polish
   isAnalyzing: false,
   polishSuggestions: [],
@@ -499,9 +502,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!currentChapter || !currentChapter.content.trim()) return
 
     const state = get()
-    const volumeAI = getVolumeAIConfig(state)
-    const bookAI = state.currentProject?.aiConfig
-    const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
+    const mergedAI = state.currentProject?.aiConfig
 
     set({ isAnalyzing: true, analyzeError: null, polishSuggestions: [], activeSuggestionId: null, previewOriginalContent: null, aiIsThinking: false, aiThinkingText: '' })
     const unsubChunk = window.api.onAIThinkingChunk((data) => {
@@ -554,9 +555,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!currentChapter || !currentChapter.content.trim()) return
 
     const state = get()
-    const volumeAI = getVolumeAIConfig(state)
-    const bookAI = state.currentProject?.aiConfig
-    const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
+    const mergedAI = state.currentProject?.aiConfig
 
     set({ isSummarizing: true, summaryError: null, summaryResult: null, aiIsThinking: false, aiThinkingText: '' })
     const unsubChunk = window.api.onAIThinkingChunk((data) => {
@@ -584,9 +583,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (!currentChapter || !currentChapter.content.trim()) return
 
     const state = get()
-    const volumeAI = getVolumeAIConfig(state)
-    const bookAI = state.currentProject?.aiConfig
-    const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
+    const mergedAI = state.currentProject?.aiConfig
 
     set({ isRefining: true, refineProgress: null, aiIsThinking: false, aiThinkingText: '' })
     const unsubChunk = window.api.onAIThinkingChunk((data) => {
@@ -624,9 +621,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     if (volumeChapters.length === 0) return
 
     const state = get()
-    const volumeAI = getVolumeAIConfig(state)
-    const bookAI = state.currentProject?.aiConfig
-    const mergedAI = bookAI ? { ...bookAI, ...volumeAI } : volumeAI
+    const mergedAI = state.currentProject?.aiConfig
 
     set({ isRefining: true, refineProgress: { current: 0, total: volumeChapters.length }, aiIsThinking: false, aiThinkingText: '' })
     const unsubChunk = window.api.onAIThinkingChunk((data) => {

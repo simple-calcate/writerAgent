@@ -71,7 +71,7 @@ export function buildDialogueSystemPrompt(params: PromptParams): string {
   }
 
   // 3. AI config
-  const aiConfig = resolveConfig(project, volume)
+  const aiConfig = resolveConfig(project)
   if (aiConfig.customPrompt) {
     parts.push(`\n## 作者补充要求\n${aiConfig.customPrompt}`)
   }
@@ -125,10 +125,8 @@ export function buildDialogueSystemPrompt(params: PromptParams): string {
   return parts.join('\n')
 }
 
-function resolveConfig(project: Project, volume?: Volume | null): BookAIConfig {
-  const base = project.aiConfig
-  if (!volume?.aiConfig || Object.keys(volume.aiConfig).length === 0) return base
-  return { ...base, ...volume.aiConfig }
+function resolveConfig(project: Project): BookAIConfig {
+  return project.aiConfig
 }
 
 const SKILL_CATEGORY_LABELS: Record<SkillCategory, string> = {

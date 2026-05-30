@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync, readFileSync } from 'fs'
-import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills, saveReasoningChain, deleteReasoningChain } from './store/db'
+import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, updateProjectReasoningConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills, saveReasoningChain, deleteReasoningChain } from './store/db'
 import { getReasoningChains } from './llm/reasoning-chains'
 import { autoPolish, polishText, summarizeChapter, diagnoseLocalModel } from './llm/client'
 import { refineSummary } from './llm/refine-summary'
@@ -243,16 +243,16 @@ function registerIPC(): void {
     }
     if (!chapter) return null
 
-    const aiConfig = resolveAIConfig(projectId, chapter.volumeId || undefined)
+    const project = allProjects.find(p => p.id === projectId)
+    if (!project) return null
+
+    const aiConfig = resolveAIConfig(project)
     const chapterOutline = getOutline('chapter', chapterId)
     const volumeOutline = chapter.volumeId ? getOutline('volume', chapter.volumeId) : null
     const bookOutline = getOutline('book', projectId)
 
     // 没有任何大纲时不触发续写
     if (!chapterOutline && !volumeOutline && !bookOutline) return null
-
-    // Get enabled skills (continuation feature)
-    const project = allProjects.find(p => p.id === projectId)
     const allSkills = getSkills()
     const skillIds = project?.featureSkillIds?.continuation || project?.enabledSkillIds || []
     const enabledSkills = skillIds.length > 0
@@ -314,7 +314,7 @@ function registerIPC(): void {
       chapter,
       allVolumes,
       allChapters,
-      aiConfig: resolveAIConfig(project, volume),
+      aiConfig: resolveAIConfig(project),
       messages
     })
   })
@@ -370,6 +370,10 @@ function registerIPC(): void {
 
   ipcMain.handle('update-project-feature-skill-ids', (_e, projectId: string, featureSkillIds: any) => {
     updateProjectFeatureSkillIds(projectId, featureSkillIds)
+  })
+
+  ipcMain.handle('update-project-reasoning-config', (_e, projectId: string, config: any) => {
+    updateProjectReasoningConfig(projectId, config)
   })
 
   ipcMain.handle('export-skills', async (_e, skillIds?: string[]) => {

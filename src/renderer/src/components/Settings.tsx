@@ -458,18 +458,32 @@ function ReasoningChainsTabContent() {
         {chains.map(chain => (
           <div
             key={chain.id}
-            onClick={() => handleEdit(chain)}
-            className="bg-gray-700/30 rounded p-3 cursor-pointer hover:bg-gray-700/50 transition-colors"
+            className="bg-gray-700/30 rounded p-3 hover:bg-gray-700/50 transition-colors group"
           >
             <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 cursor-pointer flex-1 min-w-0" onClick={() => handleEdit(chain)}>
                 <span className="text-xs text-gray-300">{chain.name}</span>
                 {chain.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1 rounded">内置</span>}
               </div>
-              <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
+                {!chain.builtin && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      if (confirm(`确定删除推理链「${chain.name}」？`)) {
+                        handleDelete(chain.id)
+                      }
+                    }}
+                    className="text-[10px] text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    删除
+                  </button>
+                )}
+              </div>
             </div>
-            <p className="text-[11px] text-gray-500 truncate">{chain.description}</p>
-            <div className="flex items-center gap-2 mt-1">
+            <p className="text-[11px] text-gray-500 truncate cursor-pointer" onClick={() => handleEdit(chain)}>{chain.description}</p>
+            <div className="flex items-center gap-2 mt-1 cursor-pointer" onClick={() => handleEdit(chain)}>
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                 chain.trigger === 'auto' ? 'bg-green-900/30 text-green-400' :
                 chain.trigger === 'manual' ? 'bg-yellow-900/30 text-yellow-400' :

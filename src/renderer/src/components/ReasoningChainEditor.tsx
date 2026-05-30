@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { ReasoningChain, ReasoningStep } from '../../../shared/types'
 
 interface ReasoningChainEditorProps {
@@ -29,6 +29,15 @@ const emptyChain: ReasoningChain = {
 export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete }: ReasoningChainEditorProps) {
   const [form, setForm] = useState<ReasoningChain>(chain || { ...emptyChain, id: crypto.randomUUID() })
   const [keywordsText, setKeywordsText] = useState(chain?.triggerKeywords?.join(', ') || '')
+  const nameInputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-focus the name input on mount
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      nameInputRef.current?.focus()
+    }, 100)
+    return () => clearTimeout(timer)
+  }, [])
 
   const updateForm = (updates: Partial<ReasoningChain>) => {
     setForm(prev => ({ ...prev, ...updates }))
@@ -105,6 +114,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         <div>
           <label className="text-[10px] text-gray-500 block mb-1">名称</label>
           <input
+            ref={nameInputRef}
             value={form.name}
             onChange={e => updateForm({ name: e.target.value })}
             placeholder="如：章节创作推理"

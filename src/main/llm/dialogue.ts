@@ -184,10 +184,13 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const isPlanMode = lastUserMsg ? detectPlanMode(lastUserMsg.content) : false
 
-  // Detect and execute reasoning chain
-  let reasoningContext = ''
-  if (lastUserMsg) {
-    const reasoningChain = detectAutoTrigger(lastUserMsg.content)
+  // Pre-detect reasoning chain (don't execute yet)
+  const reasoningChain = lastUserMsg ? detectAutoTrigger(lastUserMsg.content) : null
+
+  // Run async, don't await — return streamId immediately
+  ;(async () => {
+    // Detect and execute reasoning chain (inside async block so cancel works)
+    let reasoningContext = ''
     if (reasoningChain) {
       // Build context for reasoning
       const chapterContent = params.chapter?.content || ''
@@ -215,37 +218,33 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       // Build reasoning context for injection
       reasoningContext = buildReasoningContext(session)
     }
-  }
 
-  // Get outlines for context
-  const outlines = [
-    getOutline('book', params.project.id),
-    params.volume ? getOutline('volume', params.volume.id) : null,
-    params.chapter ? getOutline('chapter', params.chapter.id) : null
-  ].filter(Boolean)
+    // Get outlines for context
+    const outlines = [
+      getOutline('book', params.project.id),
+      params.volume ? getOutline('volume', params.volume.id) : null,
+      params.chapter ? getOutline('chapter', params.chapter.id) : null
+    ].filter(Boolean)
 
-  // Get enabled skills for this project (dialogue feature)
-  const allSkills = getSkills()
-  const skillIds = params.project.featureSkillIds?.dialogue || params.project.enabledSkillIds || []
-  const enabledSkills = skillIds.length > 0
-    ? allSkills.filter(s => skillIds.includes(s.id))
-    : []
+    // Get enabled skills for this project (dialogue feature)
+    const allSkills = getSkills()
+    const skillIds = params.project.featureSkillIds?.dialogue || params.project.enabledSkillIds || []
+    const enabledSkills = skillIds.length > 0
+      ? allSkills.filter(s => skillIds.includes(s.id))
+      : []
 
-  const systemPrompt = buildDialogueSystemPrompt({
-    ...promptParams,
-    outlines: outlines as any[],
-    isPlanMode,
-    skills: enabledSkills,
-    reasoningContext
-  })
+    const systemPrompt = buildDialogueSystemPrompt({
+      ...promptParams,
+      outlines: outlines as any[],
+      isPlanMode,
+      skills: enabledSkills,
+      reasoningContext
+    })
 
-  const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [
-    { role: 'system', content: systemPrompt },
-    ...messages
-  ]
-
-  // Run async, don't await — return streamId immediately
-  ;(async () => {
+    const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [
+      { role: 'system', content: systemPrompt },
+      ...messages
+    ]
     try {
       const client = createClient(config)
       const tools = getDialogueTools()

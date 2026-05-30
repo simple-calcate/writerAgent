@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import type { ReasoningChain, ReasoningStep } from '../../../shared/types'
 
 interface ReasoningChainEditorProps {
@@ -29,29 +29,6 @@ const emptyChain: ReasoningChain = {
 export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete }: ReasoningChainEditorProps) {
   const [form, setForm] = useState<ReasoningChain>(chain || { ...emptyChain, id: crypto.randomUUID() })
   const [keywordsText, setKeywordsText] = useState(chain?.triggerKeywords?.join(', ') || '')
-  const nameInputRef = useRef<HTMLInputElement>(null)
-
-  // Auto-focus the name input on mount (multiple attempts for Electron focus issues)
-  useEffect(() => {
-    const focusInput = () => {
-      if (nameInputRef.current) {
-        nameInputRef.current.focus()
-        nameInputRef.current.setSelectionRange(0, 0)
-      }
-    }
-
-    // Multiple focus attempts
-    focusInput()
-    const t1 = setTimeout(focusInput, 50)
-    const t2 = setTimeout(focusInput, 150)
-    const t3 = setTimeout(focusInput, 300)
-
-    return () => {
-      clearTimeout(t1)
-      clearTimeout(t2)
-      clearTimeout(t3)
-    }
-  }, [])
 
   const updateForm = (updates: Partial<ReasoningChain>) => {
     setForm(prev => ({ ...prev, ...updates }))
@@ -112,7 +89,9 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
   }
 
   return (
-    <div className="space-y-4">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]" onClick={onCancel}>
+      <div className="bg-gray-800 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+      <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-sm text-gray-300">{chain ? '编辑推理链' : '新建推理链'}</h3>
         <div className="flex gap-2">
@@ -128,10 +107,9 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         <div>
           <label className="text-[10px] text-gray-500 block mb-1">名称</label>
           <input
-            ref={nameInputRef}
             value={form.name}
             onChange={e => updateForm({ name: e.target.value })}
-            onMouseDown={e => e.currentTarget.focus()}
+            
             placeholder="如：章节创作推理"
             className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
           />
@@ -271,6 +249,8 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
       >
         保存
       </button>
+    </div>
+    </div>
     </div>
   )
 }

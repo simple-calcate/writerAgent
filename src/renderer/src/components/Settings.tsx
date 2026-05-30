@@ -383,6 +383,40 @@ function SkillsTabContent() {
   )
 }
 
+// ─── Delete Confirm Button ───
+
+function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
+  const [confirming, setConfirming] = useState(false)
+
+  if (confirming) {
+    return (
+      <div className="flex items-center gap-1">
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+          className="text-[10px] text-red-400 hover:text-red-300 px-1"
+        >
+          确定
+        </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); setConfirming(false) }}
+          className="text-[10px] text-gray-500 hover:text-gray-400 px-1"
+        >
+          取消
+        </button>
+      </div>
+    )
+  }
+
+  return (
+    <button
+      onClick={(e) => { e.stopPropagation(); setConfirming(true) }}
+      className="text-[10px] text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+    >
+      删除
+    </button>
+  )
+}
+
 // ─── Reasoning Chains Tab Content ───
 
 function ReasoningChainsTabContent() {
@@ -420,7 +454,6 @@ function ReasoningChainsTabContent() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('确定删除此推理链？')) return
     await window.api.deleteReasoningChain(id)
     await loadChains()
     setViewMode('list')
@@ -472,17 +505,7 @@ function ReasoningChainsTabContent() {
               <div className="flex items-center gap-2">
                 <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
                 {!chain.builtin && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      if (confirm(`确定删除推理链「${chain.name}」？`)) {
-                        handleDelete(chain.id)
-                      }
-                    }}
-                    className="text-[10px] text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                  >
-                    删除
-                  </button>
+                  <DeleteConfirmButton onDelete={() => handleDelete(chain.id)} />
                 )}
               </div>
             </div>

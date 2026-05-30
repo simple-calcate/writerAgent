@@ -184,41 +184,17 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const isPlanMode = lastUserMsg ? detectPlanMode(lastUserMsg.content) : false
 
-  // Pre-detect reasoning chain (don't execute yet)
-  const reasoningChain = lastUserMsg ? detectAutoTrigger(lastUserMsg.content) : null
+  // Extract reasoning chain IDs from message (don't execute yet)
+  const messageChainIds: string[] = []
+  if (lastUserMsg) {
+    const matches = lastUserMsg.content.matchAll(/\[reasoning:([^\]]+)\]/g)
+    for (const match of matches) {
+      messageChainIds.push(match[1])
+    }
+  }
 
   // Run async, don't await — return streamId immediately
   ;(async () => {
-    // Detect and execute reasoning chain (inside async block so cancel works)
-    let reasoningContext = ''
-    if (reasoningChain) {
-      // Build context for reasoning
-      const chapterContent = params.chapter?.content || ''
-      const outlineContext = [
-        getOutline('book', params.project.id)?.content,
-        params.volume ? getOutline('volume', params.volume.id)?.content : null,
-        params.chapter ? getOutline('chapter', params.chapter.id)?.content : null
-      ].filter(Boolean).join('\n\n')
-
-      const reasoningContextInput = [
-        params.chapter ? `当前章节: ${params.chapter.title}` : '',
-        chapterContent ? `章节内容:\n${chapterContent.substring(0, 3000)}` : '',
-        outlineContext ? `大纲信息:\n${outlineContext.substring(0, 2000)}` : ''
-      ].filter(Boolean).join('\n\n')
-
-      // Execute reasoning chain
-      const session = await executeReasoningChain(
-        reasoningChain,
-        reasoningContextInput,
-        config,
-        mainWindow,
-        controller.signal
-      )
-
-      // Build reasoning context for injection
-      reasoningContext = buildReasoningContext(session)
-    }
-
     // Get outlines for context
     const outlines = [
       getOutline('book', params.project.id),
@@ -448,7 +424,9 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               allChapters: params.allChapters || [],
               allVolumes: params.allVolumes || [],
               aiConfig,
-              refreshCache: true
+              refreshCache: true,
+              mainWindow,
+              messageChainIds
             })
 
             mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result })

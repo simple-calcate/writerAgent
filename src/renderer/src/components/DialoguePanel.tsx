@@ -610,6 +610,7 @@ export default function DialoguePanel() {
 
   const [input, setInput] = useState('')
   const [reasoningChains, setReasoningChains] = useState<ReasoningChain[]>([])
+  const [selectedChains, setSelectedChains] = useState<ReasoningChain[]>([])
   const [showChainSelector, setShowChainSelector] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -640,8 +641,17 @@ export default function DialoguePanel() {
   const handleSend = () => {
     const text = input.trim()
     if (!text || isStreaming) return
+
+    // Build message with reasoning chain tags
+    let message = text
+    if (selectedChains.length > 0) {
+      const chainTags = selectedChains.map(c => `[reasoning:${c.id}]`).join('')
+      message = `${chainTags} ${text}`
+    }
+
     setInput('')
-    sendDialogueMessage(text)
+    setSelectedChains([])
+    sendDialogueMessage(message)
   }
 
   const handleQuickReply = (value: string) => {
@@ -649,13 +659,17 @@ export default function DialoguePanel() {
     sendDialogueMessage(value)
   }
 
-  const handleTriggerReasoning = (chain: ReasoningChain) => {
+  const handleToggleChain = (chain: ReasoningChain) => {
+    setSelectedChains(prev => {
+      const exists = prev.find(c => c.id === chain.id)
+      if (exists) return prev.filter(c => c.id !== chain.id)
+      return [...prev, chain]
+    })
     setShowChainSelector(false)
-    // Send a message with chain ID for the dialogue system to detect
-    const userMsg = input.trim() || '请执行推理分析'
-    const triggerMsg = `[reasoning:${chain.id}] ${userMsg}`
-    setInput('')
-    sendDialogueMessage(triggerMsg)
+  }
+
+  const handleRemoveChain = (chainId: string) => {
+    setSelectedChains(prev => prev.filter(c => c.id !== chainId))
   }
 
   // Extract question groups from the last assistant message
@@ -782,6 +796,28 @@ export default function DialoguePanel() {
         </div>
       )}
 
+      {/* Selected chains */}
+      {selectedChains.length > 0 && (
+        <div className="px-3 py-1.5 border-t border-gray-700/40 bg-purple-900/10">
+          <div className="flex flex-wrap gap-1.5">
+            {selectedChains.map(chain => (
+              <span
+                key={chain.id}
+                className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] bg-purple-600/20 text-purple-300 border border-purple-600/30 rounded-full"
+              >
+                🧠 {chain.name}
+                <button
+                  onClick={() => handleRemoveChain(chain.id)}
+                  className="text-purple-400 hover:text-purple-200 ml-0.5"
+                >
+                  ✕
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="p-2 border-t border-gray-700/60 shrink-0">
         <div className="flex gap-1.5">
@@ -798,8 +834,12 @@ export default function DialoguePanel() {
             {/* Reasoning chain button */}
             <button
               onClick={() => setShowChainSelector(!showChainSelector)}
-              className="absolute right-1.5 bottom-1.5 w-6 h-6 flex items-center justify-center text-gray-500 hover:text-purple-400 hover:bg-gray-700/50 rounded transition-colors"
-              title="触发推理链"
+              className={`absolute right-1.5 bottom-1.5 w-6 h-6 flex items-center justify-center rounded transition-colors ${
+                selectedChains.length > 0
+                  ? 'text-purple-400 bg-purple-600/20'
+                  : 'text-gray-500 hover:text-purple-400 hover:bg-gray-700/50'
+              }`}
+              title="添加推理链"
             >
               🧠
             </button>
@@ -808,22 +848,30 @@ export default function DialoguePanel() {
             {showChainSelector && (
               <div className="absolute bottom-full left-0 right-0 mb-1 bg-gray-800 border border-gray-700 rounded-lg shadow-lg overflow-hidden z-10">
                 <div className="p-2 border-b border-gray-700">
-                  <p className="text-[10px] text-gray-500">选择推理链</p>
+                  <p className="text-[10px] text-gray-500">选择推理链（可多选）</p>
                 </div>
                 <div className="max-h-48 overflow-y-auto">
-                  {reasoningChains.map(chain => (
-                    <button
-                      key={chain.id}
-                      onClick={() => handleTriggerReasoning(chain)}
-                      className="w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs text-gray-300">{chain.name}</span>
-                        <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 truncate mt-0.5">{chain.description}</p>
-                    </button>
-                  ))}
+                  {reasoningChains.map(chain => {
+                    const isSelected = selectedChains.some(c => c.id === chain.id)
+                    return (
+                      <button
+                        key={chain.id}
+                        onClick={() => handleToggleChain(chain)}
+                        className={`w-full px-3 py-2 text-left hover:bg-gray-700/50 transition-colors ${
+                          isSelected ? 'bg-purple-900/20' : ''
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {isSelected && <span className="text-purple-400 text-[10px]">✓</span>}
+                            <span className="text-xs text-gray-300">{chain.name}</span>
+                          </div>
+                          <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
+                        </div>
+                        <p className="text-[10px] text-gray-500 truncate mt-0.5">{chain.description}</p>
+                      </button>
+                    )
+                  })}
                 </div>
                 {reasoningChains.length === 0 && (
                   <p className="text-[11px] text-gray-600 text-center py-3">暂无推理链</p>
@@ -841,7 +889,7 @@ export default function DialoguePanel() {
           ) : (
             <button
               onClick={handleSend}
-              disabled={!input.trim()}
+              disabled={!input.trim() && selectedChains.length === 0}
               className="self-end bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded text-xs transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               发送

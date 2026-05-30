@@ -510,6 +510,7 @@ interface ExecuteToolParams {
   refreshCache?: boolean
   mainWindow?: BrowserWindow
   reasoningContext?: string
+  messageChainIds?: string[]
 }
 
 export async function executeTool(
@@ -524,30 +525,45 @@ export async function executeTool(
     ? allChapters.find(c => c.id === args.chapterId)
     : currentChapter
 
-  // Execute bound reasoning chain before tool execution
+  // Execute reasoning chains before tool execution
   const REASONING_TOOLS = ['write_chapter_content', 'write_chapter_outline', 'write_volume_outline', 'write_outline']
   if (REASONING_TOOLS.includes(toolName) && mainWindow) {
-    // Get project's tool-chain binding
+    const chainsToExecute: ReasoningChain[] = []
+
+    // 1. Check project's tool-chain binding
     const projects = getProjects()
     const project = projects.find(p => p.id === projectId)
     const binding = project?.reasoningConfig?.toolChainBindings?.[toolName]
-
     if (binding) {
       const chain = getReasoningChainById(binding)
-      if (chain) {
-        // Build context for reasoning
+      if (chain) chainsToExecute.push(chain)
+    }
+
+    // 2. Check message chain IDs
+    if (params.messageChainIds?.length) {
+      for (const chainId of params.messageChainIds) {
+        const chain = getReasoningChainById(chainId)
+        if (chain && !chainsToExecute.find(c => c.id === chain.id)) {
+          chainsToExecute.push(chain)
+        }
+      }
+    }
+
+    // Execute all chains
+    if (chainsToExecute.length > 0) {
+      const { executeReasoningChain, buildReasoningContext } = await import('./dialogue')
+
+      for (const chain of chainsToExecute) {
         const chapterContent = targetChapter?.content || ''
         const context = [
           targetChapter ? `当前章节: ${targetChapter.title}` : '',
           chapterContent ? `章节内容:\n${chapterContent.substring(0, 3000)}` : ''
         ].filter(Boolean).join('\n\n')
 
-        // Dynamic import to avoid circular dependency
-        const { executeReasoningChain, buildReasoningContext } = await import('./dialogue')
         const session = await executeReasoningChain(chain, context, config, mainWindow)
         const reasoningResult = buildReasoningContext(session)
         if (reasoningResult) {
-          params.reasoningContext = reasoningResult
+          params.reasoningContext = (params.reasoningContext || '') + reasoningResult
         }
       }
     }

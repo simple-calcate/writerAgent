@@ -1,13 +1,153 @@
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
-import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse } from '../../shared/types'
+import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse, ReasoningChain, ReasoningStepResult, ReasoningSession } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
 import { getOutline, getSkills } from '../store/db'
+import { detectAutoTrigger, buildStepPrompt, getReasoningChainById } from './reasoning-chains'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50
+
+// ─── Reasoning Chain Execution ───
+
+export async function executeReasoningChain(
+  chain: ReasoningChain,
+  context: string,
+  config: LLMConfigSingle,
+  mainWindow: BrowserWindow,
+  signal: AbortSignal
+): Promise<ReasoningSession> {
+  const sessionId = randomUUID()
+  const session: ReasoningSession = {
+    id: sessionId,
+    chainId: chain.id,
+    chainName: chain.name,
+    steps: [],
+    context,
+    status: 'running',
+    includeInContext: chain.includeInContext,
+    createdAt: new Date().toISOString()
+  }
+
+  // Notify start
+  mainWindow.webContents.send('dialogue:reasoning-start', {
+    sessionId,
+    chainId: chain.id,
+    chainName: chain.name,
+    steps: chain.steps.map(s => ({ id: s.id, name: s.name }))
+  })
+
+  const results: Record<string, string> = {}
+
+  try {
+    const client = createClient(config)
+
+    for (const step of chain.steps) {
+      if (signal.aborted) break
+
+      const stepResult: ReasoningStepResult = {
+        chainId: chain.id,
+        stepId: step.id,
+        stepName: step.name,
+        result: '',
+        status: 'running'
+      }
+      session.steps.push(stepResult)
+
+      // Notify step start
+      mainWindow.webContents.send('dialogue:reasoning-step-start', {
+        sessionId,
+        stepId: step.id,
+        stepName: step.name
+      })
+
+      try {
+        const stepPrompt = buildStepPrompt(step, results, context)
+
+        const thinkingParams = buildThinkingParams(config)
+        let response: any
+        try {
+          response = await client.chat.completions.create({
+            model: config.model || 'gpt-4o-mini',
+            messages: [
+              { role: 'system', content: '你是一位专业的写作分析助手。请根据任务说明进行分析，输出具体、可操作的分析结果。' },
+              { role: 'user', content: stepPrompt }
+            ],
+            temperature: 0.7,
+            ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+            ...thinkingParams
+          }, { signal })
+        } catch (err: any) {
+          if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+            response = await client.chat.completions.create({
+              model: config.model || 'gpt-4o-mini',
+              messages: [
+                { role: 'system', content: '你是一位专业的写作分析助手。请根据任务说明进行分析，输出具体、可操作的分析结果。' },
+                { role: 'user', content: stepPrompt }
+              ],
+              temperature: 0.7,
+              ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
+            }, { signal })
+          } else {
+            throw err
+          }
+        }
+
+        const result = response.choices[0]?.message?.content?.trim() || '分析失败'
+        results[step.outputKey] = result
+        stepResult.result = result
+        stepResult.status = 'done'
+
+        // Notify step complete
+        mainWindow.webContents.send('dialogue:reasoning-step-done', {
+          sessionId,
+          stepId: step.id,
+          stepName: step.name,
+          result
+        })
+      } catch (err: any) {
+        if (signal.aborted) break
+        stepResult.status = 'error'
+        stepResult.result = `错误: ${err.message}`
+
+        mainWindow.webContents.send('dialogue:reasoning-step-error', {
+          sessionId,
+          stepId: step.id,
+          stepName: step.name,
+          error: err.message
+        })
+      }
+    }
+
+    session.status = signal.aborted ? 'error' : 'completed'
+  } catch (err: any) {
+    session.status = 'error'
+  }
+
+  // Notify complete
+  mainWindow.webContents.send('dialogue:reasoning-done', {
+    sessionId,
+    status: session.status,
+    includeInContext: chain.includeInContext
+  })
+
+  return session
+}
+
+// Build reasoning context for injection into system prompt
+export function buildReasoningContext(session: ReasoningSession): string {
+  if (!session.includeInContext || session.status !== 'completed') return ''
+
+  let context = `\n## 推理分析（${session.chainName}）\n`
+  for (const step of session.steps) {
+    if (step.status === 'done') {
+      context += `\n### ${step.stepName}\n${step.result}\n`
+    }
+  }
+  return context
+}
 
 // Approval waiting mechanism
 const pendingApprovals = new Map<string, {
@@ -44,6 +184,39 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const isPlanMode = lastUserMsg ? detectPlanMode(lastUserMsg.content) : false
 
+  // Detect and execute reasoning chain
+  let reasoningContext = ''
+  if (lastUserMsg) {
+    const reasoningChain = detectAutoTrigger(lastUserMsg.content)
+    if (reasoningChain) {
+      // Build context for reasoning
+      const chapterContent = params.chapter?.content || ''
+      const outlineContext = [
+        getOutline('book', params.project.id)?.content,
+        params.volume ? getOutline('volume', params.volume.id)?.content : null,
+        params.chapter ? getOutline('chapter', params.chapter.id)?.content : null
+      ].filter(Boolean).join('\n\n')
+
+      const reasoningContextInput = [
+        params.chapter ? `当前章节: ${params.chapter.title}` : '',
+        chapterContent ? `章节内容:\n${chapterContent.substring(0, 3000)}` : '',
+        outlineContext ? `大纲信息:\n${outlineContext.substring(0, 2000)}` : ''
+      ].filter(Boolean).join('\n\n')
+
+      // Execute reasoning chain
+      const session = await executeReasoningChain(
+        reasoningChain,
+        reasoningContextInput,
+        config,
+        mainWindow,
+        controller.signal
+      )
+
+      // Build reasoning context for injection
+      reasoningContext = buildReasoningContext(session)
+    }
+  }
+
   // Get outlines for context
   const outlines = [
     getOutline('book', params.project.id),
@@ -62,7 +235,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
     ...promptParams,
     outlines: outlines as any[],
     isPlanMode,
-    skills: enabledSkills
+    skills: enabledSkills,
+    reasoningContext
   })
 
   const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [

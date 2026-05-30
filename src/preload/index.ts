@@ -208,6 +208,37 @@ const api: IPCAPI = {
   dialogueApproveTool: (response: DialogueToolApprovalResponse) =>
     ipcRenderer.invoke('dialogue:approve-tool', response),
 
+  // Reasoning
+  onReasoningStart: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('dialogue:reasoning-start', handler)
+    return () => { ipcRenderer.removeListener('dialogue:reasoning-start', handler) }
+  },
+
+  onReasoningStepStart: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('dialogue:reasoning-step-start', handler)
+    return () => { ipcRenderer.removeListener('dialogue:reasoning-step-start', handler) }
+  },
+
+  onReasoningStepDone: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('dialogue:reasoning-step-done', handler)
+    return () => { ipcRenderer.removeListener('dialogue:reasoning-step-done', handler) }
+  },
+
+  onReasoningStepError: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('dialogue:reasoning-step-error', handler)
+    return () => { ipcRenderer.removeListener('dialogue:reasoning-step-error', handler) }
+  },
+
+  onReasoningDone: (callback: (data: any) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('dialogue:reasoning-done', handler)
+    return () => { ipcRenderer.removeListener('dialogue:reasoning-done', handler) }
+  },
+
   // AI Thinking (通用)
   onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => {
     const handler = (_event: any, data: AIThinkingChunk) => callback(data)

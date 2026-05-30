@@ -14,6 +14,7 @@ import BackgroundLayer from './components/BackgroundLayer'
 import MouseGlow from './components/MouseGlow'
 import RainEffect from './components/RainEffect'
 import WhatsNewDialog from './components/WhatsNewDialog'
+import ReasoningPanel from './components/ReasoningPanel'
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
@@ -39,13 +40,43 @@ export default function App() {
     showSettings,
     toggleSettings,
     showSidebar,
-    rightPanel
+    rightPanel,
+    showReasoningPanel,
+    reasoningSessionId,
+    reasoningChainName,
+    reasoningSteps,
+    reasoningStepResults,
+    reasoningStatus,
+    reasoningIncludeInContext,
+    toggleReasoningPanel,
+    _handleReasoningStart,
+    _handleReasoningStepStart,
+    _handleReasoningStepDone,
+    _handleReasoningStepError,
+    _handleReasoningDone
   } = useAppStore()
 
   const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth('nw-sidebar-w', 256))
   const [rightWidth, setRightWidth] = useState(() => loadWidth('nw-right-w', 320))
   const [whatsNewVersion, setWhatsNewVersion] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
+
+  // Set up reasoning event listeners
+  useEffect(() => {
+    const unsubStart = window.api.onReasoningStart?.(_handleReasoningStart)
+    const unsubStepStart = window.api.onReasoningStepStart?.(_handleReasoningStepStart)
+    const unsubStepDone = window.api.onReasoningStepDone?.(_handleReasoningStepDone)
+    const unsubStepError = window.api.onReasoningStepError?.(_handleReasoningStepError)
+    const unsubDone = window.api.onReasoningDone?.(_handleReasoningDone)
+
+    return () => {
+      unsubStart?.()
+      unsubStepStart?.()
+      unsubStepDone?.()
+      unsubStepError?.()
+      unsubDone?.()
+    }
+  }, [_handleReasoningStart, _handleReasoningStepStart, _handleReasoningStepDone, _handleReasoningStepError, _handleReasoningDone])
 
   useEffect(() => {
     // Load critical data first
@@ -131,6 +162,21 @@ export default function App() {
         <Editor />
         {rightPanel && <ResizeHandle onResize={handleRightResize} />}
         <RightPanel width={rightWidth} />
+
+        {/* Reasoning Panel */}
+        {showReasoningPanel && (
+          <div className="w-80 border-l border-gray-700 bg-gray-800/50 shrink-0">
+            <ReasoningPanel
+              sessionId={reasoningSessionId}
+              chainName={reasoningChainName}
+              steps={reasoningSteps}
+              stepResults={reasoningStepResults}
+              status={reasoningStatus}
+              includeInContext={reasoningIncludeInContext}
+              onClose={toggleReasoningPanel}
+            />
+          </div>
+        )}
       </div>
 
       {/* Modals */}

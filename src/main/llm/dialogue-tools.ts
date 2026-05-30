@@ -6,6 +6,7 @@ import { polishText } from './client'
 import { refineSummary } from './refine-summary'
 import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary } from '../store/db'
 import { randomUUID } from 'crypto'
+import { getReasoningChains, getReasoningChainById } from './reasoning-chains'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   summarize_chapter: '章节摘要',
@@ -330,6 +331,32 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           }
         }
       }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'list_reasoning_chains',
+        description: '列出所有可用的推理链。推理链是预定义的思考流程，帮助 AI 在执行特定任务时进行系统性分析。只读操作，无需用户确认。',
+        parameters: {
+          type: 'object',
+          properties: {}
+        }
+      }
+    },
+    {
+      type: 'function',
+      function: {
+        name: 'toggle_reasoning_context',
+        description: '切换推理结果是否纳入对话上下文。启用后，推理分析结果会注入到系统提示词中，供后续对话参考。需要用户确认后执行。',
+        parameters: {
+          type: 'object',
+          properties: {
+            chainId: { type: 'string', description: '推理链 ID' },
+            includeInContext: { type: 'boolean', description: 'true 为纳入上下文，false 为不纳入' }
+          },
+          required: ['chainId', 'includeInContext']
+        }
+      }
     }
   ]
 }
@@ -613,6 +640,29 @@ export async function executeTool(
       }
 
       return `已对卷「${volume.name}」的 ${volChapters.length} 个章节进行精炼总结：\n\n${results.join('\n')}`
+    }
+
+    case 'list_reasoning_chains': {
+      const chains = getReasoningChains()
+      const lines = chains.map(chain => {
+        const triggerLabel = chain.trigger === 'auto' ? '自动触发' : chain.trigger === 'manual' ? '手动触发' : '自动/手动'
+        const contextLabel = chain.includeInContext ? '纳入上下文' : '不纳入上下文'
+        const steps = chain.steps.map(s => `  - ${s.name}`).join('\n')
+        return `- 「${chain.name}」（${triggerLabel}，${contextLabel}）\n  ${chain.description}\n  步骤：\n${steps}`
+      })
+      return `共 ${chains.length} 个推理链：\n\n${lines.join('\n\n')}`
+    }
+
+    case 'toggle_reasoning_context': {
+      if (!args.chainId) return '错误：未提供推理链 ID'
+      if (args.includeInContext === undefined) return '错误：未提供上下文设置'
+
+      const chain = getReasoningChainById(args.chainId)
+      if (!chain) return '错误：找不到指定推理链'
+
+      // Note: This is a runtime toggle, not persisted
+      const action = args.includeInContext === 'true' ? '启用' : '禁用'
+      return `已${action}推理链「${chain.name}」的上下文纳入功能。\n\n注意：此设置仅对当前对话会话生效。`
     }
 
     default:

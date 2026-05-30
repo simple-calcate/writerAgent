@@ -555,6 +555,53 @@ export interface DialogueToolApprovalResponse {
   refreshCache?: boolean
 }
 
+// ─── Reasoning Chain ───
+
+export interface ReasoningStep {
+  id: string
+  name: string           // 步骤名称，如"人物心理分析"
+  prompt: string         // 该步骤的提示词
+  outputKey: string      // 输出存储的 key，供后续步骤引用
+  optional?: boolean     // 是否可选
+}
+
+export interface ReasoningChain {
+  id: string
+  name: string           // 推理链名称，如"章节创作推理"
+  description: string
+  trigger: 'auto' | 'manual' | 'both'
+  triggerKeywords?: string[]  // 自动触发的关键词
+  steps: ReasoningStep[]
+  includeInContext: boolean   // 推理结果是否纳入上下文
+  builtin: boolean
+}
+
+export interface ReasoningStepResult {
+  chainId: string
+  stepId: string
+  stepName: string
+  result: string
+  status: 'running' | 'done' | 'error'
+}
+
+export interface ReasoningSession {
+  id: string
+  chainId: string
+  chainName: string
+  steps: ReasoningStepResult[]
+  context: string        // 触发推理时的上下文
+  status: 'running' | 'completed' | 'error'
+  includeInContext: boolean
+  createdAt: string
+}
+
+export interface ProjectReasoningConfig {
+  enabled: boolean
+  autoTrigger: boolean
+  defaultChainId: string | null
+  includeInContextByDefault: boolean
+}
+
 // ─── AI Thinking (通用，非对话专属) ───
 
 export interface AIThinkingChunk {
@@ -655,6 +702,13 @@ export interface IPCAPI {
   onDialogueThinkingChunk: (callback: (data: DialogueThinkingChunk) => void) => () => void
   onDialogueThinkingDone: (callback: (data: DialogueThinkingDone) => void) => () => void
   dialogueApproveTool: (response: DialogueToolApprovalResponse) => Promise<void>
+
+  // Reasoning
+  onReasoningStart: (callback: (data: any) => void) => () => void
+  onReasoningStepStart: (callback: (data: any) => void) => () => void
+  onReasoningStepDone: (callback: (data: any) => void) => () => void
+  onReasoningStepError: (callback: (data: any) => void) => () => void
+  onReasoningDone: (callback: (data: any) => void) => () => void
 
   // AI Thinking (通用)
   onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => () => void

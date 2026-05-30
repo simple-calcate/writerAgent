@@ -12,6 +12,7 @@ interface PromptParams {
   outlines?: Outline[]
   isPlanMode?: boolean
   skills?: WritingSkill[]
+  reasoningContext?: string  // 推理链输出的分析结果
 }
 
 const ROLE_PREAMBLES: Record<DialogueLevel, string> = {
@@ -101,6 +102,11 @@ export function buildDialogueSystemPrompt(params: PromptParams): string {
   // 7. Plan mode
   if (isPlanMode) {
     parts.push(PLAN_MODE_PROMPT)
+  }
+
+  // 7.5 Reasoning context (if available)
+  if (params.reasoningContext) {
+    parts.push(params.reasoningContext)
   }
 
   // 8. Behavioral guidelines

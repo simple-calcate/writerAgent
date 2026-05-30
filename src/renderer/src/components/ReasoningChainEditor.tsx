@@ -31,12 +31,26 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
   const [keywordsText, setKeywordsText] = useState(chain?.triggerKeywords?.join(', ') || '')
   const nameInputRef = useRef<HTMLInputElement>(null)
 
-  // Auto-focus the name input on mount
+  // Auto-focus the name input on mount (multiple attempts for Electron focus issues)
   useEffect(() => {
-    const timer = setTimeout(() => {
-      nameInputRef.current?.focus()
-    }, 100)
-    return () => clearTimeout(timer)
+    const focusInput = () => {
+      if (nameInputRef.current) {
+        nameInputRef.current.focus()
+        nameInputRef.current.setSelectionRange(0, 0)
+      }
+    }
+
+    // Multiple focus attempts
+    focusInput()
+    const t1 = setTimeout(focusInput, 50)
+    const t2 = setTimeout(focusInput, 150)
+    const t3 = setTimeout(focusInput, 300)
+
+    return () => {
+      clearTimeout(t1)
+      clearTimeout(t2)
+      clearTimeout(t3)
+    }
   }, [])
 
   const updateForm = (updates: Partial<ReasoningChain>) => {
@@ -117,6 +131,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
             ref={nameInputRef}
             value={form.name}
             onChange={e => updateForm({ name: e.target.value })}
+            onMouseDown={e => e.currentTarget.focus()}
             placeholder="如：章节创作推理"
             className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
           />
@@ -127,6 +142,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
           <input
             value={form.description}
             onChange={e => updateForm({ description: e.target.value })}
+            onMouseDown={e => e.currentTarget.focus()}
             placeholder="简要说明推理链的用途"
             className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
           />
@@ -157,6 +173,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
             <input
               value={keywordsText}
               onChange={e => setKeywordsText(e.target.value)}
+              onMouseDown={e => e.currentTarget.focus()}
               placeholder="写这一章, 写章节, 创作正文"
               className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
             />
@@ -198,12 +215,14 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
                 <input
                   value={step.name}
                   onChange={e => updateStep(index, { name: e.target.value })}
+                  onMouseDown={e => e.currentTarget.focus()}
                   placeholder="步骤名称"
                   className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
                 />
                 <input
                   value={step.outputKey}
                   onChange={e => updateStep(index, { outputKey: e.target.value })}
+                  onMouseDown={e => e.currentTarget.focus()}
                   placeholder="输出key"
                   className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
                 />
@@ -231,6 +250,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
               <textarea
                 value={step.prompt}
                 onChange={e => updateStep(index, { prompt: e.target.value })}
+                onMouseDown={e => e.currentTarget.focus()}
                 placeholder="该步骤的提示词..."
                 rows={2}
                 className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"

@@ -428,6 +428,7 @@ function ReasoningChainsTabContent() {
   if (viewMode === 'edit' || viewMode === 'add') {
     return (
       <ReasoningChainEditor
+        key={editingChain?.id || 'new'}
         chain={editingChain}
         onSave={handleSave}
         onCancel={() => { setViewMode('list'); setEditingChain(null) }}

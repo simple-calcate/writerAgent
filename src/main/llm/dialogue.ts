@@ -213,8 +213,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       ...promptParams,
       outlines: outlines as any[],
       isPlanMode,
-      skills: enabledSkills,
-      reasoningContext
+      skills: enabledSkills
     })
 
     // Clean up reasoning trigger tag from messages

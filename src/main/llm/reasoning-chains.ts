@@ -105,6 +105,15 @@ export function getReasoningChainById(id: string): ReasoningChain | undefined {
 
 // 检测是否应该自动触发推理链
 export function detectAutoTrigger(message: string): ReasoningChain | null {
+  // 先检测手动触发格式 [reasoning:chain-id]
+  const manualMatch = message.match(/^\[reasoning:([^\]]+)\]/)
+  if (manualMatch) {
+    const chainId = manualMatch[1]
+    const chain = getReasoningChainById(chainId)
+    if (chain) return chain
+  }
+
+  // 再检测关键词自动触发
   const lowerMessage = message.toLowerCase()
   const allChains = getReasoningChains()
 
@@ -119,6 +128,11 @@ export function detectAutoTrigger(message: string): ReasoningChain | null {
   }
 
   return null
+}
+
+// 提取用户实际消息（去掉触发标记）
+export function extractUserMessage(message: string): string {
+  return message.replace(/^\[reasoning:[^\]]+\]\s*/, '')
 }
 
 // 构建单个步骤的提示词

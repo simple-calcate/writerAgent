@@ -651,8 +651,9 @@ export default function DialoguePanel() {
 
   const handleTriggerReasoning = (chain: ReasoningChain) => {
     setShowChainSelector(false)
-    // Send a message that triggers the reasoning chain
-    const triggerMsg = `[触发推理链: ${chain.name}] ${input.trim() || '请执行推理分析'}`
+    // Send a message with chain ID for the dialogue system to detect
+    const userMsg = input.trim() || '请执行推理分析'
+    const triggerMsg = `[reasoning:${chain.id}] ${userMsg}`
     setInput('')
     sendDialogueMessage(triggerMsg)
   }

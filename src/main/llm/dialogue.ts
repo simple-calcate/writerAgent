@@ -5,7 +5,7 @@ import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
 import { getOutline, getSkills } from '../store/db'
-import { detectAutoTrigger, buildStepPrompt, getReasoningChainById } from './reasoning-chains'
+import { detectAutoTrigger, buildStepPrompt, getReasoningChainById, extractUserMessage } from './reasoning-chains'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50
@@ -241,9 +241,17 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       reasoningContext
     })
 
+    // Clean up reasoning trigger tag from messages
+    const cleanedMessages = messages.map((msg, i) => {
+      if (msg.role === 'user' && i === messages.length - 1) {
+        return { ...msg, content: extractUserMessage(msg.content) }
+      }
+      return msg
+    })
+
     const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [
       { role: 'system', content: systemPrompt },
-      ...messages
+      ...cleanedMessages
     ]
     try {
       const client = createClient(config)

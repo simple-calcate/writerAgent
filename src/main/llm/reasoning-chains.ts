@@ -88,10 +88,13 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
   }
 ]
 
-// 获取所有推理链（内置 + 自定义）
+// 获取所有推理链（内置 + 自定义，去重）
 export function getReasoningChains(): ReasoningChain[] {
   const customChains = getCustomChains()
-  return [...BUILTIN_REASONING_CHAINS, ...customChains]
+  // 过滤掉与内置推理链 ID 重复的自定义推理链
+  const builtinIds = new Set(BUILTIN_REASONING_CHAINS.map(c => c.id))
+  const filteredCustom = customChains.filter(c => !builtinIds.has(c.id))
+  return [...BUILTIN_REASONING_CHAINS, ...filteredCustom]
 }
 
 // 根据 ID 获取推理链

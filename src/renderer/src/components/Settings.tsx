@@ -399,9 +399,12 @@ function ReasoningChainsTabContent() {
     setChains(loaded)
   }
 
+  const [addKey, setAddKey] = useState(0)
+
   const handleAdd = () => {
     setEditingChain(null)
     setViewMode('add')
+    setAddKey(k => k + 1)
   }
 
   const handleEdit = (chain: ReasoningChain) => {
@@ -428,7 +431,7 @@ function ReasoningChainsTabContent() {
   if (viewMode === 'edit' || viewMode === 'add') {
     return (
       <ReasoningChainEditor
-        key={editingChain?.id || `new-${Date.now()}`}
+        key={editingChain?.id || `add-${addKey}`}
         chain={editingChain}
         onSave={handleSave}
         onCancel={() => { setViewMode('list'); setEditingChain(null) }}
@@ -1363,21 +1366,23 @@ export default function Settings() {
             )}
           </div>
 
-          {/* Footer */}
-          <div className="flex gap-3 px-5 py-4 border-t border-gray-700">
-            <button
-              onClick={handleSave}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition-colors"
-            >
-              保存
-            </button>
-            <button
-              onClick={toggleSettings}
-              className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm transition-colors"
-            >
-              取消
-            </button>
-          </div>
+          {/* Footer - only show for config tabs */}
+          {(activeTab === 'api' || activeTab === 'ai' || activeTab === 'keys') && (
+            <div className="flex gap-3 px-5 py-4 border-t border-gray-700">
+              <button
+                onClick={handleSave}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition-colors"
+              >
+                保存
+              </button>
+              <button
+                onClick={toggleSettings}
+                className="flex-1 bg-gray-700 hover:bg-gray-600 py-2 rounded text-sm transition-colors"
+              >
+                取消
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

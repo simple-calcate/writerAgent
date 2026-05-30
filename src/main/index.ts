@@ -1,14 +1,14 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync, readFileSync } from 'fs'
-import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills } from './store/db'
+import { initDB, getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getLLMConfig, saveLLMConfig, resolveFeatureConfig, getDefaultProfile, getDataPath, getDataPathDefault, setDataPath, openDataFolder, resolveAIConfig, getConversation, saveConversation, deleteConversation, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills, getReasoningChains, saveReasoningChain, deleteReasoningChain } from './store/db'
 import { autoPolish, polishText, summarizeChapter, diagnoseLocalModel } from './llm/client'
 import { refineSummary } from './llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './llm/dialogue'
 import { parseTxtContent } from './import-parser'
 import { generateContinuation } from './llm/continuation'
 import { initUpdater, checkForUpdates, downloadUpdate, downloadFromGitee, cancelGiteeDownload, installGiteeUpdate, installUpdate, getUpdateStatus } from './updater'
-import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, WritingSkill } from '../shared/types'
+import type { ExportOptions, BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, WritingSkill, ReasoningChain } from '../shared/types'
 import { randomUUID } from 'crypto'
 
 let mainWindow: BrowserWindow | null = null
@@ -423,6 +423,17 @@ function registerIPC(): void {
 
   ipcMain.handle('import-skills-confirm', (_e, skills: WritingSkill[]) => {
     saveSkills(skills)
+  })
+
+  // Reasoning Chains
+  ipcMain.handle('get-reasoning-chains', () => getReasoningChains())
+
+  ipcMain.handle('save-reasoning-chain', (_e, chain: ReasoningChain) => {
+    saveReasoningChain(chain)
+  })
+
+  ipcMain.handle('delete-reasoning-chain', (_e, id: string) => {
+    deleteReasoningChain(id)
   })
 
   // Update

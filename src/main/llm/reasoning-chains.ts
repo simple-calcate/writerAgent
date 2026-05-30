@@ -1,4 +1,5 @@
 import type { ReasoningChain } from '../../shared/types'
+import { getReasoningChains as getCustomChains } from '../store/db'
 
 // ─── 内置推理链 ───
 
@@ -87,21 +88,24 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
   }
 ]
 
-// 获取所有推理链
+// 获取所有推理链（内置 + 自定义）
 export function getReasoningChains(): ReasoningChain[] {
-  return [...BUILTIN_REASONING_CHAINS]
+  const customChains = getCustomChains()
+  return [...BUILTIN_REASONING_CHAINS, ...customChains]
 }
 
 // 根据 ID 获取推理链
 export function getReasoningChainById(id: string): ReasoningChain | undefined {
-  return BUILTIN_REASONING_CHAINS.find(chain => chain.id === id)
+  const allChains = getReasoningChains()
+  return allChains.find(chain => chain.id === id)
 }
 
 // 检测是否应该自动触发推理链
 export function detectAutoTrigger(message: string): ReasoningChain | null {
   const lowerMessage = message.toLowerCase()
+  const allChains = getReasoningChains()
 
-  for (const chain of BUILTIN_REASONING_CHAINS) {
+  for (const chain of allChains) {
     if (chain.trigger === 'manual') continue
     if (!chain.triggerKeywords) continue
 

@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline, WritingSkill, FeatureSkillIds } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, LLMConfigSingle, APIProfile, AIFeatureConfig, AIFeatureEntry, VersionSnapshot, BookAIConfig, Conversation, DialogueLevel, Outline, WritingSkill, FeatureSkillIds, ReasoningChain } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, BUILTIN_SKILLS } from '../../shared/types'
 
 interface Store {
@@ -14,6 +14,7 @@ interface Store {
   conversations: Conversation[]
   outlines: Outline[]
   skills: WritingSkill[]
+  reasoningChains: ReasoningChain[]
 }
 
 const defaultProfileId = 'default-profile'
@@ -37,7 +38,8 @@ const defaultStore: Store = {
   versions: {},
   conversations: [],
   outlines: [],
-  skills: []
+  skills: [],
+  reasoningChains: []
 }
 
 // App-level config (data path setting)
@@ -630,5 +632,26 @@ export function saveSkills(skills: WritingSkill[]): void {
       store.skills.push(skill)
     }
   }
+  save()
+}
+
+// ─── Reasoning Chains ───
+
+export function getReasoningChains(): ReasoningChain[] {
+  return [...store.reasoningChains]
+}
+
+export function saveReasoningChain(chain: ReasoningChain): void {
+  const idx = store.reasoningChains.findIndex(c => c.id === chain.id)
+  if (idx >= 0) {
+    store.reasoningChains[idx] = chain
+  } else {
+    store.reasoningChains.push(chain)
+  }
+  save()
+}
+
+export function deleteReasoningChain(id: string): void {
+  store.reasoningChains = store.reasoningChains.filter(c => c.id !== id)
   save()
 }

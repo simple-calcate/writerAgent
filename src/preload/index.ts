@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -136,6 +136,16 @@ const api: IPCAPI = {
 
   importSkillsConfirm: (skills: WritingSkill[]) =>
     ipcRenderer.invoke('import-skills-confirm', skills),
+
+  // Reasoning Chains
+  getReasoningChains: () =>
+    ipcRenderer.invoke('get-reasoning-chains'),
+
+  saveReasoningChain: (chain: ReasoningChain) =>
+    ipcRenderer.invoke('save-reasoning-chain', chain),
+
+  deleteReasoningChain: (id: string) =>
+    ipcRenderer.invoke('delete-reasoning-chain', id),
 
   // Continuation
   generateContinuation: (chapterId: string, cursorPosition: number, content: string) =>

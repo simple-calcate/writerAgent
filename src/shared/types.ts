@@ -684,6 +684,11 @@ export interface IPCAPI {
   importSkills: () => Promise<WritingSkill[] | null>
   importSkillsConfirm: (skills: WritingSkill[]) => Promise<void>
 
+  // Reasoning Chains
+  getReasoningChains: () => Promise<ReasoningChain[]>
+  saveReasoningChain: (chain: ReasoningChain) => Promise<void>
+  deleteReasoningChain: (id: string) => Promise<void>
+
   // Continuation
   generateContinuation: (chapterId: string, cursorPosition: number, content: string) => Promise<string | null>
 

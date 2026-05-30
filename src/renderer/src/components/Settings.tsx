@@ -399,12 +399,9 @@ function ReasoningChainsTabContent() {
     setChains(loaded)
   }
 
-  const [editorKey, setEditorKey] = useState(0)
-
   const handleAdd = () => {
     setEditingChain(null)
     setViewMode('add')
-    setEditorKey(k => k + 1)
   }
 
   const handleEdit = (chain: ReasoningChain) => {
@@ -431,7 +428,7 @@ function ReasoningChainsTabContent() {
   if (viewMode === 'edit' || viewMode === 'add') {
     return (
       <ReasoningChainEditor
-        key={editingChain?.id || `new-${editorKey}`}
+        key={editingChain?.id || `new-${Date.now()}`}
         chain={editingChain}
         onSave={handleSave}
         onCancel={() => { setViewMode('list'); setEditingChain(null) }}

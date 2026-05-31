@@ -131,29 +131,20 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         <div>
           <label className="text-[10px] text-gray-500 block mb-1">触发方式</label>
           <div className="flex gap-2">
-            {(['auto', 'manual', 'both'] as const).map(t => {
-              const disabled = !form.includeInContext && t !== 'auto'
-              return (
-                <button
-                  key={t}
-                  onClick={() => !disabled && updateForm({ trigger: t })}
-                  disabled={disabled}
-                  className={`px-3 py-1 text-[11px] rounded transition-colors ${
-                    disabled
-                      ? 'bg-gray-800 text-gray-600 cursor-not-allowed'
-                      : form.trigger === t
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-400 hover:text-gray-300'
-                  }`}
-                >
-                  {t === 'auto' ? '自动' : t === 'manual' ? '手动' : '自动/手动'}
-                </button>
-              )
-            })}
+            {(['auto', 'manual', 'both'] as const).map(t => (
+              <button
+                key={t}
+                onClick={() => updateForm({ trigger: t })}
+                className={`px-3 py-1 text-[11px] rounded transition-colors ${
+                  form.trigger === t
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:text-gray-300'
+                }`}
+              >
+                {t === 'auto' ? '自动' : t === 'manual' ? '手动' : '自动/手动'}
+              </button>
+            ))}
           </div>
-          {!form.includeInContext && (
-            <p className="text-[10px] text-gray-600 mt-1">不纳入上下文时只能自动触发（绑定工具）</p>
-          )}
         </div>
 
         {(form.trigger === 'auto' || form.trigger === 'both') && (
@@ -172,15 +163,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         <div className="flex items-center gap-2">
           <label className="text-[10px] text-gray-500">推理结果纳入上下文</label>
           <div
-            onClick={() => {
-              const newValue = !form.includeInContext
-              const updates: Partial<ReasoningChain> = { includeInContext: newValue }
-              // 关闭纳入上下文时，强制切换为自动触发
-              if (!newValue && form.trigger !== 'auto') {
-                updates.trigger = 'auto'
-              }
-              updateForm(updates)
-            }}
+            onClick={() => updateForm({ includeInContext: !form.includeInContext })}
             className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${
               form.includeInContext ? 'bg-blue-600' : 'bg-gray-600'
             }`}

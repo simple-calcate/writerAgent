@@ -621,11 +621,9 @@ export default function DialoguePanel() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [dialogueMessages, streamingText, thinkingText])
 
-  // Load reasoning chains (only those that include in context)
+  // Load reasoning chains
   useEffect(() => {
-    window.api.getReasoningChains().then(chains => {
-      setReasoningChains(chains.filter(c => c.includeInContext))
-    })
+    window.api.getReasoningChains().then(setReasoningChains)
   }, [])
 
   // Click outside to close chain selector

@@ -20,6 +20,7 @@ export function initUpdater(win: BrowserWindow): void {
 
   autoUpdater.autoDownload = false
   autoUpdater.autoInstallOnAppQuit = false
+  autoUpdater.allowPrerelease = true  // 允许检测预览版更新
 
   // Disable logger to reduce noise
   autoUpdater.logger = null

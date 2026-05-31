@@ -497,6 +497,7 @@ interface ExecuteToolParams {
   reasoningContext?: string
   messageChainIds?: string[]
   dialogueMessages?: ConversationMessage[]
+  executedReasoningChains?: Set<string>  // 已执行过的推理链 ID
 }
 
 export async function executeTool(
@@ -516,38 +517,42 @@ export async function executeTool(
   const REASONING_TOOLS = ['write_chapter_content', 'write_chapter_outline', 'write_volume_outline', 'write_outline']
   let reasoningResults = ''
   if (REASONING_TOOLS.includes(toolName) && mainWindow) {
+    // Initialize executed chains tracker if not exists
+    if (!params.executedReasoningChains) {
+      params.executedReasoningChains = new Set()
+    }
+
     const chainsToExecute: ReasoningChain[] = []
 
-    // 1. Check project's tool-chain binding
+    // 1. Check project's tool-chain binding (only if not already executed)
     const projects = getProjects()
     const project = projects.find(p => p.id === projectId)
     const binding = project?.reasoningConfig?.toolChainBindings?.[toolName]
-    console.log('[reasoning] Tool:', toolName, 'Binding:', binding)
     if (binding) {
       const chain = findReasoningChain(binding)
-      console.log('[reasoning] Found chain by binding:', chain?.name)
-      if (chain) chainsToExecute.push(chain)
+      if (chain && !params.executedReasoningChains.has(chain.id)) {
+        chainsToExecute.push(chain)
+      }
     }
 
-    // 2. Check message chain IDs
-    console.log('[reasoning] Message chain IDs:', params.messageChainIds)
+    // 2. Check message chain IDs (only if not already executed)
     if (params.messageChainIds?.length) {
       for (const chainId of params.messageChainIds) {
         const chain = findReasoningChain(chainId)
-        console.log('[reasoning] Found chain by ID:', chainId, '->', chain?.name)
-        if (chain && !chainsToExecute.find(c => c.id === chain.id)) {
+        if (chain && !chainsToExecute.find(c => c.id === chain.id) && !params.executedReasoningChains.has(chain.id)) {
           chainsToExecute.push(chain)
         }
       }
     }
-
-    console.log('[reasoning] Chains to execute:', chainsToExecute.map(c => c.name))
 
     // Execute all chains
     if (chainsToExecute.length > 0) {
       const { executeReasoningChain, buildReasoningContext } = await import('./dialogue')
 
       for (const chain of chainsToExecute) {
+        // Mark as executed
+        params.executedReasoningChains.add(chain.id)
+
         // Build context based on chain's contextConfig
         const ctxConfig = chain.contextConfig || DEFAULT_REASONING_CONTEXT_CONFIG
         const contextParts: string[] = []
@@ -612,16 +617,14 @@ export async function executeTool(
 
         const context = contextParts.join('\n\n')
 
-        console.log('[reasoning] Executing chain:', chain.name)
         const session = await executeReasoningChain(chain, context, config, mainWindow)
-        const reasoningResult = buildReasoningContext(session, true) // force include for tool execution
-        console.log('[reasoning] Result length:', reasoningResult?.length || 0)
+        const reasoningResult = buildReasoningContext(session, true)
         if (reasoningResult) {
           reasoningResults += reasoningResult
         }
       }
 
-      // Clear message chain IDs after execution to prevent re-execution
+      // Clear message chain IDs after execution
       if (params.messageChainIds) {
         params.messageChainIds = []
       }

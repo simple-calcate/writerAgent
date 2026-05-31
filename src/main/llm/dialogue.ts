@@ -232,6 +232,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
     try {
       const client = createClient(config)
       const tools = getDialogueTools()
+      const executedReasoningChains = new Set<string>()  // Track executed chains across tool calls
 
       for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
         if (controller.signal.aborted) break
@@ -427,7 +428,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               refreshCache: true,
               mainWindow,
               messageChainIds,
-              dialogueMessages: params.messages
+              dialogueMessages: params.messages,
+              executedReasoningChains
             })
 
             mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result })

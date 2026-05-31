@@ -426,7 +426,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               aiConfig,
               refreshCache: true,
               mainWindow,
-              messageChainIds
+              messageChainIds,
+              dialogueMessages: params.messages
             })
 
             mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result })

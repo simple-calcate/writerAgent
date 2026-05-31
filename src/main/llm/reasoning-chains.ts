@@ -1,4 +1,5 @@
 import type { ReasoningChain } from '../../shared/types'
+import { DEFAULT_REASONING_CONTEXT_CONFIG } from '../../shared/types'
 import { getReasoningChains as getCustomChains } from '../store/db'
 
 // ─── 内置推理链 ───
@@ -49,6 +50,7 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
       }
     ],
     includeInContext: false,
+    contextConfig: { ...DEFAULT_REASONING_CONTEXT_CONFIG },
     builtin: true
   },
   {
@@ -84,6 +86,7 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
       }
     ],
     includeInContext: false,
+    contextConfig: { ...DEFAULT_REASONING_CONTEXT_CONFIG, dialogueHistory: true },
     builtin: true
   }
 ]

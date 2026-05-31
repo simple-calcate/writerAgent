@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import type { ReasoningChain, ReasoningStep } from '../../../shared/types'
+import type { ReasoningChain, ReasoningStep, ReasoningContextConfig } from '../../../shared/types'
+import { DEFAULT_REASONING_CONTEXT_CONFIG } from '../../../shared/types'
 
 interface ReasoningChainEditorProps {
   chain?: ReasoningChain | null
@@ -23,6 +24,7 @@ const emptyChain: ReasoningChain = {
   triggerKeywords: [],
   steps: [],
   includeInContext: false,
+  contextConfig: { ...DEFAULT_REASONING_CONTEXT_CONFIG },
   builtin: false
 }
 
@@ -170,6 +172,37 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
               form.includeInContext ? 'translate-x-4' : 'translate-x-0.5'
             }`} />
           </div>
+        </div>
+      </div>
+
+      {/* Context Configuration */}
+      <div className="space-y-2">
+        <label className="text-xs text-gray-400 block">推理上下文</label>
+        <p className="text-[10px] text-gray-600">选择推理时需要参考的信息</p>
+        <div className="space-y-1.5">
+          {[
+            { key: 'bookOutline' as keyof ReasoningContextConfig, label: '书籍大纲', icon: '📚' },
+            { key: 'volumeOutline' as keyof ReasoningContextConfig, label: '卷大纲', icon: '📖' },
+            { key: 'chapterOutline' as keyof ReasoningContextConfig, label: '章节大纲', icon: '📝' },
+            { key: 'previousSummaries' as keyof ReasoningContextConfig, label: '前文章节摘要', icon: '📋' },
+            { key: 'dialogueHistory' as keyof ReasoningContextConfig, label: '最近对话', icon: '💬' }
+          ].map(item => (
+            <label key={item.key} className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.contextConfig?.[item.key] ?? true}
+                onChange={e => updateForm({
+                  contextConfig: {
+                    ...(form.contextConfig || DEFAULT_REASONING_CONTEXT_CONFIG),
+                    [item.key]: e.target.checked
+                  }
+                })}
+                className="accent-blue-500"
+              />
+              <span className="text-[10px]">{item.icon}</span>
+              <span className="text-xs text-gray-300">{item.label}</span>
+            </label>
+          ))}
         </div>
       </div>
 

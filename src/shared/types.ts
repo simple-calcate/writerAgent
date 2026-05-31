@@ -565,6 +565,22 @@ export interface ReasoningStep {
   optional?: boolean     // 是否可选
 }
 
+export interface ReasoningContextConfig {
+  bookOutline: boolean      // 书籍大纲
+  volumeOutline: boolean    // 卷大纲
+  chapterOutline: boolean   // 章节大纲
+  previousSummaries: boolean // 前文章节摘要
+  dialogueHistory: boolean  // 对话历史
+}
+
+export const DEFAULT_REASONING_CONTEXT_CONFIG: ReasoningContextConfig = {
+  bookOutline: true,
+  volumeOutline: true,
+  chapterOutline: true,
+  previousSummaries: true,
+  dialogueHistory: false
+}
+
 export interface ReasoningChain {
   id: string
   name: string           // 推理链名称，如"章节创作推理"
@@ -573,6 +589,7 @@ export interface ReasoningChain {
   triggerKeywords?: string[]  // 自动触发的关键词
   steps: ReasoningStep[]
   includeInContext: boolean   // 推理结果是否纳入上下文
+  contextConfig: ReasoningContextConfig  // 上下文配置
   builtin: boolean
 }
 

@@ -114,6 +114,27 @@ OpenRouter · DeepSeek · OpenAI · Claude · 通义千问 · Moonshot · Ollama
 - **雨滴效果**：细密的雨滴动画，适合深夜码字
 - **壁纸引擎接入**：可对接 Wallpaper Engine 的壁纸文件
 
+### 🧠 推理链 — AI 写作前的系统性思考
+
+推理链让 AI 在执行写大纲、写正文等任务前，先进行结构化分析：
+
+**内置推理链：**
+- **章节创作推理**：人物心理分析 → 人物关系变化 → 场景环境分析 → 动作与交互设计 → 情感节奏规划 → 整合创作指导
+- **大纲规划推理**：主线梳理 → 支线分析 → 伏笔检查 → 节奏规划
+
+**核心特性：**
+- **自动触发**：绑定到写大纲、写正文等工具，执行前自动推理
+- **手动触发**：对话中点击 🧠 按钮选择推理链
+- **可配置上下文**：每个推理链可选择参考书籍大纲、卷大纲、章节大纲、前文摘要、对话历史
+- **推理面板**：中间编辑器区域实时展示推理过程，支持 Markdown 渲染
+- **防止重复**：同一轮对话中推理链只执行一次，AI 基于推理结果重新生成内容
+- **自定义推理链**：创建、编辑、删除自定义推理链，设置触发方式和推理步骤
+
+**使用方式：**
+1. 书籍 AI 配置中将推理链绑定到指定工具
+2. AI 调用该工具时自动执行推理
+3. 推理结果反馈给 AI，生成更优质的内容
+
 ---
 
 ## 下载
@@ -124,8 +145,8 @@ OpenRouter · DeepSeek · OpenAI · Claude · 通义千问 · Moonshot · Ollama
 | [Gitee 下载](https://gitee.com/simple-calcate/writerAgent/releases) | 国内源，更稳定 |
 
 **安装包**：
-- `网文写作助手 Setup 0.2.2.exe` — 安装版，可选择安装目录
-- `网文写作助手 0.2.2.exe` — 便携版，双击即用
+- `novel-writer-setup-0.2.6-beta.0.exe` — 安装版，可选择安装目录
+- `novel-writer-setup-0.2.6-beta.0.exe` — 便携版，双击即用
 
 **系统要求**：Windows 10/11 64位
 
@@ -267,6 +288,27 @@ OpenRouter · DeepSeek · OpenAI · Claude · Qwen · Moonshot · Ollama (fully 
 - **Rain Effect**: Delicate rain drop animation, perfect for late-night writing sessions
 - **Wallpaper Engine Integration**: Can connect to Wallpaper Engine wallpaper files
 
+### 🧠 Reasoning Chains — Systematic Thinking Before Writing
+
+Reasoning chains make AI perform structured analysis before executing tasks like writing outlines or content:
+
+**Built-in Chains:**
+- **Chapter Writing**: Character psychology → Relationship dynamics → Scene environment → Action design → Emotional pacing → Integrated guidance
+- **Outline Planning**: Main plot梳理 → Subplot analysis → Foreshadowing check → Pacing planning
+
+**Key Features:**
+- **Auto-trigger**: Bind to writing tools, execute reasoning automatically before tool runs
+- **Manual trigger**: Click 🧠 button in dialogue to select a reasoning chain
+- **Configurable context**: Each chain can reference book outline, volume outline, chapter outline, previous summaries, dialogue history
+- **Reasoning panel**: Real-time display of reasoning process in the center editor area with Markdown rendering
+- **No repeats**: Each reasoning chain executes only once per dialogue round
+- **Custom chains**: Create, edit, delete custom reasoning chains with custom triggers and steps
+
+**Usage:**
+1. Bind reasoning chain to a tool in Book AI Settings
+2. AI automatically reasons before executing that tool
+3. Reasoning results are fed back to AI for better content generation
+
 ---
 
 ## Download
@@ -277,8 +319,8 @@ OpenRouter · DeepSeek · OpenAI · Claude · Qwen · Moonshot · Ollama (fully 
 | [Gitee Releases](https://gitee.com/simple-calcate/writerAgent/releases) | China mirror, more stable |
 
 **Packages**:
-- `网文写作助手 Setup 0.2.2.exe` — Installer, choose installation directory
-- `网文写作助手 0.2.2.exe` — Portable version, double-click to run
+- `novel-writer-setup-0.2.6-beta.0.exe` — Installer, choose installation directory
+- `novel-writer-setup-0.2.6-beta.0.exe` — Portable version, double-click to run
 
 **System Requirements**: Windows 10/11 64-bit
 

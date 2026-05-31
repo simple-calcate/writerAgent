@@ -17,7 +17,7 @@ export async function executeReasoningChain(
   context: string,
   config: LLMConfigSingle,
   mainWindow: BrowserWindow,
-  signal: AbortSignal
+  signal?: AbortSignal
 ): Promise<ReasoningSession> {
   const sessionId = randomUUID()
   const session: ReasoningSession = {
@@ -45,7 +45,7 @@ export async function executeReasoningChain(
     const client = createClient(config)
 
     for (const step of chain.steps) {
-      if (signal.aborted) break
+      if (signal?.aborted) break
 
       const stepResult: ReasoningStepResult = {
         chainId: chain.id,
@@ -108,7 +108,7 @@ export async function executeReasoningChain(
           result
         })
       } catch (err: any) {
-        if (signal.aborted) break
+        if (signal?.aborted) break
         stepResult.status = 'error'
         stepResult.result = `错误: ${err.message}`
 
@@ -121,7 +121,7 @@ export async function executeReasoningChain(
       }
     }
 
-    session.status = signal.aborted ? 'error' : 'completed'
+    session.status = signal?.aborted ? 'error' : 'completed'
   } catch (err: any) {
     session.status = 'error'
   }

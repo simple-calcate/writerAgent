@@ -159,25 +159,51 @@ export default function App() {
             <ResizeHandle onResize={handleSidebarResize} />
           </>
         )}
-        <Editor />
+
+        {/* Center area - Editor or Reasoning Panel */}
+        {showReasoningPanel && reasoningStatus !== 'idle' ? (
+          <div className="flex-1 flex flex-col min-w-0 bg-gray-900/30">
+            {/* Tab bar */}
+            <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-700/50 bg-gray-800/30">
+              <button
+                onClick={toggleReasoningPanel}
+                className="px-3 py-1 text-[11px] text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded transition-colors"
+              >
+                ← 返回编辑
+              </button>
+              <div className="flex-1" />
+              <span className="text-[10px] text-gray-600">🧠 推理分析</span>
+            </div>
+            <div className="flex-1 overflow-hidden">
+              <ReasoningPanel
+                sessionId={reasoningSessionId}
+                chainName={reasoningChainName}
+                steps={reasoningSteps}
+                stepResults={reasoningStepResults}
+                status={reasoningStatus}
+                includeInContext={reasoningIncludeInContext}
+                onClose={toggleReasoningPanel}
+              />
+            </div>
+          </div>
+        ) : (
+          <Editor />
+        )}
+
         {rightPanel && <ResizeHandle onResize={handleRightResize} />}
         <RightPanel width={rightWidth} />
-
-        {/* Reasoning Panel */}
-        {showReasoningPanel && (
-          <div className="w-80 border-l border-gray-700 bg-gray-800/50 shrink-0">
-            <ReasoningPanel
-              sessionId={reasoningSessionId}
-              chainName={reasoningChainName}
-              steps={reasoningSteps}
-              stepResults={reasoningStepResults}
-              status={reasoningStatus}
-              includeInContext={reasoningIncludeInContext}
-              onClose={toggleReasoningPanel}
-            />
-          </div>
-        )}
       </div>
+
+      {/* Reasoning indicator - show when reasoning is running but panel is closed */}
+      {reasoningStatus === 'running' && !showReasoningPanel && (
+        <button
+          onClick={toggleReasoningPanel}
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg transition-colors"
+        >
+          <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+          <span className="text-xs">推理进行中...</span>
+        </button>
+      )}
 
       {/* Modals */}
       {showSettings && <Settings />}

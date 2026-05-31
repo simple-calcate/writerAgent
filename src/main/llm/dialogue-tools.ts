@@ -27,7 +27,6 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   toggle_feature_skill: '调整技能挂载',
   batch_refine_summaries: '批量精炼摘要',
   list_reasoning_chains: '查看推理链',
-  get_reasoning_chain: '获取推理链详情',
   create_reasoning_chain: '创建推理链',
   update_reasoning_chain: '修改推理链',
   delete_reasoning_chain: '删除推理链',
@@ -359,20 +358,6 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
         parameters: {
           type: 'object',
           properties: {}
-        }
-      }
-    },
-    {
-      type: 'function',
-      function: {
-        name: 'get_reasoning_chain',
-        description: '获取指定推理链的详细信息，包括所有步骤的提示词。只读操作，无需用户确认。',
-        parameters: {
-          type: 'object',
-          properties: {
-            chainId: { type: 'string', description: '推理链 ID' }
-          },
-          required: ['chainId']
         }
       }
     },
@@ -867,19 +852,6 @@ export async function executeTool(
         return `- 「${chain.name}」（${triggerLabel}，${contextLabel}）\n  ${chain.description}\n  步骤：\n${steps}`
       })
       return `共 ${chains.length} 个推理链：\n\n${lines.join('\n\n')}`
-    }
-
-    case 'get_reasoning_chain': {
-      if (!args.chainId) return '错误：未提供推理链 ID'
-
-      const chain = getReasoningChainById(args.chainId)
-      if (!chain) return '错误：找不到指定推理链'
-
-      const triggerLabel = chain.trigger === 'auto' ? '自动触发' : chain.trigger === 'manual' ? '手动触发' : '自动/手动'
-      const contextLabel = chain.includeInContext ? '纳入上下文' : '不纳入上下文'
-      const steps = chain.steps.map((s, i) => `${i + 1}. ${s.name}\n   提示词：${s.prompt}`).join('\n')
-
-      return `推理链「${chain.name}」详情：\n\n描述：${chain.description}\n触发方式：${triggerLabel}\n上下文设置：${contextLabel}\n触发关键词：${chain.triggerKeywords?.join(', ') || '无'}\n\n步骤：\n${steps}`
     }
 
     case 'create_reasoning_chain': {

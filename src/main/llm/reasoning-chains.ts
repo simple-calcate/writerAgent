@@ -132,7 +132,7 @@ export function detectAutoTrigger(message: string): ReasoningChain | null {
 
 // 提取用户实际消息（去掉触发标记）
 export function extractUserMessage(message: string): string {
-  return message.replace(/^\[reasoning:[^\]]+\]\s*/, '')
+  return message.replace(/(\[reasoning:[^\]]+\]\s*)+/g, '').trim()
 }
 
 // 构建单个步骤的提示词

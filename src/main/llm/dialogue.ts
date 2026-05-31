@@ -137,8 +137,9 @@ export async function executeReasoningChain(
 }
 
 // Build reasoning context for injection into system prompt
-export function buildReasoningContext(session: ReasoningSession): string {
-  if (!session.includeInContext || session.status !== 'completed') return ''
+export function buildReasoningContext(session: ReasoningSession, forceInclude = false): string {
+  if (!forceInclude && !session.includeInContext) return ''
+  if (session.status !== 'completed') return ''
 
   let context = `\n## 推理分析（${session.chainName}）\n`
   for (const step of session.steps) {

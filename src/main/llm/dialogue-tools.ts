@@ -555,7 +555,7 @@ export async function executeTool(
 
         console.log('[reasoning] Executing chain:', chain.name)
         const session = await executeReasoningChain(chain, context, config, mainWindow)
-        const reasoningResult = buildReasoningContext(session)
+        const reasoningResult = buildReasoningContext(session, true) // force include for tool execution
         console.log('[reasoning] Result length:', reasoningResult?.length || 0)
         if (reasoningResult) {
           reasoningResults += reasoningResult

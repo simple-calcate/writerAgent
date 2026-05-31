@@ -546,13 +546,57 @@ export async function executeTool(
     if (chainsToExecute.length > 0) {
       const { executeReasoningChain, buildReasoningContext } = await import('./dialogue')
 
-      for (const chain of chainsToExecute) {
-        const chapterContent = targetChapter?.content || ''
-        const context = [
-          targetChapter ? `当前章节: ${targetChapter.title}` : '',
-          chapterContent ? `章节内容:\n${chapterContent.substring(0, 3000)}` : ''
-        ].filter(Boolean).join('\n\n')
+      // Build rich context for reasoning
+      const contextParts: string[] = []
 
+      // Current chapter info
+      if (targetChapter) {
+        contextParts.push(`当前章节：${targetChapter.title}`)
+      }
+
+      // Book outline
+      const bookOutline = getOutline('book', projectId)
+      if (bookOutline?.content) {
+        contextParts.push(`## 书籍大纲\n${bookOutline.content.substring(0, 2000)}`)
+      }
+
+      // Volume outline
+      const volumeId = targetChapter?.volumeId || params.chapter?.volumeId
+      if (volumeId) {
+        const volOutline = getOutline('volume', volumeId)
+        if (volOutline?.content) {
+          contextParts.push(`## 卷大纲\n${volOutline.content.substring(0, 2000)}`)
+        }
+      }
+
+      // Chapter outline
+      if (targetChapter) {
+        const chOutline = getOutline('chapter', targetChapter.id)
+        if (chOutline?.content) {
+          contextParts.push(`## 章节大纲\n${chOutline.content.substring(0, 1000)}`)
+        }
+      }
+
+      // Previous chapters summaries (up to 3)
+      if (targetChapter) {
+        const volChapters = allChapters
+          .filter(c => c.volumeId === targetChapter.volumeId)
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+        const currentIdx = volChapters.findIndex(c => c.id === targetChapter.id)
+        const prevChapters = volChapters.slice(Math.max(0, currentIdx - 3), currentIdx)
+        if (prevChapters.length > 0) {
+          const summaries = prevChapters
+            .filter(c => c.summaryResult)
+            .map(c => `- ${c.title}：${c.summaryResult?.substring(0, 200)}`)
+          if (summaries.length > 0) {
+            contextParts.push(`## 前文摘要\n${summaries.join('\n')}`)
+          }
+        }
+      }
+
+      const context = contextParts.join('\n\n')
+
+      for (const chain of chainsToExecute) {
         console.log('[reasoning] Executing chain:', chain.name)
         const session = await executeReasoningChain(chain, context, config, mainWindow)
         const reasoningResult = buildReasoningContext(session, true) // force include for tool execution

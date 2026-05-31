@@ -7,7 +7,7 @@ import { polishText } from './client'
 import { refineSummary } from './refine-summary'
 import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain } from '../store/db'
 import { randomUUID } from 'crypto'
-import { getReasoningChains, getReasoningChainById } from './reasoning-chains'
+import { getReasoningChains, getReasoningChainById, findReasoningChain } from './reasoning-chains'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   summarize_chapter: '章节摘要',
@@ -849,9 +849,9 @@ export async function executeTool(
         const triggerLabel = chain.trigger === 'auto' ? '自动触发' : chain.trigger === 'manual' ? '手动触发' : '自动/手动'
         const contextLabel = chain.includeInContext ? '纳入上下文' : '不纳入上下文'
         const steps = chain.steps.map(s => `  - ${s.name}`).join('\n')
-        return `- 「${chain.name}」（${triggerLabel}，${contextLabel}）\n  ${chain.description}\n  步骤：\n${steps}`
+        return `- ID: ${chain.id}\n  名称: 「${chain.name}」（${triggerLabel}，${contextLabel}）\n  ${chain.description}\n  步骤：\n${steps}`
       })
-      return `共 ${chains.length} 个推理链：\n\n${lines.join('\n\n')}`
+      return `共 ${chains.length} 个推理链（绑定时使用 ID 或名称）：\n\n${lines.join('\n\n')}`
     }
 
     case 'create_reasoning_chain': {
@@ -890,7 +890,7 @@ export async function executeTool(
     case 'update_reasoning_chain': {
       if (!args.chainId) return '错误：未提供推理链 ID'
 
-      const existingChain = getReasoningChainById(args.chainId)
+      const existingChain = findReasoningChain(args.chainId)
       if (!existingChain) return '错误：找不到指定推理链'
       if (existingChain.builtin) return '错误：内置推理链无法修改'
 
@@ -927,7 +927,7 @@ export async function executeTool(
     case 'delete_reasoning_chain': {
       if (!args.chainId) return '错误：未提供推理链 ID'
 
-      const chainToDelete = getReasoningChainById(args.chainId)
+      const chainToDelete = findReasoningChain(args.chainId)
       if (!chainToDelete) return '错误：找不到指定推理链'
       if (chainToDelete.builtin) return '错误：内置推理链无法删除'
 
@@ -939,7 +939,7 @@ export async function executeTool(
       if (!args.chainId) return '错误：未提供推理链 ID'
       if (args.includeInContext === undefined) return '错误：未提供上下文设置'
 
-      const chain = getReasoningChainById(args.chainId)
+      const chain = findReasoningChain(args.chainId)
       if (!chain) return '错误：找不到指定推理链'
 
       // Note: This is a runtime toggle, not persisted
@@ -972,7 +972,7 @@ export async function executeTool(
         return `「${displayName}」没有绑定推理链。`
       }
 
-      const chain = getReasoningChainById(args.chainId)
+      const chain = findReasoningChain(args.chainId)
       if (!chain) return '错误：找不到指定推理链'
 
       // Note: Binding is stored in project config, would need DB update function

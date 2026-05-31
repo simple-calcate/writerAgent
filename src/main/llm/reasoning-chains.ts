@@ -103,6 +103,20 @@ export function getReasoningChainById(id: string): ReasoningChain | undefined {
   return allChains.find(chain => chain.id === id)
 }
 
+// 根据 ID 或名称获取推理链（更灵活的查找）
+export function findReasoningChain(idOrName: string): ReasoningChain | undefined {
+  const allChains = getReasoningChains()
+  // 先按 ID 查找
+  const byId = allChains.find(chain => chain.id === idOrName)
+  if (byId) return byId
+  // 再按名称查找（精确匹配）
+  const byName = allChains.find(chain => chain.name === idOrName)
+  if (byName) return byName
+  // 最后按名称模糊匹配
+  const byNameLower = allChains.find(chain => chain.name.toLowerCase().includes(idOrName.toLowerCase()))
+  return byNameLower
+}
+
 // 检测是否应该自动触发推理链
 export function detectAutoTrigger(message: string): ReasoningChain | null {
   // 先检测手动触发格式 [reasoning:chain-id]

@@ -91,13 +91,25 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
   }
 ]
 
-// 获取所有推理链（内置 + 自定义，去重）
+// 获取所有推理链（内置 + 自定义，数据库版本覆盖内置版本）
 export function getReasoningChains(): ReasoningChain[] {
   const customChains = getCustomChains()
-  // 过滤掉与内置推理链 ID 重复的自定义推理链
+  const customMap = new Map(customChains.map(c => [c.id, c]))
+
+  // 内置链：如果数据库有同 ID 的版本，用数据库版本覆盖
+  const result: ReasoningChain[] = BUILTIN_REASONING_CHAINS.map(builtin =>
+    customMap.get(builtin.id) || builtin
+  )
+
+  // 添加不在内置列表中的自定义链
   const builtinIds = new Set(BUILTIN_REASONING_CHAINS.map(c => c.id))
-  const filteredCustom = customChains.filter(c => !builtinIds.has(c.id))
-  return [...BUILTIN_REASONING_CHAINS, ...filteredCustom]
+  for (const chain of customChains) {
+    if (!builtinIds.has(chain.id)) {
+      result.push(chain)
+    }
+  }
+
+  return result
 }
 
 // 根据 ID 获取推理链

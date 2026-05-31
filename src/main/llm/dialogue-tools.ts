@@ -521,20 +521,26 @@ export async function executeTool(
     const projects = getProjects()
     const project = projects.find(p => p.id === projectId)
     const binding = project?.reasoningConfig?.toolChainBindings?.[toolName]
+    console.log('[reasoning] Tool:', toolName, 'Binding:', binding)
     if (binding) {
-      const chain = getReasoningChainById(binding)
+      const chain = findReasoningChain(binding)
+      console.log('[reasoning] Found chain by binding:', chain?.name)
       if (chain) chainsToExecute.push(chain)
     }
 
     // 2. Check message chain IDs
+    console.log('[reasoning] Message chain IDs:', params.messageChainIds)
     if (params.messageChainIds?.length) {
       for (const chainId of params.messageChainIds) {
-        const chain = getReasoningChainById(chainId)
+        const chain = findReasoningChain(chainId)
+        console.log('[reasoning] Found chain by ID:', chainId, '->', chain?.name)
         if (chain && !chainsToExecute.find(c => c.id === chain.id)) {
           chainsToExecute.push(chain)
         }
       }
     }
+
+    console.log('[reasoning] Chains to execute:', chainsToExecute.map(c => c.name))
 
     // Execute all chains
     if (chainsToExecute.length > 0) {
@@ -547,8 +553,10 @@ export async function executeTool(
           chapterContent ? `章节内容:\n${chapterContent.substring(0, 3000)}` : ''
         ].filter(Boolean).join('\n\n')
 
+        console.log('[reasoning] Executing chain:', chain.name)
         const session = await executeReasoningChain(chain, context, config, mainWindow)
         const reasoningResult = buildReasoningContext(session)
+        console.log('[reasoning] Result length:', reasoningResult?.length || 0)
         if (reasoningResult) {
           reasoningResults += reasoningResult
         }
@@ -700,7 +708,9 @@ export async function executeTool(
       if (!target) return '错误：找不到指定章节'
 
       // If reasoning was executed, return results and ask AI to regenerate
+      console.log('[write_chapter_content] reasoningResults length:', reasoningResults.length)
       if (reasoningResults) {
+        console.log('[write_chapter_content] Returning reasoning results to AI')
         return `推理分析已完成，请根据以下分析结果重新撰写章节内容，然后再次调用 write_chapter_content：\n\n${reasoningResults}\n\n请基于以上分析，重新生成更优质的章节内容。`
       }
 

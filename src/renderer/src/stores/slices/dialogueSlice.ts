@@ -205,6 +205,8 @@ export const createDialogueSlice: StateCreator<
         const chainTags = reasoningChainIds.map(id => `[reasoning:${id}]`).join('')
         messageForApi = `${chainTags} ${content}`
       }
+      console.log('[Debug] Sending message:', messageForApi)
+      console.log('[Debug] Reasoning chain IDs:', reasoningChainIds)
 
       // 过滤掉已删除的消息
       const apiMessages = updatedMessages

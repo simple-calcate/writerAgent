@@ -189,10 +189,13 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   // Extract reasoning chain IDs from message
   const messageChainIds: string[] = []
   if (lastUserMsg) {
+    console.log('[Debug] Last user message content:', lastUserMsg.content)
     const matches = lastUserMsg.content.matchAll(/\[reasoning:([^\]]+)\]/g)
     for (const match of matches) {
+      console.log('[Debug] Found reasoning chain tag:', match[1])
       messageChainIds.push(match[1])
     }
+    console.log('[Debug] Extracted chain IDs:', messageChainIds)
   }
 
   // Run async, don't await — return streamId immediately

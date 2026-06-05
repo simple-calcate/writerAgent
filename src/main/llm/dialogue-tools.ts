@@ -371,8 +371,7 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
           properties: {
             name: { type: 'string', description: '推理链名称' },
             description: { type: 'string', description: '推理链描述' },
-            trigger: { type: 'string', enum: ['auto', 'manual', 'both'], description: '触发方式' },
-            triggerKeywords: { type: 'string', description: '触发关键词，逗号分隔' },
+            trigger: { type: 'string', enum: ['auto', 'manual'], description: '触发方式' },
             steps: {
               type: 'array',
               description: '推理步骤列表',
@@ -402,8 +401,7 @@ export function getDialogueTools(): OpenAI.ChatCompletionTool[] {
             chainId: { type: 'string', description: '要修改的推理链 ID' },
             name: { type: 'string', description: '新的名称' },
             description: { type: 'string', description: '新的描述' },
-            trigger: { type: 'string', enum: ['auto', 'manual', 'both'], description: '新的触发方式' },
-            triggerKeywords: { type: 'string', description: '新的触发关键词，逗号分隔' },
+            trigger: { type: 'string', enum: ['auto', 'manual'], description: '新的触发方式' },
             steps: {
               type: 'array',
               description: '新的推理步骤列表',
@@ -932,8 +930,7 @@ export async function executeTool(
         id: randomUUID(),
         name: args.name,
         description: args.description || '',
-        trigger: (args.trigger as any) || 'both',
-        triggerKeywords: args.triggerKeywords ? args.triggerKeywords.split(',').map(k => k.trim()).filter(Boolean) : [],
+        trigger: (args.trigger as any) || 'auto',
         steps: steps.map((s, i) => ({
           id: `step-${Date.now()}-${i}`,
           name: s.name,
@@ -959,7 +956,6 @@ export async function executeTool(
       if (args.name) updates.name = args.name
       if (args.description) updates.description = args.description
       if (args.trigger) updates.trigger = args.trigger as any
-      if (args.triggerKeywords) updates.triggerKeywords = args.triggerKeywords.split(',').map(k => k.trim()).filter(Boolean)
       if (args.includeInContext !== undefined) updates.includeInContext = args.includeInContext === 'true'
 
       if (args.steps) {

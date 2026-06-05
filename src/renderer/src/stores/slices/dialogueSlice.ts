@@ -205,19 +205,17 @@ export const createDialogueSlice: StateCreator<
         const chainTags = reasoningChainIds.map(id => `[reasoning:${id}]`).join('')
         messageForApi = `${chainTags} ${content}`
       }
-      console.log('[Debug] Sending message:', messageForApi)
-      console.log('[Debug] Reasoning chain IDs:', reasoningChainIds)
 
-      // 过滤掉已删除的消息
-      const apiMessages = updatedMessages
-        .filter(m => !m.deleted)
-        .map((m, i) => {
-          // Use the tagged message for the last user message
-          if (i === updatedMessages.length - 1 && m.role === 'user') {
-            return { role: m.role, content: messageForApi }
-          }
-          return { role: m.role, content: m.content }
-        })
+      // 过滤掉已删除的消息，并将最后一条用户消息替换为带标签的版本
+      const filteredMessages = updatedMessages.filter(m => !m.deleted)
+      const lastUserMsgIndex = filteredMessages.length - 1
+      const apiMessages = filteredMessages.map((m, i) => {
+        // Use the tagged message for the last user message
+        if (i === lastUserMsgIndex && m.role === 'user') {
+          return { role: m.role, content: messageForApi }
+        }
+        return { role: m.role, content: m.content }
+      })
       const { streamId } = await window.api.dialogueSend(dialogueLevel, dialogueEntityId, apiMessages)
       set({ activeStreamId: streamId })
     } catch (err: any) {

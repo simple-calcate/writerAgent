@@ -4,16 +4,53 @@ import type { ReasoningStepResult } from '../../../shared/types'
 // Simple markdown renderer for reasoning steps
 function renderMarkdown(text: string): string {
   if (!text) return ''
-  return text
-    .replace(/^### (.+)$/gm, '<div class="text-xs font-semibold text-gray-200 mt-2 mb-1">$1</div>')
-    .replace(/^## (.+)$/gm, '<div class="text-sm font-semibold text-gray-200 mt-3 mb-1">$1</div>')
-    .replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-200">$1</strong>')
-    .replace(/\*(.+?)\*/g, '<em class="text-gray-400">$1</em>')
-    .replace(/`(.+?)`/g, '<code class="bg-gray-800 px-1 rounded text-green-300">$1</code>')
-    .replace(/^\s*[-*]\s+/gm, '<div class="flex gap-1.5"><span class="text-gray-500 shrink-0">•</span><span>')
-    .replace(/^\s*(\d+)\.\s+/gm, '<div class="flex gap-1.5"><span class="text-gray-500 shrink-0 w-4">$1.</span><span>')
-    .replace(/\n\n/g, '</div><div class="h-1.5"></div>')
-    .replace(/\n/g, '</div><div class="flex gap-1.5">')
+  // Split into paragraphs first
+  const paragraphs = text.split(/\n\n+/)
+  return paragraphs.map(p => {
+    // Process each paragraph
+    let html = p
+      .replace(/^### (.+)$/gm, '<div class="text-xs font-semibold text-gray-200 mt-2 mb-1">$1</div>')
+      .replace(/^## (.+)$/gm, '<div class="text-sm font-semibold text-gray-200 mt-3 mb-1">$1</div>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-gray-200">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em class="text-gray-400">$1</em>')
+      .replace(/`(.+?)`/g, '<code class="bg-gray-800 px-1 rounded text-green-300">$1</code>')
+
+    // Handle list items
+    const lines = html.split('\n')
+    let inList = false
+    const processedLines: string[] = []
+
+    for (const line of lines) {
+      const bulletMatch = line.match(/^\s*[-*]\s+(.+)/)
+      const numberMatch = line.match(/^\s*(\d+)\.\s+(.+)/)
+
+      if (bulletMatch) {
+        if (!inList) {
+          processedLines.push('<div class="space-y-1">')
+          inList = true
+        }
+        processedLines.push(`<div class="flex gap-1.5"><span class="text-gray-500 shrink-0">•</span><span>${bulletMatch[1]}</span></div>`)
+      } else if (numberMatch) {
+        if (!inList) {
+          processedLines.push('<div class="space-y-1">')
+          inList = true
+        }
+        processedLines.push(`<div class="flex gap-1.5"><span class="text-gray-500 shrink-0 w-4">${numberMatch[1]}.</span><span>${numberMatch[2]}</span></div>`)
+      } else {
+        if (inList) {
+          processedLines.push('</div>')
+          inList = false
+        }
+        processedLines.push(line)
+      }
+    }
+
+    if (inList) {
+      processedLines.push('</div>')
+    }
+
+    return `<div class="mb-2">${processedLines.join('\n')}</div>`
+  }).join('')
 }
 
 interface ReasoningPanelProps {

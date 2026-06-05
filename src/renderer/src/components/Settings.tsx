@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import VisualEffectsTab from './VisualEffectsTab'
-import ReasoningChainEditor from './ReasoningChainEditor'
-import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig, WritingSkill, SkillCategory, UpdateStatus, ReasoningChain } from '../../../shared/types'
-import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, SKILL_CATEGORIES } from '../../../shared/types'
+import SkillsTab from './settings/tabs/SkillsTab'
+import ReasoningTab from './settings/tabs/ReasoningTab'
+import DataStorageTab from './settings/tabs/DataStorageTab'
+import AboutTab from './settings/tabs/AboutTab'
+import LocalModelDiagnostics from './settings/components/LocalModelDiag'
+import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig } from '../../../shared/types'
+import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
 
 type TabKey = 'api' | 'ai' | 'keys' | 'data' | 'skills' | 'reasoning' | 'visual' | 'about'
 
@@ -40,8 +44,6 @@ const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; 
   { value: 'custom', label: '自定义', desc: '手动设置 token 预算' }
 ]
 
-const DEFAULT_THINKING: ThinkingDepth = { preset: 'off' }
-
 interface ProviderPreset {
   value: string
   label: string
@@ -68,548 +70,11 @@ function detectPreset(baseUrl: string): string {
   return ''
 }
 
-// ─── Update Check Button ───
-
-function UpdateCheckButton() {
-  const [updateStatus, setUpdateStatus] = useState<UpdateStatus>({ status: 'idle' })
-  const [giteeLoading, setGiteeLoading] = useState(false)
-
-  useEffect(() => {
-    const unsub = window.api.onUpdateStatus(setUpdateStatus)
-    window.api.getUpdateStatus().then(setUpdateStatus)
-    return unsub
-  }, [])
-
-  // Reset giteeLoading when status changes
-  useEffect(() => {
-    if (updateStatus.status === 'downloading' || updateStatus.status === 'downloaded' || updateStatus.status === 'error') {
-      setGiteeLoading(false)
-    }
-  }, [updateStatus.status])
-
-  const handleCheck = () => {
-    setUpdateStatus({ status: 'checking' })
-    window.api.checkForUpdates()
-  }
-
-  const handleDownload = () => {
-    window.api.downloadUpdate()
-  }
-
-  const handleDownloadGitee = () => {
-    setGiteeLoading(true)
-    window.api.downloadFromGitee()
-  }
-
-  const handleInstall = () => {
-    window.api.installUpdate()
-  }
-
-  const handleInstallGitee = () => {
-    window.api.installGiteeUpdate()
-  }
-
-  const statusUI: Record<string, { text: string; color: string }> = {
-    idle: { text: '尚未检查', color: 'text-gray-500' },
-    checking: { text: '正在检查更新...', color: 'text-blue-400' },
-    available: { text: `发现新版本 v${updateStatus.version}`, color: 'text-blue-400' },
-    downloading: { text: `正在下载 v${updateStatus.version}...`, color: 'text-amber-400' },
-    downloaded: { text: `v${updateStatus.version} 已下载完成`, color: 'text-emerald-400' },
-    'not-available': { text: '当前已是最新版本', color: 'text-gray-400' },
-    error: { text: '检查失败', color: 'text-red-400' }
-  }
-
-  const current = statusUI[updateStatus.status] || statusUI.idle
-
-  return (
-    <div className="space-y-2">
-      {/* Status line */}
-      <div className="flex items-center gap-2">
-        {updateStatus.status === 'checking' && (
-          <span className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse shrink-0" />
-        )}
-        <span className={`text-[10px] ${current.color}`}>{current.text}</span>
-      </div>
-
-      {/* Download progress */}
-      {updateStatus.status === 'downloading' && updateStatus.progress && (
-        <div className="flex items-center gap-2">
-          <div className="flex-1 bg-gray-700 rounded-full h-1.5">
-            <div
-              className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
-              style={{ width: `${updateStatus.progress.percent}%` }}
-            />
-          </div>
-          <span className="text-[10px] text-gray-500 shrink-0">
-            {updateStatus.progress.percent}% · {(updateStatus.progress.transferred / 1024 / 1024).toFixed(1)}/{(updateStatus.progress.total / 1024 / 1024).toFixed(1)} MB
-          </span>
-        </div>
-      )}
-
-      {/* Error detail */}
-      {updateStatus.status === 'error' && updateStatus.error && (
-        <p className="text-[10px] text-red-400/70 break-all">{updateStatus.error}</p>
-      )}
-
-      {/* Release notes */}
-      {updateStatus.status === 'available' && updateStatus.releaseNotes && (
-        <div className="text-[11px] text-gray-400 bg-gray-900/50 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-          {updateStatus.releaseNotes}
-        </div>
-      )}
-
-      {/* Action buttons */}
-      <div className="flex items-center gap-2">
-        {(updateStatus.status === 'idle' || updateStatus.status === 'not-available' || updateStatus.status === 'error') && (
-          <button
-            onClick={handleCheck}
-            className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-          >
-            {updateStatus.status === 'error' ? '重新检查' : '检查更新'}
-          </button>
-        )}
-        {(updateStatus.status === 'error' || updateStatus.status === 'available') && (
-          <button
-            onClick={handleDownloadGitee}
-            disabled={giteeLoading}
-            className="px-3 py-1.5 text-xs bg-emerald-700 hover:bg-emerald-600 text-white rounded transition-colors disabled:opacity-50"
-          >
-            {giteeLoading ? '连接中...' : '从 Gitee 下载'}
-          </button>
-        )}
-        {updateStatus.status === 'available' && (
-          <button onClick={handleDownload} className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-500 text-white rounded transition-colors">
-            从 GitHub 下载
-          </button>
-        )}
-        {updateStatus.status === 'downloaded' && (
-          <button onClick={updateStatus.giteeInstallerPath ? handleInstallGitee : handleInstall} className="px-3 py-1.5 text-xs bg-emerald-600 hover:bg-emerald-500 text-white rounded transition-colors">
-            退出并安装
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
-// ─── Skills Tab Content ───
-
-function SkillsTabContent() {
-  const {
-    skills,
-    loadSkills,
-    saveSkill,
-    deleteSkill,
-    exportSkills,
-    importSkills
-  } = useAppStore()
-
-  const [viewMode, setViewMode] = useState<'list' | 'edit' | 'add'>('list')
-  const [editingSkill, setEditingSkill] = useState<WritingSkill | null>(null)
-  const [form, setForm] = useState({ name: '', category: 'custom' as SkillCategory, content: '', source: '' })
-
-  useEffect(() => { loadSkills() }, [loadSkills])
-
-  // Group skills by category
-  const grouped = new Map<SkillCategory, WritingSkill[]>()
-  for (const skill of skills) {
-    const list = grouped.get(skill.category) || []
-    list.push(skill)
-    grouped.set(skill.category, list)
-  }
-
-  const handleAdd = () => {
-    setForm({ name: '', category: 'custom', content: '', source: '' })
-    setEditingSkill(null)
-    setViewMode('add')
-  }
-
-  const handleEdit = (skill: WritingSkill) => {
-    setForm({ name: skill.name, category: skill.category, content: skill.content, source: skill.source || '' })
-    setEditingSkill(skill)
-    setViewMode('edit')
-  }
-
-  const handleSave = async () => {
-    if (!form.name.trim() || !form.content.trim()) return
-    const now = new Date().toISOString()
-    const skill: WritingSkill = editingSkill
-      ? { ...editingSkill, name: form.name, category: form.category, content: form.content, source: form.source || undefined, updatedAt: now }
-      : { id: crypto.randomUUID(), name: form.name, category: form.category, content: form.content, source: form.source || undefined, createdAt: now, updatedAt: now }
-    await saveSkill(skill)
-    setViewMode('list')
-    setEditingSkill(null)
-  }
-
-  const handleDelete = async (id: string) => {
-    await deleteSkill(id)
-    if (editingSkill?.id === id) {
-      setViewMode('list')
-      setEditingSkill(null)
-    }
-  }
-
-  // Edit/Add Form
-  if (viewMode === 'edit' || viewMode === 'add') {
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center gap-2">
-          <button onClick={() => setViewMode('list')} className="text-gray-400 hover:text-gray-200 text-xs">← 返回</button>
-          <span className="text-xs text-gray-300">{viewMode === 'add' ? '添加技能' : '编辑技能'}</span>
-        </div>
-        <div className="space-y-3">
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">技能名称</label>
-            <input
-              value={form.name}
-              onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
-              placeholder="如：都市打斗场景写法"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">分类</label>
-            <select
-              value={form.category}
-              onChange={e => setForm(f => ({ ...f, category: e.target.value as SkillCategory }))}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-            >
-              {Object.entries(SKILL_CATEGORIES).map(([key, meta]) => (
-                <option key={key} value={key}>{meta.icon} {meta.label}</option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">来源（可选）</label>
-            <input
-              value={form.source}
-              onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
-              placeholder="如：提取自《xxx》第三章"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">技能内容</label>
-            <textarea
-              value={form.content}
-              onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
-              placeholder="详细的写作指导，包含具体规则和示例..."
-              rows={8}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
-            />
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={handleSave}
-            disabled={!form.name.trim() || !form.content.trim()}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-3 py-1.5 rounded text-xs transition-colors disabled:opacity-40"
-          >
-            保存
-          </button>
-          {editingSkill && !editingSkill.builtin && (
-            <button
-              onClick={() => handleDelete(editingSkill.id)}
-              className="bg-red-600/80 hover:bg-red-600 text-white px-3 py-1.5 rounded text-xs transition-colors"
-            >
-              删除
-            </button>
-          )}
-          <button
-            onClick={() => setViewMode('list')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded text-xs transition-colors"
-          >
-            取消
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  // List View
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-300">🎭 {skills.length} 个技能</span>
-        <div className="flex gap-1.5">
-          <button onClick={handleAdd} className="bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] transition-colors">
-            + 添加
-          </button>
-          <button onClick={() => importSkills()} className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded text-[11px] transition-colors">
-            导入
-          </button>
-          <button onClick={() => exportSkills()} disabled={skills.length === 0} className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded text-[11px] transition-colors disabled:opacity-40">
-            导出
-          </button>
-        </div>
-      </div>
-
-      {skills.length === 0 && (
-        <div className="text-center text-gray-600 py-8">
-          <p className="text-sm mb-2">🎭</p>
-          <p className="text-xs mb-2">还没有写作技能</p>
-          <p className="text-[10px] text-gray-700">手动添加，或在 AI 对话中让 AI 从章节中提取</p>
-        </div>
-      )}
-
-      {Array.from(grouped.entries()).map(([category, categorySkills]) => {
-        const meta = SKILL_CATEGORIES[category] || { icon: '📌', label: category }
-        return (
-          <div key={category}>
-            <div className="px-2 py-1 bg-gray-700/50 rounded flex items-center gap-1.5 mb-1">
-              <span className="text-[10px]">{meta.icon}</span>
-              <span className="text-[10px] text-gray-400 font-medium">{meta.label}</span>
-              <span className="text-[10px] text-gray-600 ml-auto">{categorySkills.length}</span>
-            </div>
-            <div className="space-y-0.5 mb-2">
-              {categorySkills.map(skill => (
-                <button
-                  key={skill.id}
-                  onClick={() => handleEdit(skill)}
-                  className="w-full px-2 py-1.5 flex items-center justify-between hover:bg-gray-700/30 rounded transition-colors group text-left"
-                >
-                  <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <p className="text-xs text-gray-300 truncate">{skill.name}</p>
-                    {skill.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">内置</span>}
-                  </div>
-                  <span className="text-[10px] text-gray-600 opacity-0 group-hover:opacity-100 ml-2 shrink-0">编辑</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
-// ─── Delete Confirm Button ───
-
-function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
-  const [confirming, setConfirming] = useState(false)
-
-  if (confirming) {
-    return (
-      <div className="flex items-center gap-1">
-        <button
-          onClick={(e) => { e.stopPropagation(); onDelete() }}
-          className="text-[10px] text-red-400 hover:text-red-300 px-1"
-        >
-          确定
-        </button>
-        <button
-          onClick={(e) => { e.stopPropagation(); setConfirming(false) }}
-          className="text-[10px] text-gray-500 hover:text-gray-400 px-1"
-        >
-          取消
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <button
-      onClick={(e) => { e.stopPropagation(); setConfirming(true) }}
-      className="text-[10px] text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
-    >
-      删除
-    </button>
-  )
-}
-
-// ─── Reasoning Chains Tab Content ───
-
-function ReasoningChainsTabContent() {
-  const [chains, setChains] = useState<ReasoningChain[]>([])
-  const [viewMode, setViewMode] = useState<'list' | 'edit' | 'add'>('list')
-  const [editingChain, setEditingChain] = useState<ReasoningChain | null>(null)
-
-  useEffect(() => {
-    loadChains()
-  }, [])
-
-  const loadChains = async () => {
-    const loaded = await window.api.getReasoningChains()
-    setChains(loaded)
-  }
-
-  const [addKey, setAddKey] = useState(0)
-
-  const handleAdd = () => {
-    setEditingChain(null)
-    setViewMode('add')
-    setAddKey(k => k + 1)
-  }
-
-  const handleEdit = (chain: ReasoningChain) => {
-    setEditingChain(chain)
-    setViewMode('edit')
-  }
-
-  const handleSave = async (chain: ReasoningChain) => {
-    await window.api.saveReasoningChain(chain)
-    await loadChains()
-    setViewMode('list')
-    setEditingChain(null)
-  }
-
-  const handleDelete = async (id: string) => {
-    await window.api.deleteReasoningChain(id)
-    await loadChains()
-    setViewMode('list')
-    setEditingChain(null)
-  }
-
-  // Edit/Add Form
-  if (viewMode === 'edit' || viewMode === 'add') {
-    return (
-      <ReasoningChainEditor
-        key={editingChain?.id || `add-${addKey}`}
-        chain={editingChain}
-        onSave={handleSave}
-        onCancel={() => { setViewMode('list'); setEditingChain(null) }}
-        onDelete={editingChain && !editingChain.builtin ? () => handleDelete(editingChain.id) : undefined}
-      />
-    )
-  }
-
-  // List View
-  return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-300">🧠 {chains.length} 个推理链</span>
-        <button onClick={handleAdd} className="bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] transition-colors">
-          + 添加
-        </button>
-      </div>
-
-      {chains.length === 0 && (
-        <div className="text-center text-gray-600 py-8">
-          <p className="text-sm mb-2">🧠</p>
-          <p className="text-xs mb-2">还没有推理链</p>
-          <p className="text-[10px] text-gray-700">推理链帮助 AI 在执行任务时进行系统性思考</p>
-        </div>
-      )}
-
-      <div className="space-y-2">
-        {chains.map(chain => (
-          <div
-            key={chain.id}
-            className="bg-gray-700/30 rounded p-3 hover:bg-gray-700/50 transition-colors group"
-          >
-            <div className="flex items-center justify-between mb-1">
-              <div className="flex items-center gap-2 cursor-pointer flex-1 min-w-0" onClick={() => handleEdit(chain)}>
-                <span className="text-xs text-gray-300">{chain.name}</span>
-                {chain.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1 rounded">内置</span>}
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
-                {!chain.builtin && (
-                  <DeleteConfirmButton onDelete={() => handleDelete(chain.id)} />
-                )}
-              </div>
-            </div>
-            <p className="text-[11px] text-gray-500 truncate cursor-pointer" onClick={() => handleEdit(chain)}>{chain.description}</p>
-            <div className="flex items-center gap-2 mt-1 cursor-pointer" onClick={() => handleEdit(chain)}>
-              <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                chain.trigger === 'auto' ? 'bg-green-900/30 text-green-400' :
-                chain.trigger === 'manual' ? 'bg-yellow-900/30 text-yellow-400' :
-                'bg-blue-900/30 text-blue-400'
-              }`}>
-                {chain.trigger === 'auto' ? '自动' : chain.trigger === 'manual' ? '手动' : '自动/手动'}
-              </span>
-              {chain.includeInContext && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-400">纳入上下文</span>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
-
-// ─── Local Model Diagnostics ───
-
-function LocalModelDiagnostics({ config }: { config: { apiKey: string; baseUrl: string; model: string; thinkingDepth?: ThinkingDepth } }) {
-  const [results, setResults] = useState<string[]>([])
-  const [running, setRunning] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  const handleDiagnose = async () => {
-    setRunning(true)
-    setResults([])
-    try {
-      const res = await window.api.diagnoseLocalModel(config)
-      setResults(res)
-    } catch (err: any) {
-      setResults([`❌ 诊断失败: ${err.message}`])
-    } finally {
-      setRunning(false)
-    }
-  }
-
-  const handleCopy = async () => {
-    const text = [
-      `网文写作助手 - 本地模型诊断报告`,
-      `时间: ${new Date().toLocaleString()}`,
-      `Base URL: ${config.baseUrl}`,
-      `模型: ${config.model}`,
-      ``,
-      ...results
-    ].join('\n')
-    await navigator.clipboard.writeText(text)
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
-  }
-
-  return (
-    <div className="mt-3 border-t border-gray-700 pt-3">
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400">本地模型诊断</span>
-        <div className="flex gap-1.5">
-          <button
-            onClick={handleDiagnose}
-            disabled={running}
-            className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors disabled:opacity-50"
-          >
-            {running ? '诊断中...' : '开始诊断'}
-          </button>
-          {results.length > 0 && (
-            <button
-              onClick={handleCopy}
-              className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
-            >
-              {copied ? '已复制' : '复制报告'}
-            </button>
-          )}
-        </div>
-      </div>
-      {results.length > 0 && (
-        <div className="bg-gray-900 rounded p-2 space-y-1 max-h-48 overflow-y-auto">
-          {results.map((r, i) => (
-            <p key={i} className={`text-[11px] ${
-              r.startsWith('✅') ? 'text-emerald-400' :
-              r.startsWith('❌') ? 'text-red-400' :
-              r.startsWith('💡') ? 'text-amber-400' :
-              'text-gray-400'
-            }`}>{r}</p>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function Settings() {
   const { llmConfig, saveLLMConfig, toggleSettings } = useAppStore()
   const [form, setForm] = useState(llmConfig)
   const [activeTab, setActiveTab] = useState<TabKey>('api')
-  const [dataPath, setDataPath] = useState('')
-  const [defaultPath, setDefaultPath] = useState('')
-  const [customPath, setCustomPath] = useState('')
   const [recordingKey, setRecordingKey] = useState<keyof KeyBindings | null>(null)
-  const [appVersion, setAppVersion] = useState('')
 
   // API profile editing state
   const [editingProfile, setEditingProfile] = useState<APIProfile | null>(null)
@@ -617,42 +82,10 @@ export default function Settings() {
 
   useEffect(() => {
     setForm(llmConfig)
-    window.api.getDataPath().then(setDataPath)
-    window.api.getDataPathDefault().then(setDefaultPath)
-    window.api.getAppVersion().then(setAppVersion)
   }, [llmConfig])
 
   const handleSave = () => {
     saveLLMConfig(form)
-  }
-
-  const handleOpenFolder = () => {
-    window.api.openDataFolder()
-  }
-
-  const handleChangePath = async () => {
-    if (!customPath.trim()) return
-    const confirmed = window.confirm(
-      `确认将数据存储位置更改为：\n${customPath.trim()}\n\n数据将被复制到新位置，但旧位置的数据不会自动删除。请在确认迁移成功后手动清理旧数据。`
-    )
-    if (!confirmed) return
-    try {
-      await window.api.setDataPath(customPath.trim())
-      const newPath = await window.api.getDataPath()
-      setDataPath(newPath)
-      setCustomPath('')
-    } catch (e: any) {
-      alert('路径无效: ' + e.message)
-    }
-  }
-
-  const handleResetPath = async () => {
-    const confirmed = window.confirm(
-      `确认将数据存储位置恢复为默认路径：\n${defaultPath}\n\n数据将被复制到默认位置，但当前自定义位置的数据不会自动删除。`
-    )
-    if (!confirmed) return
-    await window.api.setDataPath(defaultPath)
-    setDataPath(defaultPath)
   }
 
   // Profile management
@@ -691,7 +124,6 @@ export default function Settings() {
     }
     const profiles = form.profiles.filter(p => p.id !== id)
     const defaultProfileId = form.defaultProfileId === id ? profiles[0].id : form.defaultProfileId
-    // Clear profile bindings that reference deleted profile
     const aiFeatures = { ...form.aiFeatures }
     for (const key of Object.keys(aiFeatures) as (keyof AIFeatureConfig)[]) {
       if (aiFeatures[key].profileId === id) {
@@ -1220,7 +652,6 @@ export default function Settings() {
                               return
                             }
 
-                            // 构建快捷键字符串
                             const parts: string[] = []
                             if (e.ctrlKey || e.metaKey) parts.push('Ctrl')
                             if (e.altKey) parts.push('Alt')
@@ -1228,7 +659,6 @@ export default function Settings() {
 
                             const key = e.key
                             if (!['Control', 'Alt', 'Shift', 'Meta'].includes(key)) {
-                              // Tab 特殊处理
                               if (key === 'Tab') {
                                 parts.push('Tab')
                               } else if (key === ' ') {
@@ -1275,118 +705,11 @@ export default function Settings() {
               </div>
             )}
 
-            {activeTab === 'data' && (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">当前存储位置</p>
-                  <div className="flex items-center gap-2">
-                    <p className="text-xs text-gray-300 bg-gray-900 rounded px-3 py-2 font-mono break-all flex-1">
-                      {dataPath || '加载中...'}
-                    </p>
-                    <button
-                      onClick={handleOpenFolder}
-                      className="shrink-0 px-3 py-2 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-                      title="在文件管理器中打开"
-                    >
-                      打开
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 mb-1">修改存储位置</p>
-                  <div className="flex gap-2">
-                    <input
-                      value={customPath}
-                      onChange={e => setCustomPath(e.target.value)}
-                      placeholder="输入新路径..."
-                      className="flex-1 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs focus:outline-none focus:border-blue-500"
-                    />
-                    <button
-                      onClick={handleChangePath}
-                      disabled={!customPath.trim()}
-                      className="px-3 py-1.5 text-xs bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded transition-colors"
-                    >
-                      修改
-                    </button>
-                  </div>
-                  {dataPath !== defaultPath && (
-                    <button
-                      onClick={handleResetPath}
-                      className="mt-2 px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 rounded transition-colors"
-                    >
-                      恢复默认路径
-                    </button>
-                  )}
-                </div>
-
-              </div>
-            )}
-
-            {activeTab === 'skills' && (
-              <SkillsTabContent />
-            )}
-
-            {activeTab === 'reasoning' && (
-              <ReasoningChainsTabContent />
-            )}
-
-            {activeTab === 'visual' && (
-              <VisualEffectsTab />
-            )}
-
-            {activeTab === 'about' && (
-              <div className="space-y-4">
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">当前版本</p>
-                  <p className="text-sm text-gray-200">v{appVersion || '...'}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-gray-400 mb-2">应用更新</p>
-                  <UpdateCheckButton />
-                </div>
-                <div className="border-t border-gray-700/50 pt-4">
-                  <p className="text-xs text-gray-400 mb-2">交流反馈</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-3 px-3 py-2 bg-gray-700/30 rounded">
-                      <span className="text-sm">💬</span>
-                      <div>
-                        <p className="text-xs text-gray-300">QQ 群</p>
-                        <p className="text-[10px] text-gray-500">892644653</p>
-                      </div>
-                      <button
-                        onClick={() => navigator.clipboard.writeText('892644653')}
-                        className="ml-auto px-2 py-0.5 text-[10px] bg-gray-600 hover:bg-gray-500 text-gray-300 rounded transition-colors"
-                      >
-                        复制
-                      </button>
-                    </div>
-                    <div
-                      onClick={() => window.api.openExternal('https://github.com/simple-calcate/writerAgent/issues')}
-                      className="flex items-center gap-3 px-3 py-2 bg-gray-700/30 rounded cursor-pointer hover:bg-gray-700/50 transition-colors"
-                    >
-                      <span className="text-sm">🐛</span>
-                      <div>
-                        <p className="text-xs text-gray-300">GitHub Issues</p>
-                        <p className="text-[10px] text-gray-500">提交 Bug 和功能建议</p>
-                      </div>
-                    </div>
-                    <div
-                      onClick={() => window.api.openExternal('https://gitee.com/simple-calcate/writerAgent/issues')}
-                      className="flex items-center gap-3 px-3 py-2 bg-gray-700/30 rounded cursor-pointer hover:bg-gray-700/50 transition-colors"
-                    >
-                      <span className="text-sm">📦</span>
-                      <div>
-                        <p className="text-xs text-gray-300">Gitee Issues</p>
-                        <p className="text-[10px] text-gray-500">国内备用反馈渠道</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                <div className="border-t border-gray-700/50 pt-4">
-                  <p className="text-[10px] text-gray-600 text-center">网文写作助手 — AI 深度整合的桌面端写作工具</p>
-                </div>
-              </div>
-            )}
+            {activeTab === 'data' && <DataStorageTab />}
+            {activeTab === 'skills' && <SkillsTab />}
+            {activeTab === 'reasoning' && <ReasoningTab />}
+            {activeTab === 'visual' && <VisualEffectsTab />}
+            {activeTab === 'about' && <AboutTab />}
           </div>
 
           {/* Footer - only show for config tabs */}

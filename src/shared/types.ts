@@ -486,6 +486,10 @@ export interface ConversationMessage {
   timestamp: string
   toolCalls?: ToolCallInfo[]
   thinkingContent?: string
+  reasoningChainIds?: string[]     // 用户选择的推理链 IDs
+  reasoningChainNames?: string[]   // 推理链名称（用于展示）
+  reasoningContext?: string        // 推理链执行结果（用于当前对话轮次）
+  deleted?: boolean                // 标记消息是否被删除
 }
 
 export interface Conversation {
@@ -516,6 +520,7 @@ export interface DialogueThinkingDone {
 export interface DialogueStreamDone {
   streamId: string
   fullText: string
+  reasoningContext?: string  // 推理链执行结果（用于保存到对话消息中）
 }
 
 export interface DialogueStreamError {

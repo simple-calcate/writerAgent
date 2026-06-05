@@ -1,0 +1,44 @@
+{
+  "enabledPlugins": {
+    "typescript-lsp@claude-plugins-official": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npx electron-vite *)",
+      "Bash(npx tsc *)",
+      "Bash(node *)",
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force *)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== Novel Writer 项目 ===' && echo '开发: npm run dev' && echo '构建: npm run dist' && echo '类型检查: npx tsc --noEmit'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "date >> .claude/session-log.txt"
+          }
+        ]
+      }
+    ]
+  }
+}

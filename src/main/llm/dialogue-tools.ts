@@ -495,7 +495,6 @@ interface ExecuteToolParams {
   refreshCache?: boolean
   mainWindow?: BrowserWindow
   reasoningContext?: string
-  messageChainIds?: string[]
   dialogueMessages?: ConversationMessage[]
   executedReasoningChains?: Set<string>  // 已执行过的推理链 ID
 }
@@ -532,16 +531,6 @@ export async function executeTool(
       const chain = findReasoningChain(binding)
       if (chain && !params.executedReasoningChains.has(chain.id)) {
         chainsToExecute.push(chain)
-      }
-    }
-
-    // 2. Check message chain IDs (only if not already executed)
-    if (params.messageChainIds?.length) {
-      for (const chainId of params.messageChainIds) {
-        const chain = findReasoningChain(chainId)
-        if (chain && !chainsToExecute.find(c => c.id === chain.id) && !params.executedReasoningChains.has(chain.id)) {
-          chainsToExecute.push(chain)
-        }
       }
     }
 

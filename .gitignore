@@ -7,3 +7,6 @@ release/
 .DS_Store
 Thumbs.db
 tsconfig.node.tsbuildinfo
+
+# Claude Code 本地配置
+.claude/settings.local.json

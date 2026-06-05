@@ -138,7 +138,8 @@ export async function executeReasoningChain(
 
 // Build reasoning context for injection into system prompt
 export function buildReasoningContext(session: ReasoningSession, forceInclude = false): string {
-  if (!forceInclude && !session.includeInContext) return ''
+  // Always build context if session is completed, regardless of includeInContext setting
+  // The includeInContext flag now controls whether to persist across conversation turns
   if (session.status !== 'completed') return ''
 
   let context = `\n## 推理分析（${session.chainName}）\n`
@@ -185,7 +186,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const isPlanMode = lastUserMsg ? detectPlanMode(lastUserMsg.content) : false
 
-  // Extract reasoning chain IDs from message (don't execute yet)
+  // Extract reasoning chain IDs from message
   const messageChainIds: string[] = []
   if (lastUserMsg) {
     const matches = lastUserMsg.content.matchAll(/\[reasoning:([^\]]+)\]/g)
@@ -196,6 +197,59 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
   // Run async, don't await — return streamId immediately
   ;(async () => {
+    // Execute reasoning chains BEFORE starting dialogue
+    let reasoningContext = ''
+    const executedReasoningChains = new Set<string>()
+
+    if (messageChainIds.length > 0) {
+      // Build context for reasoning chains
+      const contextParts: string[] = []
+      if (params.chapter) {
+        contextParts.push(`当前章节：${params.chapter.title}`)
+      }
+
+      const outlines = [
+        getOutline('book', params.project.id),
+        params.volume ? getOutline('volume', params.volume.id) : null,
+        params.chapter ? getOutline('chapter', params.chapter.id) : null
+      ].filter(Boolean)
+
+      if (outlines.length > 0) {
+        contextParts.push(`## 大纲\n${outlines.map(o => o.content).join('\n\n')}`)
+      }
+
+      // Recent dialogue history
+      if (params.messages.length > 0) {
+        const recentMessages = params.messages.slice(-6)
+        const dialogueText = recentMessages
+          .map(m => `${m.role === 'user' ? '用户' : 'AI'}：${m.content.substring(0, 200)}`)
+          .join('\n')
+        contextParts.push(`## 最近对话\n${dialogueText}`)
+      }
+
+      const reasoningChainContext = contextParts.join('\n\n')
+
+      for (const chainId of messageChainIds) {
+        if (controller.signal.aborted) break
+
+        const chain = getReasoningChainById(chainId)
+        if (!chain) continue
+
+        executedReasoningChains.add(chain.id)
+
+        try {
+          const session = await executeReasoningChain(chain, reasoningChainContext, config, mainWindow, controller.signal)
+          // Always include reasoning result for current turn, includeInContext controls persistence
+          const result = buildReasoningContext(session)
+          if (result) {
+            reasoningContext += result
+          }
+        } catch (err) {
+          console.error(`推理链 ${chain.name} 执行失败:`, err)
+        }
+      }
+    }
+
     // Get outlines for context
     const outlines = [
       getOutline('book', params.project.id),
@@ -214,7 +268,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       ...promptParams,
       outlines: outlines as any[],
       isPlanMode,
-      skills: enabledSkills
+      skills: enabledSkills,
+      reasoningContext  // Pass reasoning context to system prompt
     })
 
     // Clean up reasoning trigger tag from messages
@@ -314,7 +369,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
         if (controller.signal.aborted) break
 
         if (toolCalls.length === 0 || toolCalls.every(tc => !tc.functionName)) {
-          mainWindow.webContents.send('dialogue:done', { streamId, fullText })
+          mainWindow.webContents.send('dialogue:done', { streamId, fullText, reasoningContext: reasoningContext || undefined })
           return
         }
 
@@ -427,7 +482,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               aiConfig,
               refreshCache: true,
               mainWindow,
-              messageChainIds,
               dialogueMessages: params.messages,
               executedReasoningChains
             })
@@ -443,7 +497,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       }
 
       if (!controller.signal.aborted) {
-        mainWindow.webContents.send('dialogue:done', { streamId, fullText: '' })
+        mainWindow.webContents.send('dialogue:done', { streamId, fullText: '', reasoningContext: reasoningContext || undefined })
       }
     } catch (err: any) {
       if (controller.signal.aborted) return

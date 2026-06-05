@@ -127,11 +127,9 @@ export default function ReasoningTab() {
             <p className="text-[11px] text-gray-500 truncate cursor-pointer" onClick={() => handleEdit(chain)}>{chain.description}</p>
             <div className="flex items-center gap-2 mt-1 cursor-pointer" onClick={() => handleEdit(chain)}>
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                chain.trigger === 'auto' ? 'bg-green-900/30 text-green-400' :
-                chain.trigger === 'manual' ? 'bg-yellow-900/30 text-yellow-400' :
-                'bg-blue-900/30 text-blue-400'
+                chain.trigger === 'auto' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'
               }`}>
-                {chain.trigger === 'auto' ? '自动' : chain.trigger === 'manual' ? '手动' : '自动/手动'}
+                {chain.trigger === 'auto' ? '自动' : '手动'}
               </span>
               {chain.includeInContext && (
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-purple-900/30 text-purple-400">纳入上下文</span>

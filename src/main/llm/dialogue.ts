@@ -5,7 +5,7 @@ import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
 import { getOutline, getSkills } from '../store/db'
-import { detectAutoTrigger, buildStepPrompt, getReasoningChainById, extractUserMessage } from './reasoning-chains'
+import { buildStepPrompt, getReasoningChainById, extractUserMessage } from './reasoning-chains'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50

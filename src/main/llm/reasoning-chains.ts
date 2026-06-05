@@ -9,8 +9,7 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
     id: 'chapter-writing',
     name: '章节创作推理',
     description: '写章节前的多维度分析，帮助构建更立体的场景和人物',
-    trigger: 'both',
-    triggerKeywords: ['写这一章', '写章节', '创作正文', '写正文', '开始写', '帮我写'],
+    trigger: 'auto',
     steps: [
       {
         id: 'psychology',
@@ -57,8 +56,7 @@ export const BUILTIN_REASONING_CHAINS: ReasoningChain[] = [
     id: 'outline-planning',
     name: '大纲规划推理',
     description: '规划大纲前的系统性思考，确保剧情连贯、伏笔完整',
-    trigger: 'both',
-    triggerKeywords: ['规划大纲', '写大纲', '剧情规划', '接下来怎么写', '剧情走向', '后续发展'],
+    trigger: 'auto',
     steps: [
       {
         id: 'mainline',
@@ -134,26 +132,12 @@ export function findReasoningChain(idOrName: string): ReasoningChain | undefined
 
 // 检测是否应该自动触发推理链
 export function detectAutoTrigger(message: string): ReasoningChain | null {
-  // 先检测手动触发格式 [reasoning:chain-id]
+  // 检测手动触发格式 [reasoning:chain-id]
   const manualMatch = message.match(/^\[reasoning:([^\]]+)\]/)
   if (manualMatch) {
     const chainId = manualMatch[1]
     const chain = getReasoningChainById(chainId)
     if (chain) return chain
-  }
-
-  // 再检测关键词自动触发
-  const lowerMessage = message.toLowerCase()
-  const allChains = getReasoningChains()
-
-  for (const chain of allChains) {
-    if (chain.trigger === 'manual') continue
-    if (!chain.triggerKeywords) continue
-
-    const matched = chain.triggerKeywords.some(keyword =>
-      lowerMessage.includes(keyword.toLowerCase())
-    )
-    if (matched) return chain
   }
 
   return null

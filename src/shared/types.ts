@@ -590,8 +590,7 @@ export interface ReasoningChain {
   id: string
   name: string           // 推理链名称，如"章节创作推理"
   description: string
-  trigger: 'auto' | 'manual' | 'both'
-  triggerKeywords?: string[]  // 自动触发的关键词
+  trigger: 'auto' | 'manual'
   steps: ReasoningStep[]
   includeInContext: boolean   // 推理结果是否纳入上下文
   contextConfig: ReasoningContextConfig  // 上下文配置

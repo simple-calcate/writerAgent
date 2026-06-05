@@ -20,8 +20,7 @@ const emptyChain: ReasoningChain = {
   id: '',
   name: '',
   description: '',
-  trigger: 'both',
-  triggerKeywords: [],
+  trigger: 'auto',
   steps: [],
   includeInContext: false,
   contextConfig: { ...DEFAULT_REASONING_CONTEXT_CONFIG },
@@ -30,7 +29,6 @@ const emptyChain: ReasoningChain = {
 
 export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete }: ReasoningChainEditorProps) {
   const [form, setForm] = useState<ReasoningChain>(chain || { ...emptyChain, id: crypto.randomUUID() })
-  const [keywordsText, setKeywordsText] = useState(chain?.triggerKeywords?.join(', ') || '')
 
   const updateForm = (updates: Partial<ReasoningChain>) => {
     setForm(prev => ({ ...prev, ...updates }))
@@ -67,9 +65,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
   }
 
   const handleSave = () => {
-    // Parse keywords
-    const keywords = keywordsText.split(',').map(k => k.trim()).filter(Boolean)
-    const chainToSave = { ...form, triggerKeywords: keywords }
+    const chainToSave = { ...form }
 
     // Validate
     if (!chainToSave.name.trim()) {
@@ -131,7 +127,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         <div>
           <label className="text-[10px] text-gray-500 block mb-1">触发方式</label>
           <div className="flex gap-2">
-            {(['auto', 'manual', 'both'] as const).map(t => (
+            {(['auto', 'manual'] as const).map(t => (
               <button
                 key={t}
                 onClick={() => updateForm({ trigger: t })}
@@ -141,24 +137,11 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
                     : 'bg-gray-700 text-gray-400 hover:text-gray-300'
                 }`}
               >
-                {t === 'auto' ? '自动' : t === 'manual' ? '手动' : '自动/手动'}
+                {t === 'auto' ? '自动' : '手动'}
               </button>
             ))}
           </div>
         </div>
-
-        {(form.trigger === 'auto' || form.trigger === 'both') && (
-          <div>
-            <label className="text-[10px] text-gray-500 block mb-1">触发关键词（逗号分隔）</label>
-            <input
-              value={keywordsText}
-              onChange={e => setKeywordsText(e.target.value)}
-              onMouseDown={e => e.currentTarget.focus()}
-              placeholder="写这一章, 写章节, 创作正文"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-            />
-          </div>
-        )}
 
         <div className="flex items-center gap-2">
           <label className="text-[10px] text-gray-500">推理结果纳入上下文</label>

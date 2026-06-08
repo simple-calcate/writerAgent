@@ -45,7 +45,8 @@ export async function generateContinuation(
     skillsSection = `\n\n【写作技能参考】\n${skillTexts}`
   }
 
-  const skillPrompt = getFeatureSkillContent('continuation')
+  const advancedConfig = aiConfig?.continuationAdvanced
+  const skillPrompt = advancedConfig?.systemPrompt || getFeatureSkillContent('continuation')
 
   let systemPrompt: string
   let userMessage: string
@@ -78,11 +79,13 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     { role: 'user' as const, content: userMessage }
   ]
 
+  const temperature = advancedConfig?.temperature ?? 0.7
+
   if (params.mainWindow) {
     const result = await streamWithThinking(params.mainWindow, client, config, {
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.7,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
     }, params.signal)
     return result?.trim() || ''
@@ -91,7 +94,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
   const response = await client.chat.completions.create({
     model: config.model || 'gpt-4o-mini',
     messages,
-    temperature: 0.7,
+    temperature,
     ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })
 

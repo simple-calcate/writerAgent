@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../stores/useAppStore'
 import { getGenreList } from '../../../shared/novel-knowledge'
-import type { BookAIConfig, FeatureSkillIds, ReasoningChain, ProjectReasoningConfig } from '../../../shared/types'
+import type { BookAIConfig, FeatureSkillIds, ReasoningChain, ProjectReasoningConfig, AIFeatureAdvancedConfig } from '../../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_FEATURE_SKILL_IDS, SKILL_CATEGORIES } from '../../../shared/types'
 
 // ─── Context Menu ───
@@ -610,7 +610,7 @@ function ChapterLevel() {
 function AIConfigLevel() {
   const {
     currentProject, skills,
-    updateProjectFeatureSkillIds, updateProjectReasoningConfig, loadSkills, navBack
+    updateProjectFeatureSkillIds, updateProjectReasoningConfig, loadSkills, navBack, saveBookAIConfig
   } = useAppStore()
 
   const [featureSkillIds, setFeatureSkillIds] = useState<FeatureSkillIds>(
@@ -626,7 +626,19 @@ function AIConfigLevel() {
     }
   )
   const [expandedFeature, setExpandedFeature] = useState<string | null>(null)
+  const [expandedAdvanced, setExpandedAdvanced] = useState<string | null>(null)
   const [chains, setChains] = useState<ReasoningChain[]>([])
+
+  // 高级配置状态
+  const [advancedConfigs, setAdvancedConfigs] = useState<Record<string, AIFeatureAdvancedConfig>>({
+    dialogue: currentProject?.aiConfig?.dialogueAdvanced || {},
+    polish: currentProject?.aiConfig?.polishAdvanced || {},
+    summary: currentProject?.aiConfig?.summaryAdvanced || {},
+    continuation: currentProject?.aiConfig?.continuationAdvanced || {},
+    refineSummary: currentProject?.aiConfig?.refineSummaryAdvanced || {},
+    outline: currentProject?.aiConfig?.outlineAdvanced || {},
+    chapterContent: currentProject?.aiConfig?.chapterContentAdvanced || {}
+  })
 
   useEffect(() => {
     loadSkills()
@@ -648,6 +660,16 @@ function AIConfigLevel() {
     if (currentProject) {
       await updateProjectFeatureSkillIds(featureSkillIds)
       await updateProjectReasoningConfig(reasoningConfig)
+      // 保存高级配置
+      await saveBookAIConfig({
+        dialogueAdvanced: advancedConfigs.dialogue,
+        polishAdvanced: advancedConfigs.polish,
+        summaryAdvanced: advancedConfigs.summary,
+        continuationAdvanced: advancedConfigs.continuation,
+        refineSummaryAdvanced: advancedConfigs.refineSummary,
+        outlineAdvanced: advancedConfigs.outline,
+        chapterContentAdvanced: advancedConfigs.chapterContent
+      })
     }
     navBack()
   }
@@ -679,14 +701,21 @@ function AIConfigLevel() {
     }))
   }
 
-  const FEATURES: { key: keyof FeatureSkillIds; icon: string; label: string; desc: string; color: string }[] = [
-    { key: 'dialogue', icon: '💬', label: 'AI 对话', desc: '对话系统中使用的技能', color: 'from-blue-500/20 to-blue-600/5 border-blue-500/30' },
-    { key: 'polish', icon: '✨', label: '智能润色', desc: '润色功能中使用的技能', color: 'from-amber-500/20 to-amber-600/5 border-amber-500/30' },
-    { key: 'summary', icon: '📋', label: '章节摘要', desc: '摘要功能中使用的技能', color: 'from-green-500/20 to-green-600/5 border-green-500/30' },
-    { key: 'continuation', icon: '⚡', label: '智能续写', desc: '续写功能中使用的技能', color: 'from-purple-500/20 to-purple-600/5 border-purple-500/30' },
-    { key: 'outline', icon: '📝', label: '大纲撰写', desc: '撰写大纲时使用的技能', color: 'from-teal-500/20 to-teal-600/5 border-teal-500/30' },
-    { key: 'chapterContent', icon: '📖', label: '正文撰写', desc: '撰写正文时使用的技能', color: 'from-rose-500/20 to-rose-600/5 border-rose-500/30' }
+  const FEATURES: { key: keyof FeatureSkillIds; advancedKey: string; icon: string; label: string; desc: string; color: string; defaultTemp: number }[] = [
+    { key: 'dialogue', advancedKey: 'dialogue', icon: '💬', label: 'AI 对话', desc: '对话系统中使用的技能', color: 'from-blue-500/20 to-blue-600/5 border-blue-500/30', defaultTemp: 0.7 },
+    { key: 'polish', advancedKey: 'polish', icon: '✨', label: '智能润色', desc: '润色功能中使用的技能', color: 'from-amber-500/20 to-amber-600/5 border-amber-500/30', defaultTemp: 0.7 },
+    { key: 'summary', advancedKey: 'summary', icon: '📋', label: '章节摘要', desc: '摘要功能中使用的技能', color: 'from-green-500/20 to-green-600/5 border-green-500/30', defaultTemp: 0.3 },
+    { key: 'continuation', advancedKey: 'continuation', icon: '⚡', label: '智能续写', desc: '续写功能中使用的技能', color: 'from-purple-500/20 to-purple-600/5 border-purple-500/30', defaultTemp: 0.7 },
+    { key: 'outline', advancedKey: 'outline', icon: '📝', label: '大纲撰写', desc: '撰写大纲时使用的技能', color: 'from-teal-500/20 to-teal-600/5 border-teal-500/30', defaultTemp: 0.7 },
+    { key: 'chapterContent', advancedKey: 'chapterContent', icon: '📖', label: '正文撰写', desc: '撰写正文时使用的技能', color: 'from-rose-500/20 to-rose-600/5 border-rose-500/30', defaultTemp: 0.7 }
   ]
+
+  const updateAdvancedConfig = (key: string, updates: Partial<AIFeatureAdvancedConfig>) => {
+    setAdvancedConfigs(prev => ({
+      ...prev,
+      [key]: { ...prev[key], ...updates }
+    }))
+  }
 
   const TOOL_OPTIONS = [
     { value: 'write_chapter_content', label: '撰写章节内容' },
@@ -768,6 +797,81 @@ function AIConfigLevel() {
                             </label>
                           )
                         })}
+                      </div>
+
+                      {/* 高级选项 */}
+                      <div className="mt-2 pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => setExpandedAdvanced(expandedAdvanced === feat.advancedKey ? null : feat.advancedKey)}
+                          className="flex items-center gap-1 text-[10px] text-gray-500 hover:text-gray-400 transition-colors"
+                        >
+                          <span>{expandedAdvanced === feat.advancedKey ? '▼' : '▶'}</span>
+                          <span>高级选项</span>
+                          {advancedConfigs[feat.advancedKey]?.temperature !== undefined && (
+                            <span className="text-blue-400 ml-1">·</span>
+                          )}
+                        </button>
+
+                        {expandedAdvanced === feat.advancedKey && (
+                          <div className="mt-2 space-y-3">
+                            {/* 温度滑块 */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] text-gray-500">温度 (Temperature)</label>
+                                <span className="text-[10px] text-gray-400 font-mono">
+                                  {advancedConfigs[feat.advancedKey]?.temperature?.toFixed(1) ?? `${feat.defaultTemp} (默认)`}
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min="0"
+                                max="2"
+                                step="0.1"
+                                value={advancedConfigs[feat.advancedKey]?.temperature ?? feat.defaultTemp}
+                                onChange={e => updateAdvancedConfig(feat.advancedKey, { temperature: parseFloat(e.target.value) })}
+                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                              />
+                              <div className="flex justify-between text-[9px] text-gray-600 mt-0.5">
+                                <span>精确 (0)</span>
+                                <span>默认 ({feat.defaultTemp})</span>
+                                <span>随机 (2)</span>
+                              </div>
+                              {advancedConfigs[feat.advancedKey]?.temperature !== undefined && (
+                                <button
+                                  onClick={() => updateAdvancedConfig(feat.advancedKey, { temperature: undefined })}
+                                  className="text-[9px] text-gray-600 hover:text-gray-400 mt-1"
+                                >
+                                  恢复默认
+                                </button>
+                              )}
+                            </div>
+
+                            {/* 自定义系统提示词 */}
+                            <div>
+                              <div className="flex items-center justify-between mb-1">
+                                <label className="text-[10px] text-gray-500">自定义系统提示词</label>
+                                {advancedConfigs[feat.advancedKey]?.systemPrompt && (
+                                  <button
+                                    onClick={() => updateAdvancedConfig(feat.advancedKey, { systemPrompt: undefined })}
+                                    className="text-[9px] text-gray-600 hover:text-gray-400"
+                                  >
+                                    清除
+                                  </button>
+                                )}
+                              </div>
+                              <textarea
+                                value={advancedConfigs[feat.advancedKey]?.systemPrompt || ''}
+                                onChange={e => updateAdvancedConfig(feat.advancedKey, { systemPrompt: e.target.value || undefined })}
+                                placeholder="留空使用内置技能提示词..."
+                                rows={3}
+                                className="w-full bg-gray-800/50 border border-gray-700/50 rounded px-2 py-1.5 text-[10px] text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
+                              />
+                              <p className="text-[9px] text-gray-600 mt-0.5">
+                                填写后将覆盖内置技能的提示词
+                              </p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}

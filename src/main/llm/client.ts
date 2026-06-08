@@ -1,7 +1,7 @@
 import OpenAI from 'openai'
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
-import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider } from '../../shared/types'
+import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, ThinkingDepth, APIProvider, AIFeatureAdvancedConfig } from '../../shared/types'
 import { streamWithThinking } from './streaming'
 import { getFeatureSkillContent } from './feature-skills'
 
@@ -161,11 +161,12 @@ export async function polishText(
   original: string,
   context: string,
   mainWindow?: BrowserWindow,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  advancedConfig?: AIFeatureAdvancedConfig
 ): Promise<PolishResult> {
   const client = createClient(config)
 
-  const skillContent = getFeatureSkillContent('polish')
+  const skillContent = advancedConfig?.systemPrompt || getFeatureSkillContent('polish')
   const systemPrompt = skillContent
     ? `${skillContent}\n\n返回严格 JSON：{"polished":"润色后文字","reason":"改动理由"}`
     : `你是一位网文写作助手，专注于文风润色。你的任务是：
@@ -175,6 +176,8 @@ export async function polishText(
 - 不要删减原文的核心内容
 - 用一句话简要说明你做了什么改动（reason字段）
 - 返回严格 JSON：{"polished":"润色后文字","reason":"改动理由"}`
+
+  const temperature = advancedConfig?.temperature ?? 0.7
 
   const messages = [
     {
@@ -195,7 +198,7 @@ export async function polishText(
     content = await streamWithThinking(mainWindow, client, config, {
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.7,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...jsonFormat
     }, signal)
@@ -203,7 +206,7 @@ export async function polishText(
     const response = await client.chat.completions.create({
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.7,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...jsonFormat
     })
@@ -246,7 +249,8 @@ export async function autoPolish(
   const paragraphs = content.split('\n\n')
   const numbered = paragraphs.map((p, i) => `[${i}] ${p}`).join('\n')
 
-  const skillPrompt = getFeatureSkillContent('polish')
+  const advancedConfig = aiConfig?.polishAdvanced
+  const skillPrompt = advancedConfig?.systemPrompt || getFeatureSkillContent('polish')
   const basePrompt = skillPrompt || `你是一位网文编辑，擅长发现并润色文字中需要改进的地方。
 
 以下是一个网文章节，已按段落编号。请分析每个段落，找出需要润色的段落并直接给出润色后的版本。
@@ -270,6 +274,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     { role: 'user' as const, content: numbered }
   ]
 
+  const temperature = advancedConfig?.temperature ?? 0.7
   const isOllama = isLocalProvider(config)
   const jsonFormat = isOllama ? {} : { response_format: { type: 'json_object' } }
 
@@ -278,7 +283,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     rawContent = await streamWithThinking(mainWindow, client, config, {
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.7,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...jsonFormat
     }, signal)
@@ -286,7 +291,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     const response = await client.chat.completions.create({
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.7,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...jsonFormat
     })
@@ -351,7 +356,8 @@ export async function summarizeChapter(
 ): Promise<string> {
   const client = createClient(config)
 
-  const skillPrompt = getFeatureSkillContent('summary')
+  const advancedConfig = aiConfig?.summaryAdvanced
+  const skillPrompt = advancedConfig?.systemPrompt || getFeatureSkillContent('summary')
   const basePrompt = skillPrompt || `你是网文写作分析助手。请对章节内容进行结构化总结，按以下格式输出（每个分类下用 - 开头的条目）：
 
 1. 主要人物
@@ -381,11 +387,13 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     { role: 'user' as const, content }
   ]
 
+  const temperature = advancedConfig?.temperature ?? 0.3
+
   if (mainWindow) {
     return streamWithThinking(mainWindow, client, config, {
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.3,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
     }, signal) || '无法生成总结'
   }
@@ -393,7 +401,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
   const response = await client.chat.completions.create({
     model: config.model || 'gpt-4o-mini',
     messages,
-    temperature: 0.3,
+    temperature,
     ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })
 

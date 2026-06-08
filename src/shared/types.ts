@@ -114,11 +114,25 @@ export const DEFAULT_WRITING_GUIDANCE: WritingGuidance = {
 }
 
 // AI 配置（书籍/卷级别可设）
+export interface AIFeatureAdvancedConfig {
+  temperature?: number       // 0-2，默认使用各功能的硬编码值
+  systemPrompt?: string      // 覆盖内置技能的系统提示词（为空则使用内置技能）
+}
+
 export interface BookAIConfig {
   genre: string | null
   polishStandard: string
   summaryStandard: string
   customPrompt: string
+
+  // 每个功能的高级配置（可选，不设置则使用默认值）
+  polishAdvanced?: AIFeatureAdvancedConfig
+  summaryAdvanced?: AIFeatureAdvancedConfig
+  continuationAdvanced?: AIFeatureAdvancedConfig
+  dialogueAdvanced?: AIFeatureAdvancedConfig
+  refineSummaryAdvanced?: AIFeatureAdvancedConfig
+  outlineAdvanced?: AIFeatureAdvancedConfig
+  chapterContentAdvanced?: AIFeatureAdvancedConfig
 }
 
 export const DEFAULT_BOOK_AI_CONFIG: BookAIConfig = {

@@ -13,7 +13,8 @@ export async function refineSummary(
 ): Promise<string> {
   const client = createClient(config)
 
-  const skillPrompt = getFeatureSkillContent('refineSummary')
+  const advancedConfig = aiConfig?.refineSummaryAdvanced
+  const skillPrompt = advancedConfig?.systemPrompt || getFeatureSkillContent('refineSummary')
   const basePrompt = skillPrompt || `你是一位网文写作分析助手。请按场景梳理这一章的剧情脉络，输出一段连贯的总结。
 
 要求：
@@ -33,11 +34,13 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
     { role: 'user' as const, content }
   ]
 
+  const temperature = advancedConfig?.temperature ?? 0.3
+
   if (mainWindow) {
     return streamWithThinking(mainWindow, client, config, {
       model: config.model || 'gpt-4o-mini',
       messages,
-      temperature: 0.3,
+      temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
     }, signal) || '无法生成总结'
   }
@@ -45,7 +48,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
   const response = await client.chat.completions.create({
     model: config.model || 'gpt-4o-mini',
     messages,
-    temperature: 0.3,
+    temperature,
     ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
   })
 

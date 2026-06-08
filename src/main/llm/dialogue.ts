@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
-import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse, ReasoningChain, ReasoningStepResult, ReasoningSession } from '../../shared/types'
+import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse, ReasoningChain, ReasoningStepResult, ReasoningSession, AIFeatureAdvancedConfig } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
@@ -182,6 +182,9 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   const controller = new AbortController()
   activeStreams.set(streamId, controller)
 
+  const dialogueAdvanced = aiConfig?.dialogueAdvanced
+  const temperature = dialogueAdvanced?.temperature ?? 0.7
+
   // Detect plan mode from the last user message
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const isPlanMode = lastUserMsg ? detectPlanMode(lastUserMsg.content) : false
@@ -299,7 +302,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             model: config.model || 'gpt-4o-mini',
             messages: fullMessages as any,
             tools,
-            temperature: 0.7,
+            temperature,
             ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
             stream: true,
             ...thinkingParams
@@ -310,7 +313,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               model: config.model || 'gpt-4o-mini',
               messages: fullMessages as any,
               tools,
-              temperature: 0.7,
+              temperature,
               ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
               stream: true
             }, { signal: controller.signal })

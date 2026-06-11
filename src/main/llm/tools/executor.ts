@@ -4,7 +4,7 @@ import { DEFAULT_FEATURE_SKILL_IDS, DEFAULT_REASONING_CONTEXT_CONFIG, DEFAULT_CO
 import { summarizeChapter } from '../client'
 import { polishText } from '../client'
 import { refineSummary } from '../refine-summary'
-import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain } from '../../store/db'
+import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain, getLLMConfig } from '../../store/db'
 import { randomUUID } from 'crypto'
 import { getReasoningChains, getReasoningChainById, findReasoningChain } from '../reasoning-chains'
 import { estimateTokens, truncateToTokenBudget } from '../token-counter'
@@ -23,7 +23,8 @@ const DEFAULT_TOOL_RESULT_TOKEN_LIMITS: Record<string, number> = {
   extract_skill: 1500,
   list_skills: 3000,
   list_reasoning_chains: 3000,
-  list_tool_bindings: 1000
+  list_tool_bindings: 1000,
+  web_search: 3000
 }
 
 function getToolResultLimits(contextConfig?: ContextConfig): Record<string, number> {
@@ -638,6 +639,40 @@ async function executeToolInternal(
       }
 
       return `工具绑定关系：\n\n${lines.join('\n')}`
+    }
+
+    case 'web_search': {
+      const { query, count = 5 } = args
+      if (!query) return '错误：缺少搜索关键词'
+
+      const llmConfig = getLLMConfig()
+      const apiKey = llmConfig.braveSearchApiKey
+      if (!apiKey) return '错误：未配置 Brave Search API Key，请在设置中配置'
+
+      const limit = Math.min(Math.max(1, parseInt(String(count)) || 5), 10)
+      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${limit}`
+
+      try {
+        const response = await fetch(url, {
+          headers: { 'X-Subscription-Token': apiKey, 'Accept': 'application/json' }
+        })
+
+        if (!response.ok) {
+          if (response.status === 401) return '错误：Brave Search API Key 无效'
+          if (response.status === 429) return '错误：搜索请求过于频繁，请稍后再试'
+          return `错误：搜索失败 (HTTP ${response.status})`
+        }
+
+        const data = await response.json()
+        const results = data.web?.results || []
+        if (results.length === 0) return '未找到相关搜索结果'
+
+        return results.map((r: any, i: number) =>
+          `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`
+        ).join('\n\n')
+      } catch (err: any) {
+        return `错误：搜索请求失败 - ${err.message}`
+      }
     }
 
     default:

@@ -15,7 +15,10 @@ export type DialogueSliceWithHandlers = DialogueSlice & ProjectSlice & ChapterSl
 export const createStreamChunkHandler = (set: any, get: () => DialogueSliceWithHandlers) => (data: DialogueStreamChunk) => {
   const { activeStreamId } = get()
   if (data.streamId !== activeStreamId) return
-  set((s: DialogueSlice) => ({ streamingText: s.streamingText + data.chunk }))
+  set((s: DialogueSlice) => ({
+    streamingText: s.streamingText + data.chunk,
+    ...(s.isThinking ? { isThinking: false } : {})
+  }))
 }
 
 export const createToolStartHandler = (set: any, get: () => DialogueSliceWithHandlers) => (data: DialogueToolStart) => {

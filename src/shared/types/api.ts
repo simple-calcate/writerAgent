@@ -116,6 +116,7 @@ export interface LLMConfig {
   keyBindings?: KeyBindings  // 可选，向后兼容
   continuationConfig?: ContinuationConfig  // 可选，向后兼容
   contextConfig?: ContextConfig  // 可选，向后兼容
+  braveSearchApiKey?: string  // Brave Search API Key，可选
 }
 
 // AI 高级配置（书籍/卷级别可设）

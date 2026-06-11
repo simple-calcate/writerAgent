@@ -1,4 +1,4 @@
-import type { LLMConfigSingle, ContextConfig } from '../../shared/types'
+import type { LLMConfigSingle, ContextConfig, ConversationMessage, Conversation } from '../../shared/types'
 import { DEFAULT_CONTEXT_CONFIG } from '../../shared/types'
 import { estimateTokens, estimateMessagesTokens, createBudget } from './token-counter'
 
@@ -107,6 +107,76 @@ function generateSimpleSummary(messages: Array<{ role: string; content: string }
   }
 
   return `【对话历史摘要（共 ${messages.length} 条消息）】\n${keyPoints.join('\n')}`
+}
+
+// ─── 持久化压缩 ───
+
+const STORAGE_KEEP_RECENT = 10  // 最近 10 条消息保留完整详情
+const STORAGE_MAX_TOOL_RESULT = 300  // 旧工具结果最多保留 300 字符
+const STORAGE_MAX_THINKING = 200  // 旧思考内容最多保留 200 字符
+const STORAGE_MAX_CONTENT = 2000  // 旧消息内容最多保留 2000 字符
+
+/**
+ * 压缩对话用于持久化存储
+ * - 最近 N 条消息保留完整
+ * - 更早的消息：截断 thinkingContent、工具结果、过长内容
+ * - 删除已标记 deleted 的消息
+ */
+export function compressForStorage(messages: ConversationMessage[]): ConversationMessage[] {
+  // 先过滤已删除的消息
+  const alive = messages.filter(m => !m.deleted)
+  if (alive.length <= STORAGE_KEEP_RECENT) return alive
+
+  const recent = alive.slice(-STORAGE_KEEP_RECENT)
+  const old = alive.slice(0, -STORAGE_KEEP_RECENT)
+
+  const compressedOld = old.map(msg => {
+    const compressed = { ...msg }
+
+    // 截断思考内容
+    if (compressed.thinkingContent && compressed.thinkingContent.length > STORAGE_MAX_THINKING) {
+      compressed.thinkingContent = compressed.thinkingContent.substring(0, STORAGE_MAX_THINKING) + '...[已截断]'
+    }
+
+    // 截断推理上下文
+    if (compressed.reasoningContext && compressed.reasoningContext.length > STORAGE_MAX_THINKING) {
+      compressed.reasoningContext = compressed.reasoningContext.substring(0, STORAGE_MAX_THINKING) + '...[已截断]'
+    }
+
+    // 压缩工具调用结果
+    if (compressed.toolCalls) {
+      compressed.toolCalls = compressed.toolCalls.map(tc => {
+        const compressedTc = { ...tc }
+        // 移除临时缓存字段
+        delete compressedTc.cachedResult
+        delete compressedTc.cacheHint
+        // 截断结果
+        if (compressedTc.result && compressedTc.result.length > STORAGE_MAX_TOOL_RESULT) {
+          compressedTc.result = compressedTc.result.substring(0, STORAGE_MAX_TOOL_RESULT) + '...[已截断]'
+        }
+        return compressedTc
+      })
+    }
+
+    // 截断过长内容
+    if (compressed.content && compressed.content.length > STORAGE_MAX_CONTENT) {
+      compressed.content = compressed.content.substring(0, STORAGE_MAX_CONTENT) + '...[已截断]'
+    }
+
+    return compressed
+  })
+
+  return [...compressedOld, ...recent]
+}
+
+/**
+ * 压缩整个对话对象用于持久化
+ */
+export function compressConversationForStorage(conversation: Conversation): Conversation {
+  return {
+    ...conversation,
+    messages: compressForStorage(conversation.messages)
+  }
 }
 
 /**

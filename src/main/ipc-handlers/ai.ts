@@ -4,7 +4,8 @@ import { autoPolish, polishText, summarizeChapter } from '../llm/client'
 import { refineSummary } from '../llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from '../llm/dialogue'
 import { generateContinuation } from '../llm/continuation'
-import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse } from '../../shared/types'
+import { compressConversationForStorage } from '../llm/context-compressor'
+import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation } from '../../shared/types'
 
 export function registerAIHandlers(
   mainWindow: BrowserWindow,
@@ -167,8 +168,9 @@ export function registerAIHandlers(
     return getConversation(level, entityId)
   })
 
-  ipcMain.handle('save-conversation', (_e, conversation) => {
-    saveConversation(conversation)
+  ipcMain.handle('save-conversation', (_e, conversation: Conversation) => {
+    const compressed = compressConversationForStorage(conversation)
+    saveConversation(compressed)
   })
 
   ipcMain.handle('delete-conversation', (_e, level: DialogueLevel, entityId: string) => {

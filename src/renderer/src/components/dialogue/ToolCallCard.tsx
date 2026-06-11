@@ -11,11 +11,11 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
   const showResult = toolCall.status === 'done' && toolCall.result && expanded
 
   return (
-    <div className="border border-gray-600/50 rounded-lg bg-gray-800/60 mb-2 overflow-hidden">
+    <div className="border border-gray-700/40 bg-gray-800/40 mb-1.5 overflow-hidden">
       <button
         onClick={() => toolCall.status === 'done' && setExpanded(!expanded)}
-        className={`w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors ${
-          toolCall.status === 'done' ? 'cursor-pointer hover:bg-gray-700/40' : 'cursor-default'
+        className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors ${
+          toolCall.status === 'done' ? 'cursor-pointer hover:bg-gray-700/30' : 'cursor-default'
         }`}
       >
         {toolCall.status === 'running' ? (

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import type { ReasoningChain, ReasoningStep, ReasoningContextConfig } from '../../../shared/types'
 import { DEFAULT_REASONING_CONTEXT_CONFIG } from '../../../shared/types'
 
@@ -13,7 +13,8 @@ const emptyStep: ReasoningStep = {
   id: '',
   name: '',
   prompt: '',
-  outputKey: ''
+  outputKey: '',
+  dependsOn: []
 }
 
 const emptyChain: ReasoningChain = {
@@ -27,8 +28,34 @@ const emptyChain: ReasoningChain = {
   builtin: false
 }
 
+// 计算拓扑层级用于可视化
+function computeLevels(steps: ReasoningStep[]): number[] {
+  const keyToIndex = new Map(steps.map((s, i) => [s.outputKey, i]))
+  const levelOf = new Map<string, number>()
+
+  const getLevel = (key: string): number => {
+    if (levelOf.has(key)) return levelOf.get(key)!
+    const step = steps.find(s => s.outputKey === key)
+    if (!step || !step.dependsOn || step.dependsOn.length === 0) {
+      levelOf.set(key, 0)
+      return 0
+    }
+    const maxDep = Math.max(...step.dependsOn.filter(d => keyToIndex.has(d)).map(d => getLevel(d)))
+    const level = maxDep + 1
+    levelOf.set(key, level)
+    return level
+  }
+
+  for (const step of steps) {
+    getLevel(step.outputKey)
+  }
+  return steps.map(s => levelOf.get(s.outputKey) || 0)
+}
+
 export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete }: ReasoningChainEditorProps) {
   const [form, setForm] = useState<ReasoningChain>(chain || { ...emptyChain, id: crypto.randomUUID() })
+
+  const levels = useMemo(() => computeLevels(form.steps), [form.steps])
 
   const updateForm = (updates: Partial<ReasoningChain>) => {
     setForm(prev => ({ ...prev, ...updates }))
@@ -38,7 +65,8 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
     const newStep: ReasoningStep = {
       ...emptyStep,
       id: `step-${Date.now()}`,
-      outputKey: `step${form.steps.length + 1}`
+      outputKey: `step${form.steps.length + 1}`,
+      dependsOn: []
     }
     updateForm({ steps: [...form.steps, newStep] })
   }
@@ -50,7 +78,13 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
   }
 
   const removeStep = (index: number) => {
-    const newSteps = form.steps.filter((_, i) => i !== index)
+    const removedKey = form.steps[index].outputKey
+    const newSteps = form.steps
+      .filter((_, i) => i !== index)
+      .map(s => ({
+        ...s,
+        dependsOn: (s.dependsOn || []).filter(d => d !== removedKey)
+      }))
     updateForm({ steps: newSteps })
   }
 
@@ -64,10 +98,16 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
     updateForm({ steps: newSteps })
   }
 
+  const toggleDep = (stepIndex: number, depKey: string) => {
+    const step = form.steps[stepIndex]
+    const deps = step.dependsOn || []
+    const newDeps = deps.includes(depKey) ? deps.filter(d => d !== depKey) : [...deps, depKey]
+    updateStep(stepIndex, { dependsOn: newDeps })
+  }
+
   const handleSave = () => {
     const chainToSave = { ...form }
 
-    // Validate
     if (!chainToSave.name.trim()) {
       alert('请输入推理链名称')
       return
@@ -83,8 +123,35 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
       }
     }
 
+    // 检测循环依赖
+    const keyToStep = new Map(chainToSave.steps.map(s => [s.outputKey, s]))
+    const visited = new Set<string>()
+    const inStack = new Set<string>()
+    const hasCycle = (key: string): boolean => {
+      if (inStack.has(key)) return true
+      if (visited.has(key)) return false
+      visited.add(key)
+      inStack.add(key)
+      const step = keyToStep.get(key)
+      if (step?.dependsOn) {
+        for (const dep of step.dependsOn) {
+          if (hasCycle(dep)) return true
+        }
+      }
+      inStack.delete(key)
+      return false
+    }
+    for (const step of chainToSave.steps) {
+      if (hasCycle(step.outputKey)) {
+        alert('检测到循环依赖，请检查步骤依赖关系')
+        return
+      }
+    }
+
     onSave(chainToSave)
   }
+
+  const maxLevel = levels.length > 0 ? Math.max(...levels) : 0
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]" onClick={onCancel}>
@@ -107,7 +174,6 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
           <input
             value={form.name}
             onChange={e => updateForm({ name: e.target.value })}
-            
             placeholder="如：章节创作推理"
             className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
           />
@@ -201,56 +267,110 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
           </button>
         </div>
 
-        <div className="space-y-2">
-          {form.steps.map((step, index) => (
-            <div key={step.id} className="bg-gray-700/30 rounded p-3 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500 w-4">{index + 1}</span>
-                <input
-                  value={step.name}
-                  onChange={e => updateStep(index, { name: e.target.value })}
-                  onMouseDown={e => e.currentTarget.focus()}
-                  placeholder="步骤名称"
-                  className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                />
-                <input
-                  value={step.outputKey}
-                  onChange={e => updateStep(index, { outputKey: e.target.value })}
-                  onMouseDown={e => e.currentTarget.focus()}
-                  placeholder="输出key"
-                  className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                />
-                <button
-                  onClick={() => moveStep(index, 'up')}
-                  disabled={index === 0}
-                  className="text-gray-500 hover:text-gray-300 disabled:opacity-30 text-xs"
-                >
-                  ↑
-                </button>
-                <button
-                  onClick={() => moveStep(index, 'down')}
-                  disabled={index === form.steps.length - 1}
-                  className="text-gray-500 hover:text-gray-300 disabled:opacity-30 text-xs"
-                >
-                  ↓
-                </button>
-                <button
-                  onClick={() => removeStep(index)}
-                  className="text-red-400 hover:text-red-300 text-xs"
-                >
-                  ✕
-                </button>
-              </div>
-              <textarea
-                value={step.prompt}
-                onChange={e => updateStep(index, { prompt: e.target.value })}
-                onMouseDown={e => e.currentTarget.focus()}
-                placeholder="该步骤的提示词..."
-                rows={2}
-                className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
-              />
+        {/* DAG 可视化 */}
+        {form.steps.length > 1 && (
+          <div className="mb-3 bg-gray-900/50 rounded p-2.5 overflow-x-auto">
+            <p className="text-[9px] text-gray-500 mb-2">依赖关系 · L{maxLevel + 1} 层 · 无依赖的步骤并发执行</p>
+            <div className="flex items-start gap-1">
+              {Array.from({ length: maxLevel + 1 }, (_, li) => {
+                const levelSteps = form.steps.filter((_, i) => levels[i] === li)
+                return (
+                  <div key={li} className="flex flex-col items-center gap-1 min-w-0">
+                    <span className="text-[8px] text-gray-600">L{li}</span>
+                    {levelSteps.map(s => (
+                      <div key={s.id} className="px-1.5 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded text-[9px] text-blue-300 truncate max-w-[80px]" title={s.name}>
+                        {s.name || s.outputKey}
+                      </div>
+                    ))}
+                    {li < maxLevel && (
+                      <div className="text-gray-600 text-[10px] mt-1">→</div>
+                    )}
+                  </div>
+                )
+              })}
             </div>
-          ))}
+          </div>
+        )}
+
+        <div className="space-y-2">
+          {form.steps.map((step, index) => {
+            const availableDeps = form.steps.filter((_, i) => i !== index)
+            const isIndependent = !step.dependsOn || step.dependsOn.length === 0
+
+            return (
+              <div key={step.id} className={`rounded p-3 space-y-2 ${isIndependent ? 'bg-green-900/10 border border-green-800/20' : 'bg-gray-700/30'}`}>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-gray-500 w-4">{index + 1}</span>
+                  <input
+                    value={step.name}
+                    onChange={e => updateStep(index, { name: e.target.value })}
+                    onMouseDown={e => e.currentTarget.focus()}
+                    placeholder="步骤名称"
+                    className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  />
+                  <input
+                    value={step.outputKey}
+                    onChange={e => updateStep(index, { outputKey: e.target.value })}
+                    onMouseDown={e => e.currentTarget.focus()}
+                    placeholder="输出key"
+                    className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  />
+                  <button
+                    onClick={() => moveStep(index, 'up')}
+                    disabled={index === 0}
+                    className="text-gray-500 hover:text-gray-300 disabled:opacity-30 text-xs"
+                  >
+                    ↑
+                  </button>
+                  <button
+                    onClick={() => moveStep(index, 'down')}
+                    disabled={index === form.steps.length - 1}
+                    className="text-gray-500 hover:text-gray-300 disabled:opacity-30 text-xs"
+                  >
+                    ↓
+                  </button>
+                  <button
+                    onClick={() => removeStep(index)}
+                    className="text-red-400 hover:text-red-300 text-xs"
+                  >
+                    ✕
+                  </button>
+                </div>
+                <textarea
+                  value={step.prompt}
+                  onChange={e => updateStep(index, { prompt: e.target.value })}
+                  onMouseDown={e => e.currentTarget.focus()}
+                  placeholder="该步骤的提示词..."
+                  rows={2}
+                  className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
+                />
+                {/* 依赖选择 */}
+                {availableDeps.length > 0 && (
+                  <div className="flex items-start gap-2">
+                    <span className="text-[10px] text-gray-500 mt-0.5 shrink-0">依赖：</span>
+                    <div className="flex flex-wrap gap-1">
+                      {availableDeps.map(dep => {
+                        const isSelected = step.dependsOn?.includes(dep.outputKey)
+                        return (
+                          <button
+                            key={dep.id}
+                            onClick={() => toggleDep(index, dep.outputKey)}
+                            className={`px-1.5 py-0.5 text-[9px] rounded border transition-colors ${
+                              isSelected
+                                ? 'bg-orange-600/20 border-orange-500/40 text-orange-300'
+                                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-400'
+                            }`}
+                          >
+                            {dep.name || dep.outputKey}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         {form.steps.length === 0 && (

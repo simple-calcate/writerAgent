@@ -227,7 +227,7 @@ export const createDialogueSlice: StateCreator<
     const { activeStreamId } = get()
     if (activeStreamId) {
       window.api.dialogueCancel(activeStreamId)
-      set({ isStreaming: false, activeStreamId: null })
+      set({ isStreaming: false, isThinking: false, thinkingText: '', activeStreamId: null })
     }
   },
 

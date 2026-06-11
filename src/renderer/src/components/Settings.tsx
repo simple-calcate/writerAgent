@@ -5,9 +5,10 @@ import SkillsTab from './settings/tabs/SkillsTab'
 import ReasoningTab from './settings/tabs/ReasoningTab'
 import DataStorageTab from './settings/tabs/DataStorageTab'
 import AboutTab from './settings/tabs/AboutTab'
-import LocalModelDiagnostics from './settings/components/LocalModelDiag'
-import type { APIProfile, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, KeyBindings, ContinuationConfig } from '../../../shared/types'
-import { DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG } from '../../../shared/types'
+import ApiTab from './settings/ApiTab'
+import AIFeatureTab from './settings/AIFeatureTab'
+import type { APIProfile, AIFeatureConfig, ThinkingDepthPreset, KeyBindings } from '../../../shared/types'
+import { DEFAULT_KEY_BINDINGS } from '../../../shared/types'
 
 type TabKey = 'api' | 'ai' | 'keys' | 'data' | 'skills' | 'reasoning' | 'visual' | 'about'
 
@@ -29,14 +30,14 @@ const KEY_BINDING_ITEMS: { key: keyof KeyBindings; label: string; desc: string }
   { key: 'save', label: '保存', desc: '手动保存当前章节' }
 ]
 
-const FEATURE_LIST: { key: keyof AIFeatureConfig; label: string; desc: string }[] = [
+export const FEATURE_LIST: { key: keyof AIFeatureConfig; label: string; desc: string }[] = [
   { key: 'polish', label: '润色优化', desc: '自动检测并优化薄弱片段' },
   { key: 'summary', label: '章节摘要', desc: '生成章节结构化摘要（人物、事件、伏笔）' },
   { key: 'refineSummary', label: '精炼总结', desc: '用一段话精炼概括章节核心情节' },
   { key: 'dialogue', label: 'AI 对话', desc: '与 AI 进行创作对话、剧情规划' }
 ]
 
-const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; desc: string }[] = [
+export const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; desc: string }[] = [
   { value: 'off', label: '关闭', desc: '不使用深度思考，响应更快' },
   { value: 'low', label: '低', desc: '轻度推理，适合简单对话' },
   { value: 'medium', label: '中', desc: '平衡推理深度和速度' },
@@ -44,7 +45,7 @@ const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; 
   { value: 'custom', label: '自定义', desc: '手动设置 token 预算' }
 ]
 
-interface ProviderPreset {
+export interface ProviderPreset {
   value: string
   label: string
   baseUrl: string
@@ -52,7 +53,7 @@ interface ProviderPreset {
   rechargeUrl: string
 }
 
-const PROVIDER_PRESETS: ProviderPreset[] = [
+export const PROVIDER_PRESETS: ProviderPreset[] = [
   { value: '', label: '自定义', baseUrl: '', model: '', rechargeUrl: '' },
   { value: 'openrouter', label: 'OpenRouter', baseUrl: 'https://openrouter.ai/api/v1', model: 'deepseek/deepseek-chat', rechargeUrl: 'https://openrouter.ai/settings/credits' },
   { value: 'deepseek', label: 'DeepSeek', baseUrl: 'https://api.deepseek.com', model: 'deepseek-v4-pro', rechargeUrl: 'https://platform.deepseek.com/top_up' },
@@ -63,7 +64,7 @@ const PROVIDER_PRESETS: ProviderPreset[] = [
   { value: 'ollama', label: 'Ollama (本地)', baseUrl: 'http://localhost:11434/v1', model: 'llama3', rechargeUrl: '' },
 ]
 
-function detectPreset(baseUrl: string): string {
+export function detectPreset(baseUrl: string): string {
   for (const p of PROVIDER_PRESETS) {
     if (p.value && p.baseUrl && baseUrl === p.baseUrl) return p.value
   }
@@ -199,426 +200,28 @@ export default function Settings() {
         <div className="flex-1 flex flex-col min-w-0">
           <div className="flex-1 overflow-y-auto p-5 space-y-4">
             {activeTab === 'api' && (
-              <>
-                {/* 新手引导 */}
-                {!form.profiles.some(p => p.apiKey.trim()) && !editingProfile && (
-                  <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 space-y-3">
-                    <h3 className="text-sm font-medium text-blue-300">👋 欢迎使用网文写作助手</h3>
-                    <p className="text-xs text-gray-400">
-                      本软件需要接入 AI 才能使用。你只需要一个 <span className="text-blue-300">API Key</span> 就能开始。
-                    </p>
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-300 font-medium">什么是 API Key？</p>
-                      <p className="text-xs text-gray-500">
-                        API Key 相当于 AI 服务的"通行证"。你去 AI 平台注册账号，获取一个 Key，填到这里，软件就能调用 AI 帮你写作了。
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <p className="text-xs text-gray-300 font-medium">推荐：DeepSeek（便宜好用）</p>
-                      <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
-                        <li>打开 <button onClick={() => window.api.openExternal('https://platform.deepseek.com')} className="text-blue-400 hover:underline">platform.deepseek.com</button> 注册账号</li>
-                        <li>充值几块钱（大概 1 块钱能用很久）</li>
-                        <li>在"API Keys"页面创建一个 Key</li>
-                        <li>复制 Key，粘贴到下面的配置里</li>
-                      </ol>
-                    </div>
-                    <button
-                      onClick={() => {
-                        const newProfile: APIProfile = {
-                          id: crypto.randomUUID(),
-                          name: 'DeepSeek',
-                          apiKey: '',
-                          baseUrl: 'https://api.deepseek.com',
-                          model: 'deepseek-v4-pro',
-                          thinkingDepth: { preset: 'off' }
-                        }
-                        setEditingProfile(newProfile)
-                        setIsAdding(true)
-                      }}
-                      className="w-full py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-500 rounded transition-colors"
-                    >
-                      一键配置 DeepSeek
-                    </button>
-                  </div>
-                )}
-                {editingProfile ? (
-                  /* Profile edit form */
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <h3 className="text-sm text-gray-300">{isAdding ? '添加 API 配置' : '编辑 API 配置'}</h3>
-                      <button onClick={() => { setEditingProfile(null); setIsAdding(false) }} className="text-xs text-gray-500 hover:text-gray-300">取消</button>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">配置名称</label>
-                      <input
-                        type="text"
-                        value={editingProfile.name}
-                        onChange={e => setEditingProfile({ ...editingProfile, name: e.target.value })}
-                        placeholder="如 OpenAI、本地 Ollama..."
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">提供商</label>
-                      <select
-                        value={detectPreset(editingProfile.baseUrl)}
-                        onChange={e => {
-                          const preset = PROVIDER_PRESETS.find(p => p.value === e.target.value)
-                          if (!preset) return
-                          const updates: Partial<APIProfile> = {}
-                          if (!editingProfile.name.trim() && preset.label !== '自定义') {
-                            updates.name = preset.label
-                          }
-                          if (preset.baseUrl) updates.baseUrl = preset.baseUrl
-                          if (preset.model) updates.model = preset.model
-                          setEditingProfile({ ...editingProfile, ...updates })
-                        }}
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                      >
-                        {PROVIDER_PRESETS.map(p => (
-                          <option key={p.value || '__custom__'} value={p.value}>{p.label}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">API Key</label>
-                      <input
-                        type="password"
-                        value={editingProfile.apiKey}
-                        onChange={e => setEditingProfile({ ...editingProfile, apiKey: e.target.value })}
-                        placeholder="sk-..."
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                      />
-                      {(() => {
-                        const preset = PROVIDER_PRESETS.find(p => p.value === detectPreset(editingProfile.baseUrl))
-                        if (preset?.rechargeUrl) {
-                          return (
-                            <button
-                              type="button"
-                              onClick={() => window.api.openExternal(preset.rechargeUrl)}
-                              className="mt-1.5 text-xs text-blue-400 hover:text-blue-300 transition-colors"
-                            >
-                              在 {preset.label} 充值 Token
-                            </button>
-                          )
-                        }
-                        return null
-                      })()}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Base URL</label>
-                      <input
-                        type="text"
-                        value={editingProfile.baseUrl}
-                        onChange={e => setEditingProfile({ ...editingProfile, baseUrl: e.target.value })}
-                        placeholder="https://api.openai.com/v1"
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">模型</label>
-                      <input
-                        type="text"
-                        value={editingProfile.model}
-                        onChange={e => setEditingProfile({ ...editingProfile, model: e.target.value })}
-                        placeholder="gpt-4o-mini"
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">思考深度</label>
-                      <select
-                        value={editingProfile.thinkingDepth?.preset || 'off'}
-                        onChange={e => {
-                          const preset = e.target.value as ThinkingDepthPreset | 'custom'
-                          const td: ThinkingDepth = preset === 'custom'
-                            ? { preset: 'custom', budgetTokens: editingProfile.thinkingDepth?.budgetTokens || 8192 }
-                            : { preset }
-                          setEditingProfile({ ...editingProfile, thinkingDepth: td })
-                        }}
-                        className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                      >
-                        {THINKING_PRESETS.map(p => (
-                          <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
-                        ))}
-                      </select>
-                      {(editingProfile.thinkingDepth?.preset || 'off') !== 'off' && (
-                        <p className="text-[10px] text-gray-500 mt-1">
-                          适用于 DeepSeek / OpenAI o1/o3 / Claude 等支持推理的模型
-                        </p>
-                      )}
-                      {editingProfile.thinkingDepth?.preset === 'custom' && (
-                        <div className="mt-2">
-                          <label className="block text-xs text-gray-400 mb-1">Token 预算</label>
-                          <input
-                            type="number"
-                            value={editingProfile.thinkingDepth?.budgetTokens || 8192}
-                            onChange={e => setEditingProfile({
-                              ...editingProfile,
-                              thinkingDepth: { preset: 'custom', budgetTokens: Math.max(1024, parseInt(e.target.value) || 8192) }
-                            })}
-                            min={1024}
-                            step={1024}
-                            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-                          />
-                          <p className="text-[10px] text-gray-500 mt-1">
-                            建议值：2048（轻量）/ 8192（平衡）/ 32768（深度推理）
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={handleSaveProfile}
-                      className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded text-sm font-medium transition-colors"
-                    >
-                      保存配置
-                    </button>
-                    {editingProfile.baseUrl.includes('localhost:11434') && (
-                      <LocalModelDiagnostics config={{
-                        apiKey: editingProfile.apiKey,
-                        baseUrl: editingProfile.baseUrl,
-                        model: editingProfile.model,
-                        thinkingDepth: editingProfile.thinkingDepth
-                      }} />
-                    )}
-                  </div>
-                ) : (
-                  /* Profile list */
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between mb-1">
-                      <h3 className="text-sm text-gray-300">API 配置列表</h3>
-                      <button onClick={handleAddProfile} className="text-xs text-blue-400 hover:text-blue-300">+ 添加</button>
-                    </div>
-                    {form.profiles.map(profile => (
-                      <div
-                        key={profile.id}
-                        className={`px-3 py-2.5 rounded border transition-colors ${
-                          form.defaultProfileId === profile.id
-                            ? 'border-blue-500/50 bg-blue-500/10'
-                            : 'border-gray-700 bg-gray-700/30 hover:bg-gray-700/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 min-w-0">
-                            <button
-                              onClick={() => handleSetDefault(profile.id)}
-                              title={form.defaultProfileId === profile.id ? '默认配置' : '设为默认'}
-                              className={`shrink-0 text-sm ${form.defaultProfileId === profile.id ? 'text-yellow-400' : 'text-gray-600 hover:text-gray-400'}`}
-                            >
-                              {form.defaultProfileId === profile.id ? '★' : '☆'}
-                            </button>
-                            <span className="text-sm text-gray-200 truncate">{profile.name}</span>
-                            <span className="text-[10px] text-gray-500 truncate">{profile.model}</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button
-                              onClick={() => setEditingProfile(profile)}
-                              className="text-[10px] text-gray-500 hover:text-blue-400 px-1.5 py-0.5"
-                            >
-                              编辑
-                            </button>
-                            <button
-                              onClick={() => handleDeleteProfile(profile.id)}
-                              className="text-[10px] text-gray-500 hover:text-red-400 px-1.5 py-0.5"
-                            >
-                              删除
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 mt-1 ml-6">
-                          <span className="text-[10px] text-gray-500 truncate">{profile.baseUrl}</span>
-                          <span className="text-[10px] text-gray-600">{'*'.repeat(Math.min(profile.apiKey.length, 8))}</span>
-                          {(profile.thinkingDepth?.preset || 'off') !== 'off' && (
-                            <span className="text-[10px] text-purple-400 shrink-0">
-                              思考:{profile.thinkingDepth?.preset === 'custom' ? `${profile.thinkingDepth.budgetTokens}tok` : profile.thinkingDepth?.preset}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </>
+              <ApiTab
+                form={form}
+                setForm={setForm}
+                editingProfile={editingProfile}
+                setEditingProfile={setEditingProfile}
+                isAdding={isAdding}
+                setIsAdding={setIsAdding}
+                handleAddProfile={handleAddProfile}
+                handleSaveProfile={handleSaveProfile}
+                handleDeleteProfile={handleDeleteProfile}
+                handleSetDefault={handleSetDefault}
+              />
             )}
 
             {activeTab === 'ai' && (
-              <div className="space-y-2">
-                {FEATURE_LIST.map(feat => {
-                  const entry = form.aiFeatures[feat.key]
-                  return (
-                    <div
-                      key={feat.key}
-                      className={`px-3 py-3 rounded border transition-colors ${
-                        entry.enabled
-                          ? 'border-gray-600 bg-gray-700/30'
-                          : 'border-gray-700/50 bg-gray-800/50 opacity-60'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-sm text-gray-200">{feat.label}</p>
-                          <p className="text-xs text-gray-500 mt-0.5">{feat.desc}</p>
-                        </div>
-                        <div
-                          onClick={() => handleToggleFeature(feat.key)}
-                          className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${
-                            entry.enabled ? 'bg-blue-600' : 'bg-gray-600'
-                          }`}
-                        >
-                          <div
-                            className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                              entry.enabled ? 'translate-x-5' : 'translate-x-0.5'
-                            }`}
-                          />
-                        </div>
-                      </div>
-                      {entry.enabled && (
-                        <div className="mt-2 space-y-2">
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-500 shrink-0">API:</span>
-                            <select
-                              value={entry.profileId || ''}
-                              onChange={e => handleBindProfile(feat.key, e.target.value || null)}
-                              className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                            >
-                              <option value="">默认 ({getProfileName(null)})</option>
-                              {form.profiles.map(p => (
-                                <option key={p.id} value={p.id}>{p.name} ({p.model})</option>
-                              ))}
-                            </select>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-500 shrink-0">思考:</span>
-                            <select
-                              value={entry.thinkingDepth?.preset || 'default'}
-                              onChange={e => {
-                                const val = e.target.value
-                                if (val === 'default') {
-                                  const { thinkingDepth, ...rest } = entry
-                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: rest } })
-                                } else {
-                                  const td: ThinkingDepth = val === 'custom'
-                                    ? { preset: 'custom', budgetTokens: entry.thinkingDepth?.budgetTokens || 8192 }
-                                    : { preset: val as ThinkingDepthPreset }
-                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: { ...entry, thinkingDepth: td } } })
-                                }
-                              }}
-                              className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                            >
-                              <option value="default">跟随 API 配置</option>
-                              {THINKING_PRESETS.map(p => (
-                                <option key={p.value} value={p.value}>{p.label}</option>
-                              ))}
-                            </select>
-                          </div>
-                          {entry.thinkingDepth?.preset === 'custom' && (
-                            <div className="flex items-center gap-2 ml-10">
-                              <span className="text-[10px] text-gray-500 shrink-0">预算:</span>
-                              <input
-                                type="number"
-                                value={entry.thinkingDepth?.budgetTokens || 8192}
-                                onChange={e => setForm({
-                                  ...form,
-                                  aiFeatures: {
-                                    ...form.aiFeatures,
-                                    [feat.key]: { ...entry, thinkingDepth: { preset: 'custom', budgetTokens: Math.max(1024, parseInt(e.target.value) || 8192) } }
-                                  }
-                                })}
-                                min={1024}
-                                step={1024}
-                                className="w-24 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                              />
-                              <span className="text-[10px] text-gray-500">tokens</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <span className="text-[10px] text-gray-500 shrink-0">输出上限:</span>
-                            <input
-                              type="number"
-                              min={1}
-                              max={390}
-                              value={entry.maxTokens ?? ''}
-                              placeholder="不限"
-                              onChange={e => {
-                                const val = e.target.value ? Math.min(390, Math.max(1, parseInt(e.target.value))) : undefined
-                                const { maxTokens, ...rest } = entry
-                                if (val) {
-                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: { ...entry, maxTokens: val } } })
-                                } else {
-                                  setForm({ ...form, aiFeatures: { ...form.aiFeatures, [feat.key]: rest } })
-                                }
-                              }}
-                              className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                            />
-                            <span className="text-[10px] text-gray-500">k {entry.maxTokens ? `(${entry.maxTokens * 1000})` : '默认不限制'}</span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-
-                {/* 智能续写配置 */}
-                <div className="border-t border-gray-700/50 pt-3 mt-3 space-y-3">
-                  <div>
-                    <p className="text-xs text-gray-400 font-medium">智能续写</p>
-                    <p className="text-[10px] text-gray-500 mt-0.5">需要至少有章纲、卷纲或书籍大纲才能触发</p>
-                  </div>
-                  {(() => {
-                    const cfg = form.continuationConfig || DEFAULT_CONTINUATION_CONFIG
-                    const updateCfg = (patch: Partial<ContinuationConfig>) => {
-                      setForm(prev => ({
-                        ...prev,
-                        continuationConfig: { ...(prev.continuationConfig || DEFAULT_CONTINUATION_CONFIG), ...patch }
-                      }))
-                    }
-                    return (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-gray-200">启用续写建议</p>
-                            <p className="text-xs text-gray-500">停笔后自动提供 AI 续写建议</p>
-                          </div>
-                          <div
-                            onClick={() => updateCfg({ enabled: !cfg.enabled })}
-                            className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${cfg.enabled ? 'bg-blue-600' : 'bg-gray-600'}`}
-                          >
-                            <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${cfg.enabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                          </div>
-                        </div>
-                        {cfg.enabled && (
-                          <>
-                            <div>
-                              <label className="block text-xs text-gray-400 mb-1">正文触发延迟（秒）</label>
-                              <input
-                                type="number"
-                                min={1}
-                                max={60}
-                                value={Math.round(cfg.delayMs / 1000)}
-                                onChange={e => updateCfg({ delayMs: Math.max(1, parseInt(e.target.value) || 10) * 1000 })}
-                                className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs text-gray-400 mb-1">注释触发延迟（秒）</label>
-                              <input
-                                type="number"
-                                min={0}
-                                max={30}
-                                value={Math.round(cfg.commentDelayMs / 1000)}
-                                onChange={e => updateCfg({ commentDelayMs: Math.max(0, parseInt(e.target.value) || 2) * 1000 })}
-                                className="w-24 bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                              />
-                              <p className="text-[10px] text-gray-500 mt-1">写 // 注释后触发，用于快速解答困惑</p>
-                            </div>
-                          </>
-                        )}
-                      </>
-                    )
-                  })()}
-                </div>
-
-              </div>
+              <AIFeatureTab
+                form={form}
+                setForm={setForm}
+                handleToggleFeature={handleToggleFeature}
+                handleBindProfile={handleBindProfile}
+                getProfileName={getProfileName}
+              />
             )}
 
             {activeTab === 'keys' && (

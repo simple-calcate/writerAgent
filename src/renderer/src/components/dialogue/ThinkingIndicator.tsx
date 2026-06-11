@@ -1,13 +1,41 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 
-export function ThinkingIndicator({ text, onCancel }: { text: string; onCancel?: () => void }) {
+interface ThinkingIndicatorProps {
+  text: string
+  onCancel?: () => void
+  compact?: boolean
+}
+
+export function ThinkingIndicator({ text, onCancel, compact }: ThinkingIndicatorProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const [expanded, setExpanded] = useState(false)
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [text])
+
+  if (compact) {
+    return (
+      <div className="flex items-center gap-2">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500" />
+        </span>
+        <span className="text-purple-400 text-xs">思考中</span>
+        {text.length > 0 && <span className="text-gray-600 text-[10px]">{text.length} 字</span>}
+        {onCancel && (
+          <button
+            onClick={onCancel}
+            className="text-[10px] text-red-400 hover:text-red-300 ml-1"
+          >
+            停止
+          </button>
+        )}
+      </div>
+    )
+  }
 
   const newChunkLen = 20
   const tailLen = 80
@@ -19,37 +47,23 @@ export function ThinkingIndicator({ text, onCancel }: { text: string; onCancel?:
 
   return (
     <div className="flex flex-col w-full">
-      <div className="flex items-center gap-2 px-1 pb-1.5 shrink-0">
-        <div className="relative w-3 h-3">
-          <div className="absolute inset-0 rounded-full border-2 border-purple-500/30" />
-          <div className="absolute inset-0 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
-        </div>
-        <span className="text-[11px] text-purple-400 font-medium tracking-wide">思考中</span>
-        <span className="text-[10px] text-gray-600">{text.length > 0 ? text.length + ' 字' : ''}</span>
-        {onCancel && (
-          <button
-            onClick={onCancel}
-            className="ml-auto text-[10px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded border border-red-500/30 hover:border-red-400/50 transition-colors"
-          >
-            停止
-          </button>
-        )}
-      </div>
-      {text.length > 0 && (
-        <div ref={scrollRef} className="max-h-32 overflow-y-auto rounded bg-gray-900/60 border border-gray-700/40">
-          <div className="p-2 text-[13px] leading-[1.7] text-gray-400 font-mono whitespace-pre-wrap break-all">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-2 text-[11px] text-purple-400 hover:text-purple-300 transition-colors"
+      >
+        <span className="relative flex h-1.5 w-1.5">
+          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-purple-500" />
+        </span>
+        <span>思考过程</span>
+        <span className="text-gray-600">{text.length} 字</span>
+        <span className="text-gray-600">{expanded ? '▾' : '▸'}</span>
+      </button>
+      {expanded && text.length > 0 && (
+        <div ref={scrollRef} className="mt-1 max-h-32 overflow-y-auto rounded bg-gray-900/60 border border-gray-700/40">
+          <div className="p-2 text-[11px] leading-[1.6] text-gray-400 font-mono whitespace-pre-wrap break-all">
             {stablePart && <span className="text-gray-600">{stablePart}</span>}
             {tailPart && <span className="text-gray-400">{tailPart}</span>}
-            <span key={text.length} className="thinking-tail text-gray-200">{newPart}</span>
-          </div>
-        </div>
-      )}
-      {text.length === 0 && (
-        <div className="flex items-center justify-center py-2">
-          <div className="flex gap-1">
-            {[0, 1, 2].map(i => (
-              <div key={i} className="w-1 h-1 rounded-full bg-purple-500/40 animate-pulse" style={{ animationDelay: i * 200 + 'ms' }} />
-            ))}
+            <span className="text-gray-300">{newPart}</span>
           </div>
         </div>
       )}

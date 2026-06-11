@@ -34,7 +34,7 @@ const defaultStore: Store = {
     },
     keyBindings: { ...DEFAULT_KEY_BINDINGS },
     continuationConfig: { ...DEFAULT_CONTINUATION_CONFIG },
-    braveSearchApiKey: ''
+    searchEngineConfig: { engine: 'duckduckgo' }
   },
   versions: {},
   conversations: [],

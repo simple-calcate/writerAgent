@@ -1,4 +1,4 @@
-import type { APIProfile, ThinkingDepth, ThinkingDepthPreset, LLMConfig } from '../../../../shared/types'
+import type { APIProfile, ThinkingDepth, ThinkingDepthPreset, LLMConfig, SearchEngineType } from '../../../../shared/types'
 import LocalModelDiagnostics from './components/LocalModelDiag'
 import { PROVIDER_PRESETS, THINKING_PRESETS, detectPreset } from '../Settings'
 
@@ -294,21 +294,106 @@ export default function ApiTab({
         </div>
       )}
 
-      {/* 第三方服务 */}
+      {/* 联网搜索 */}
       <div className="mt-6 pt-4 border-t border-gray-700/40">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">第三方服务</h3>
-        <div>
-          <label className="text-xs text-gray-400 mb-1 block">Brave Search API Key</label>
-          <input
-            type="password"
-            value={form.braveSearchApiKey || ''}
-            onChange={e => setForm({ ...form, braveSearchApiKey: e.target.value })}
-            placeholder="输入 Brave Search API Key（可选）"
-            className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-          />
-          <p className="text-[10px] text-gray-600 mt-1">
-            用于 AI 对话联网搜索。免费申请：<button onClick={() => window.api.openExternal('https://brave.com/search/api/')} className="text-blue-400 hover:underline">brave.com/search/api</button>
-          </p>
+        <h3 className="text-sm font-medium text-gray-300 mb-3">联网搜索</h3>
+        <p className="text-[10px] text-gray-500 mb-3">AI 对话时可搜索互联网获取实时信息</p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-xs text-gray-400 mb-1 block">搜索引擎</label>
+            <select
+              value={form.searchEngineConfig?.engine || 'duckduckgo'}
+              onChange={e => setForm({
+                ...form,
+                searchEngineConfig: {
+                  ...form.searchEngineConfig,
+                  engine: e.target.value as SearchEngineType
+                }
+              })}
+              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+            >
+              <option value="duckduckgo">DuckDuckGo（免费，无需 Key）</option>
+              <option value="tavily">Tavily（免费 1000次/月）</option>
+              <option value="bing">Bing（免费 1000次/月）</option>
+              <option value="google">Google（免费 100次/天）</option>
+            </select>
+          </div>
+
+          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'duckduckgo' && (
+            <p className="text-[10px] text-gray-500">免费使用，无需配置 API Key。</p>
+          )}
+
+          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'tavily' && (
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Tavily API Key</label>
+              <input
+                type="password"
+                value={form.searchEngineConfig?.tavilyApiKey || ''}
+                onChange={e => setForm({
+                  ...form,
+                  searchEngineConfig: { ...form.searchEngineConfig!, tavilyApiKey: e.target.value }
+                })}
+                placeholder="tvly-..."
+                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-gray-600 mt-1">
+                免费申请：<button onClick={() => window.api.openExternal('https://tavily.com')} className="text-blue-400 hover:underline">tavily.com</button>
+              </p>
+            </div>
+          )}
+
+          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'bing' && (
+            <div>
+              <label className="text-xs text-gray-400 mb-1 block">Bing API Key</label>
+              <input
+                type="password"
+                value={form.searchEngineConfig?.bingApiKey || ''}
+                onChange={e => setForm({
+                  ...form,
+                  searchEngineConfig: { ...form.searchEngineConfig!, bingApiKey: e.target.value }
+                })}
+                placeholder="输入 Bing Search API Key"
+                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+              />
+              <p className="text-[10px] text-gray-600 mt-1">
+                免费申请：<button onClick={() => window.api.openExternal('https://portal.azure.com')} className="text-blue-400 hover:underline">Azure Portal</button>
+              </p>
+            </div>
+          )}
+
+          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'google' && (
+            <div className="space-y-2">
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">Google API Key</label>
+                <input
+                  type="password"
+                  value={form.searchEngineConfig?.googleApiKey || ''}
+                  onChange={e => setForm({
+                    ...form,
+                    searchEngineConfig: { ...form.searchEngineConfig!, googleApiKey: e.target.value }
+                  })}
+                  placeholder="AIza..."
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label className="text-xs text-gray-400 mb-1 block">搜索引擎 ID (cx)</label>
+                <input
+                  type="text"
+                  value={form.searchEngineConfig?.googleSearchEngineId || ''}
+                  onChange={e => setForm({
+                    ...form,
+                    searchEngineConfig: { ...form.searchEngineConfig!, googleSearchEngineId: e.target.value }
+                  })}
+                  placeholder="搜索引擎的 cx 值"
+                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                />
+              </div>
+              <p className="text-[10px] text-gray-600">
+                免费申请：<button onClick={() => window.api.openExternal('https://programmablesearchengine.google.com')} className="text-blue-400 hover:underline">Google CSE</button>
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </>

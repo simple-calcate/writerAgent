@@ -108,6 +108,18 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
   defaultToolResultLimit: 2000
 }
 
+// 搜索引擎类型
+export type SearchEngineType = 'duckduckgo' | 'tavily' | 'bing' | 'google'
+
+// 搜索引擎配置
+export interface SearchEngineConfig {
+  engine: SearchEngineType
+  tavilyApiKey?: string
+  bingApiKey?: string
+  googleApiKey?: string
+  googleSearchEngineId?: string
+}
+
 // 全局 LLM 配置
 export interface LLMConfig {
   profiles: APIProfile[]
@@ -116,7 +128,8 @@ export interface LLMConfig {
   keyBindings?: KeyBindings  // 可选，向后兼容
   continuationConfig?: ContinuationConfig  // 可选，向后兼容
   contextConfig?: ContextConfig  // 可选，向后兼容
-  braveSearchApiKey?: string  // Brave Search API Key，可选
+  braveSearchApiKey?: string  // 已废弃，保留向后兼容
+  searchEngineConfig?: SearchEngineConfig  // 搜索引擎配置
 }
 
 // AI 高级配置（书籍/卷级别可设）

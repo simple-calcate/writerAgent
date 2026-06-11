@@ -176,6 +176,9 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       return msg
     })
 
+    // 截断旧的工具结果，防止上下文爆炸（用户下次输入时执行）
+    trimOldToolResults(cleanedMessages, config.contextWindow, contextConfig)
+
     // 压缩对话历史（如果超出预算）
     const compressed = compressHistory(cleanedMessages, config.contextWindow, contextConfig)
     const finalMessages = buildCompressedMessages(compressed)
@@ -395,9 +398,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             fullMessages.push({ role: 'tool', content: `错误：${errorMsg}`, tool_call_id: tc.id } as any)
           }
         }
-
-        // 裁剪旧的工具结果，防止上下文爆炸
-        trimOldToolResults(fullMessages as any, config.contextWindow, contextConfig)
       }
 
       if (!controller.signal.aborted) {

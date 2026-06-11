@@ -7,44 +7,6 @@ import { refineSummary } from '../refine-summary'
 import { createChapter, createVolume, renameChapter, updateChapter, saveOutline, getOutline, saveSkill, getSkills, getProjects, updateProjectFeatureSkillIds, saveVersion, updateChapterSummary, saveReasoningChain, deleteReasoningChain, getLLMConfig } from '../../store/db'
 import { randomUUID } from 'crypto'
 import { getReasoningChains, getReasoningChainById, findReasoningChain } from '../reasoning-chains'
-import { estimateTokens, truncateToTokenBudget } from '../token-counter'
-
-// 工具结果 token 上限（按工具类型）- 默认值
-const DEFAULT_TOOL_RESULT_TOKEN_LIMITS: Record<string, number> = {
-  summarize_chapter: 2000,
-  refine_summary: 1000,
-  polish_text: 1500,
-  read_chapter_content: 4000,
-  write_chapter_content: 300,
-  write_outline: 200,
-  write_volume_outline: 200,
-  write_chapter_outline: 200,
-  batch_refine_summaries: 2000,
-  extract_skill: 1500,
-  list_skills: 3000,
-  list_reasoning_chains: 3000,
-  list_tool_bindings: 1000,
-  web_search: 3000
-}
-
-function getToolResultLimits(contextConfig?: ContextConfig): Record<string, number> {
-  const config = contextConfig || DEFAULT_CONTEXT_CONFIG
-  return {
-    ...DEFAULT_TOOL_RESULT_TOKEN_LIMITS,
-    summarize_chapter: config.summarizeResultLimit,
-    refine_summary: config.refineResultLimit,
-    read_chapter_content: config.readContentResultLimit
-  }
-}
-
-function truncateToolResult(toolName: string, result: string, contextConfig?: ContextConfig): string {
-  const limits = getToolResultLimits(contextConfig)
-  const config = contextConfig || DEFAULT_CONTEXT_CONFIG
-  const limit = limits[toolName] ?? config.defaultToolResultLimit
-  const estimated = estimateTokens(result)
-  if (estimated <= limit) return result
-  return truncateToTokenBudget(result, limit)
-}
 
 export interface ExecuteToolParams {
   config: LLMConfigSingle
@@ -186,7 +148,7 @@ export async function executeTool(
   }
 
   const rawResult = await executeToolInternal(toolName, args, params, targetChapter, reasoningResults)
-  return truncateToolResult(toolName, rawResult, params.contextConfig)
+  return rawResult
 }
 
 async function executeToolInternal(
@@ -646,28 +608,13 @@ async function executeToolInternal(
       if (!query) return '错误：缺少搜索关键词'
 
       const llmConfig = getLLMConfig()
-      const apiKey = llmConfig.braveSearchApiKey
-      if (!apiKey) return '错误：未配置 Brave Search API Key，请在设置中配置'
-
-      const limit = Math.min(Math.max(1, parseInt(String(count)) || 5), 10)
-      const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${limit}`
+      const searchConfig = llmConfig.searchEngineConfig || { engine: 'duckduckgo' }
 
       try {
-        const response = await fetch(url, {
-          headers: { 'X-Subscription-Token': apiKey, 'Accept': 'application/json' }
-        })
-
-        if (!response.ok) {
-          if (response.status === 401) return '错误：Brave Search API Key 无效'
-          if (response.status === 429) return '错误：搜索请求过于频繁，请稍后再试'
-          return `错误：搜索失败 (HTTP ${response.status})`
-        }
-
-        const data = await response.json()
-        const results = data.web?.results || []
+        const { searchWeb } = await import('../search')
+        const results = await searchWeb(query, Math.min(Math.max(1, parseInt(String(count)) || 5), 10), searchConfig)
         if (results.length === 0) return '未找到相关搜索结果'
-
-        return results.map((r: any, i: number) =>
+        return results.map((r, i) =>
           `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`
         ).join('\n\n')
       } catch (err: any) {

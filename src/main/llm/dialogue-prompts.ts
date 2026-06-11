@@ -1,6 +1,7 @@
-import type { Project, Volume, Chapter, BookAIConfig, DialogueLevel, Outline, WritingSkill, SkillCategory, SKILL_CATEGORIES } from '../../shared/types'
+import type { Project, Volume, Chapter, BookAIConfig, DialogueLevel, Outline, WritingSkill, SkillCategory, SKILL_CATEGORIES, ContextConfig } from '../../shared/types'
 import { formatKnowledgeForPrompt } from '../../shared/novel-knowledge'
 import { getFeatureSkillContent } from './feature-skills'
+import { estimateTokens, createBudget, allocateSectionBudgets, truncateToTokenBudget } from './token-counter'
 
 interface PromptParams {
   level: DialogueLevel
@@ -13,6 +14,8 @@ interface PromptParams {
   isPlanMode?: boolean
   skills?: WritingSkill[]
   reasoningContext?: string  // 推理链输出的分析结果
+  contextWindow?: number     // 模型上下文窗口大小
+  contextConfig?: ContextConfig  // 上下文管理配置
 }
 
 const ROLE_PREAMBLES: Record<DialogueLevel, string> = {
@@ -57,60 +60,75 @@ const ROLE_PREAMBLES: Record<DialogueLevel, string> = {
 
 export function buildDialogueSystemPrompt(params: PromptParams): string {
   const { level, project, volume, chapter, allVolumes, allChapters, outlines, isPlanMode } = params
-  const parts: string[] = []
 
-  // 1. Role preamble
-  parts.push(ROLE_PREAMBLES[level])
+  // 创建 token 预算
+  const budget = createBudget(params.contextWindow, params.contextConfig)
+  const sectionBudgets = allocateSectionBudgets(budget, params.contextConfig)
+
+  // 构建各区块（按优先级排列）
+  interface Section {
+    content: string
+    priority: 'critical' | 'high' | 'medium' | 'low'
+    budgetName: string
+  }
+
+  const sections: Section[] = []
+
+  // 1. Role preamble (固定，不裁剪)
+  sections.push({ content: ROLE_PREAMBLES[level], priority: 'critical', budgetName: 'other' })
 
   // 2. Genre knowledge
   if (project.genre) {
     const knowledge = formatKnowledgeForPrompt(project.genre)
     if (knowledge) {
-      parts.push(`\n## 类型知识库\n${knowledge}`)
+      sections.push({ content: `\n## 类型知识库\n${knowledge}`, priority: 'high', budgetName: 'other' })
     }
   }
 
   // 3. AI config
   const aiConfig = resolveConfig(project)
   if (aiConfig.customPrompt) {
-    parts.push(`\n## 作者补充要求\n${aiConfig.customPrompt}`)
+    sections.push({ content: `\n## 作者补充要求\n${aiConfig.customPrompt}`, priority: 'medium', budgetName: 'other' })
   }
 
   // 3.5 Writing skills
   if (params.skills && params.skills.length > 0) {
-    parts.push(buildSkillsSection(params.skills))
+    const skillsContent = buildSkillsSection(params.skills)
+    sections.push({ content: skillsContent, priority: 'medium', budgetName: 'skills' })
   }
 
-  // 4. Level-specific context
+  // 4. Level-specific context (章节内容是最关键的)
   if (level === 'book') {
-    parts.push(buildBookContext(project, allVolumes || [], allChapters || []))
+    sections.push({ content: buildBookContext(project, allVolumes || [], allChapters || []), priority: 'high', budgetName: 'chapter' })
   } else if (level === 'volume' && volume) {
-    parts.push(buildVolumeContext(project, volume, allChapters || []))
+    sections.push({ content: buildVolumeContext(project, volume, allChapters || []), priority: 'high', budgetName: 'chapter' })
   } else if (level === 'chapter' && chapter) {
-    parts.push(buildChapterContext(project, volume, chapter, allChapters || [], outlines || []))
+    const chapterBudget = sectionBudgets.chapter.maxTokens
+    sections.push({ content: buildChapterContext(project, volume, chapter, allChapters || [], outlines || [], chapterBudget), priority: 'critical', budgetName: 'chapter' })
   }
 
   // 5. Outline content
   if (outlines && outlines.length > 0) {
-    parts.push(buildOutlineContext(outlines))
+    const outlineBudget = sectionBudgets.outlines.maxTokens
+    sections.push({ content: buildOutlineContext(outlines, outlineBudget), priority: 'high', budgetName: 'outlines' })
   }
 
   // 6. Tool usage instructions
   const toolChapters = getToolScopeChapters(level, chapter, allVolumes || [], allChapters || [])
-  parts.push(buildToolInstructions(toolChapters, level, chapter, allVolumes || []))
+  sections.push({ content: buildToolInstructions(toolChapters, level, chapter, allVolumes || []), priority: 'medium', budgetName: 'tools' })
 
   // 7. Plan mode
   if (isPlanMode) {
-    parts.push(PLAN_MODE_PROMPT)
+    sections.push({ content: PLAN_MODE_PROMPT, priority: 'high', budgetName: 'other' })
   }
 
-  // 7.5 Reasoning context (if available)
+  // 7.5 Reasoning context
   if (params.reasoningContext) {
-    parts.push(params.reasoningContext)
+    sections.push({ content: params.reasoningContext, priority: 'medium', budgetName: 'reasoning' })
   }
 
-  // 8. Behavioral guidelines
-  parts.push(`\n## 行为准则
+  // 8. Behavioral guidelines (固定，不裁剪)
+  sections.push({ content: `\n## 行为准则
 - 你的目标是通过启发式对话帮助作者思考，而不是直接给出答案
 - 每次回复后，可以提出 1-2 个引导性问题帮助作者深入思考
 - 如果作者的想法有明显的类型惯例冲突，友善地指出并提供建议
@@ -120,13 +138,47 @@ export function buildDialogueSystemPrompt(params: PromptParams): string {
 - 当你需要查看某个章节的内容来给出建议时，使用 read_chapter_content 工具（会请求用户同意）
 - 写入类工具（创建章节、撰写大纲、撰写内容等）调用前会自动请求用户确认，这是正常流程
 - 【重要】创建章节前必须先有卷。如果当前没有卷，先创建卷，再创建章节
-- 【重要】在计划执行模式下，确认计划后必须连续调用工具完成所有步骤，不要中途停止或总结`)
+- 【重要】在计划执行模式下，确认计划后必须连续调用工具完成所有步骤，不要中途停止或总结`, priority: 'critical', budgetName: 'other' })
 
-  return parts.join('\n')
+  // 按优先级组装，超出预算时裁剪低优先级区块
+  return assembleWithBudget(sections, budget.available)
 }
 
 function resolveConfig(project: Project): BookAIConfig {
   return project.aiConfig
+}
+
+// 按优先级组装区块，超出预算时裁剪低优先级区块
+function assembleWithBudget(sections: Array<{ content: string; priority: string; budgetName: string }>, totalBudget: number): string {
+  const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 }
+  const sorted = [...sections].sort((a, b) => priorityOrder[a.priority as keyof typeof priorityOrder] - priorityOrder[b.priority as keyof typeof priorityOrder])
+
+  let usedTokens = 0
+  const included: string[] = []
+
+  for (const section of sorted) {
+    const sectionTokens = estimateTokens(section.content)
+    if (usedTokens + sectionTokens <= totalBudget) {
+      included.push(section.content)
+      usedTokens += sectionTokens
+    } else if (section.priority === 'critical') {
+      // 关键区块必须包含，即使超预算
+      included.push(section.content)
+      usedTokens += sectionTokens
+    } else {
+      // 尝试裁剪后包含
+      const remaining = totalBudget - usedTokens
+      if (remaining > 100) {  // 至少 100 token 才值得包含
+        const truncated = truncateToTokenBudget(section.content, remaining)
+        if (estimateTokens(truncated) > 50) {  // 裁剪后至少 50 token 才有意义
+          included.push(truncated)
+          usedTokens += estimateTokens(truncated)
+        }
+      }
+    }
+  }
+
+  return included.join('\n')
 }
 
 const SKILL_CATEGORY_LABELS: Record<SkillCategory, string> = {
@@ -207,7 +259,7 @@ function buildVolumeContext(project: Project, volume: Volume, allChapters: Chapt
   return parts.join('\n')
 }
 
-function buildChapterContext(project: Project, volume: Volume | null | undefined, chapter: Chapter, allChapters: Chapter[], outlines: Outline[]): string {
+function buildChapterContext(project: Project, volume: Volume | null | undefined, chapter: Chapter, allChapters: Chapter[], outlines: Outline[], maxTokens?: number): string {
   const parts: string[] = ['\n## 当前章节信息']
   parts.push(`书名：${project.name}`)
   if (volume) parts.push(`卷名：${volume.name}`)
@@ -217,11 +269,14 @@ function buildChapterContext(project: Project, volume: Volume | null | undefined
     parts.push(`\n章节摘要：${chapter.summaryResult}`)
   }
 
-  // Chapter content (truncated if too long)
+  // Chapter content (truncated based on budget)
   if (chapter.content) {
-    const content = chapter.content.length > 8000
-      ? chapter.content.substring(0, 4000) + '\n\n[...内容已截断...]\n\n' + chapter.content.substring(chapter.content.length - 2000)
-      : chapter.content
+    const contentBudget = maxTokens ? Math.floor(maxTokens * 0.6) : undefined
+    const content = contentBudget
+      ? truncateToTokenBudget(chapter.content, contentBudget)
+      : chapter.content.length > 8000
+        ? chapter.content.substring(0, 4000) + '\n\n[...内容已截断...]\n\n' + chapter.content.substring(chapter.content.length - 2000)
+        : chapter.content
     parts.push(`\n章节内容：\n${content}`)
   }
 
@@ -254,9 +309,8 @@ function buildChapterContext(project: Project, volume: Volume | null | undefined
   // Current chapter outline
   const chapterOutline = outlines.find(o => o.chapterId === chapter.id)
   if (chapterOutline) {
-    const outlineContent = chapterOutline.content.length > 2000
-      ? chapterOutline.content.substring(0, 2000) + '\n...[已截断]'
-      : chapterOutline.content
+    const outlineBudget = maxTokens ? Math.floor(maxTokens * 0.15) : 2000
+    const outlineContent = truncateToTokenBudget(chapterOutline.content, outlineBudget)
     parts.push(`\n当前章纲：\n${outlineContent}`)
   }
 
@@ -264,9 +318,8 @@ function buildChapterContext(project: Project, volume: Volume | null | undefined
   if (volume) {
     const volumeOutline = outlines.find(o => o.volumeId === volume.id)
     if (volumeOutline) {
-      const volContent = volumeOutline.content.length > 3000
-        ? volumeOutline.content.substring(0, 3000) + '\n...[已截断]'
-        : volumeOutline.content
+      const volBudget = maxTokens ? Math.floor(maxTokens * 0.25) : 3000
+      const volContent = truncateToTokenBudget(volumeOutline.content, volBudget)
       parts.push(`\n卷纲：\n${volContent}`)
     }
   }
@@ -291,13 +344,13 @@ function getToolScopeChapters(
   return allChapters
 }
 
-function buildOutlineContext(outlines: Outline[]): string {
+function buildOutlineContext(outlines: Outline[], maxTokens?: number): string {
   const parts: string[] = ['\n## 已有大纲']
+  const budgetPerOutline = maxTokens ? Math.floor(maxTokens / outlines.length) : 2000
+
   for (const outline of outlines) {
     const label = outline.level === 'book' ? '书籍大纲' : outline.level === 'volume' ? '卷纲' : '章纲'
-    const content = outline.content.length > 2000
-      ? outline.content.substring(0, 2000) + '\n...[已截断]'
-      : outline.content
+    const content = truncateToTokenBudget(outline.content, budgetPerOutline)
     parts.push(`\n### ${label}\n${content}`)
   }
   return parts.join('\n')

@@ -1,51 +1,16 @@
 import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
-import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, DialogueToolApprovalResponse, ContextConfig } from '../../shared/types'
-import { DEFAULT_CONTEXT_CONFIG } from '../../shared/types'
+import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, ContextConfig } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
 import { buildDialogueSystemPrompt, detectPlanMode } from './dialogue-prompts'
 import { getDialogueTools, executeTool, needsApproval, isCacheable, checkCache, getToolApprovalDescription, TOOL_DISPLAY_NAMES } from './dialogue-tools'
 import { getOutline, getSkills } from '../store/db'
 import { getReasoningChainById, extractUserMessage } from './reasoning-chains'
 import { executeReasoningChain, buildReasoningContext } from './dialogue-reasoning'
-import { compressHistory, buildCompressedMessages } from './context-compressor'
-import { estimateMessagesTokens, createBudget } from './token-counter'
+import { waitForApproval, handleApprovalResponse, trimOldToolResults, compressDialogueHistory } from './stream'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50
-
-// 裁剪旧的工具结果，防止上下文爆炸
-function trimOldToolResults(messages: Array<{ role: string; content: string; tool_call_id?: string }>, contextWindow?: number, contextConfig?: ContextConfig): void {
-  const config = contextConfig || DEFAULT_CONTEXT_CONFIG
-  const budget = createBudget(contextWindow, contextConfig)
-  const toolBudget = Math.floor(budget.available * config.toolResultBudgetRatio)
-
-  // 找到所有工具结果消息
-  const toolMessages = messages.filter(m => m.role === 'tool')
-  const toolTokens = estimateMessagesTokens(toolMessages)
-
-  if (toolTokens <= toolBudget) return
-
-  // 从最旧的工具结果开始截断
-  let excessTokens = toolTokens - toolBudget
-  for (const msg of toolMessages) {
-    if (excessTokens <= 0) break
-    const msgTokens = estimateMessagesTokens([msg])
-    if (msgTokens > 100) {  // 只截断较大的结果
-      const targetTokens = Math.max(100, msgTokens - excessTokens)
-      const ratio = targetTokens / msgTokens
-      const targetChars = Math.floor(msg.content.length * ratio)
-      msg.content = msg.content.substring(0, targetChars) + '\n\n[...结果已截断...]'
-      excessTokens -= (msgTokens - targetTokens)
-    }
-  }
-}
-
-// Approval waiting mechanism
-const pendingApprovals = new Map<string, {
-  resolve: (response: DialogueToolApprovalResponse) => void
-  reject: (err: Error) => void
-}>()
 
 interface StartStreamParams {
   config: LLMConfigSingle
@@ -58,7 +23,7 @@ interface StartStreamParams {
   allChapters?: Chapter[]
   aiConfig?: Partial<BookAIConfig>
   messages: { role: 'user' | 'assistant'; content: string }[]
-  contextConfig?: ContextConfig  // 上下文管理配置
+  contextConfig?: ContextConfig
 }
 
 interface ToolCallAccumulator {
@@ -76,11 +41,9 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   const dialogueAdvanced = aiConfig?.dialogueAdvanced
   const temperature = dialogueAdvanced?.temperature ?? 0.7
 
-  // Detect plan mode from the last user message
   const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
   const isPlanMode = lastUserMsg ? detectPlanMode(lastUserMsg.content) : false
 
-  // Extract reasoning chain IDs from message
   const messageChainIds: string[] = []
   if (lastUserMsg) {
     const matches = lastUserMsg.content.matchAll(/\[reasoning:([^\]]+)\]/g)
@@ -89,14 +52,11 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
     }
   }
 
-  // Run async, don't await — return streamId immediately
   ;(async () => {
-    // Execute reasoning chains BEFORE starting dialogue
     let reasoningContext = ''
     const executedReasoningChains = new Set<string>()
 
     if (messageChainIds.length > 0) {
-      // Build context for reasoning chains
       const contextParts: string[] = []
       if (params.chapter) {
         contextParts.push(`当前章节：${params.chapter.title}`)
@@ -112,7 +72,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
         contextParts.push(`## 大纲\n${outlines.map(o => o.content).join('\n\n')}`)
       }
 
-      // Recent dialogue history
       if (params.messages.length > 0) {
         const recentMessages = params.messages.slice(-6)
         const dialogueText = recentMessages
@@ -133,7 +92,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
         try {
           const session = await executeReasoningChain(chain, reasoningChainContext, config, mainWindow, controller.signal)
-          // Always include reasoning result for current turn, includeInContext controls persistence
           const result = buildReasoningContext(session)
           if (result) {
             reasoningContext += result
@@ -144,14 +102,12 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       }
     }
 
-    // Get outlines for context
     const outlines = [
       getOutline('book', params.project.id),
       params.volume ? getOutline('volume', params.volume.id) : null,
       params.chapter ? getOutline('chapter', params.chapter.id) : null
     ].filter(Boolean)
 
-    // Get enabled skills for this project (dialogue feature)
     const allSkills = getSkills()
     const skillIds = params.project.featureSkillIds?.dialogue || params.project.enabledSkillIds || []
     const enabledSkills = skillIds.length > 0
@@ -163,12 +119,11 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       outlines: outlines as any[],
       isPlanMode,
       skills: enabledSkills,
-      reasoningContext,  // Pass reasoning context to system prompt
-      contextWindow: config.contextWindow,  // Pass context window size for budget allocation
-      contextConfig  // Pass context config for budget ratios
+      reasoningContext,
+      contextWindow: config.contextWindow,
+      contextConfig
     })
 
-    // Clean up reasoning trigger tag from messages
     const cleanedMessages = messages.map((msg, i) => {
       if (msg.role === 'user' && i === messages.length - 1) {
         return { ...msg, content: extractUserMessage(msg.content) }
@@ -176,12 +131,10 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       return msg
     })
 
-    // 截断旧的工具结果，防止上下文爆炸（用户下次输入时执行）
     trimOldToolResults(cleanedMessages, config.contextWindow, contextConfig)
 
-    // 压缩对话历史（如果超出预算）
-    const compressed = compressHistory(cleanedMessages, config.contextWindow, contextConfig)
-    const finalMessages = buildCompressedMessages(compressed)
+    const compressed = compressDialogueHistory(cleanedMessages, config.contextWindow, contextConfig)
+    const finalMessages = compressed.messages
 
     const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [
       { role: 'system', content: systemPrompt },
@@ -190,7 +143,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
     try {
       const client = createClient(config)
       const tools = getDialogueTools()
-      const executedReasoningChains = new Set<string>()  // Track executed chains across tool calls
+      const executedReasoningChains = new Set<string>()
 
       for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
         if (controller.signal.aborted) break
@@ -233,7 +186,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
           const delta = chunk.choices[0]?.delta
 
-          // Capture reasoning_content and stream to renderer
           if ((delta as any)?.reasoning_content) {
             const rc = (delta as any).reasoning_content
             reasoningContent += rc
@@ -263,7 +215,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
           }
         }
 
-        // Signal thinking done if stream ended during thinking phase
         if (thinkingStarted && !thinkingDone) {
           thinkingDone = true
           mainWindow.webContents.send('dialogue:thinking-done', { streamId })
@@ -276,7 +227,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
           return
         }
 
-        // Add assistant message with tool_calls (and reasoning_content if present)
         const assistantMsg: any = {
           role: 'assistant',
           content: fullText || '',
@@ -299,10 +249,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             args = JSON.parse(tc.arguments)
           } catch { /* empty */ }
 
-          // Check cache for cacheable tools
           const cacheResult = checkCache(tc.functionName, args, params.allChapters || [])
           if (cacheResult.cached && !needsApproval(tc.functionName)) {
-            // Send approval request for cache hit
             const approvalId = randomUUID()
             mainWindow.webContents.send('dialogue:tool-approval', {
               streamId,
@@ -319,22 +267,18 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             try {
               const response = await waitForApproval(approvalId)
               if (!response.approved) {
-                // User rejected
                 mainWindow.webContents.send('dialogue:tool-start', { streamId, toolCallId: tc.id, toolName: tc.functionName, args })
                 mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result: '用户取消了操作' })
                 fullMessages.push({ role: 'tool', content: '用户取消了操作', tool_call_id: tc.id } as any)
                 continue
               }
               if (!response.refreshCache && cacheResult.result) {
-                // Use cached result
                 mainWindow.webContents.send('dialogue:tool-start', { streamId, toolCallId: tc.id, toolName: tc.functionName, args })
                 mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result: cacheResult.result })
                 fullMessages.push({ role: 'tool', content: cacheResult.result, tool_call_id: tc.id } as any)
                 continue
               }
-              // Fall through to execute with refresh
             } catch {
-              // Approval timeout or cancelled
               mainWindow.webContents.send('dialogue:tool-start', { streamId, toolCallId: tc.id, toolName: tc.functionName, args })
               mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result: '操作超时' })
               fullMessages.push({ role: 'tool', content: '操作超时', tool_call_id: tc.id } as any)
@@ -342,7 +286,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             }
           }
 
-          // Check if tool needs approval (write operations)
           if (needsApproval(tc.functionName)) {
             const approvalId = randomUUID()
             mainWindow.webContents.send('dialogue:tool-approval', {
@@ -371,7 +314,6 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             }
           }
 
-          // Execute tool
           mainWindow.webContents.send('dialogue:tool-start', { streamId, toolCallId: tc.id, toolName: tc.functionName, args })
 
           try {
@@ -415,34 +357,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
   return { streamId }
 }
 
-function waitForApproval(approvalId: string): Promise<DialogueToolApprovalResponse> {
-  return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      pendingApprovals.delete(approvalId)
-      reject(new Error('审批超时'))
-    }, 5 * 60 * 1000) // 5 minute timeout
-
-    pendingApprovals.set(approvalId, {
-      resolve: (response) => {
-        clearTimeout(timeout)
-        pendingApprovals.delete(approvalId)
-        resolve(response)
-      },
-      reject: (err) => {
-        clearTimeout(timeout)
-        pendingApprovals.delete(approvalId)
-        reject(err)
-      }
-    })
-  })
-}
-
-export function handleApprovalResponse(response: DialogueToolApprovalResponse): void {
-  const pending = pendingApprovals.get(response.approvalId)
-  if (pending) {
-    pending.resolve(response)
-  }
-}
+export { handleApprovalResponse }
 
 export function cancelDialogueStream(streamId: string): void {
   const controller = activeStreams.get(streamId)

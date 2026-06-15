@@ -221,6 +221,12 @@ const api: IPCAPI = {
   dialogueApproveTool: (response: DialogueToolApprovalResponse) =>
     ipcRenderer.invoke('dialogue:approve-tool', response),
 
+  resolveDialogueContextWindow: () =>
+    ipcRenderer.invoke('dialogue:resolve-context-window'),
+
+  dialogueCompress: (level: DialogueLevel, entityId: string) =>
+    ipcRenderer.invoke('dialogue:compress', level, entityId),
+
   // Reasoning
   onReasoningStart: (callback: (data: any) => void) => {
     const handler = (_event: any, data: any) => callback(data)

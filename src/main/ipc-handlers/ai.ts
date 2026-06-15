@@ -4,7 +4,7 @@ import { autoPolish, polishText, summarizeChapter } from '../llm/client'
 import { refineSummary } from '../llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from '../llm/dialogue'
 import { generateContinuation } from '../llm/continuation'
-import { compressConversationForStorage } from '../llm/context-compressor'
+import { compressConversationForStorage, compressConversationMessages } from '../llm/context-compressor'
 import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation } from '../../shared/types'
 
 export function registerAIHandlers(
@@ -180,5 +180,34 @@ export function registerAIHandlers(
   // Dialogue approval
   ipcMain.handle('dialogue:approve-tool', (_e, response: DialogueToolApprovalResponse) => {
     handleApprovalResponse(response)
+  })
+
+  // Dialogue context window query
+  ipcMain.handle('dialogue:resolve-context-window', () => {
+    const config = resolveFeatureConfig('dialogue')
+    return config?.contextWindow || null
+  })
+
+  // Manual dialogue compression
+  ipcMain.handle('dialogue:compress', (_e, level: DialogueLevel, entityId: string) => {
+    const conversation = getConversation(level, entityId)
+    if (!conversation || conversation.messages.length === 0) {
+      return { compressedCount: 0, summary: '' }
+    }
+
+    const config = resolveFeatureConfig('dialogue')
+    const contextConfig = getContextConfig()
+    const result = compressConversationMessages(conversation.messages, config?.contextWindow, contextConfig)
+
+    if (result.compressedCount > 0) {
+      const updated: Conversation = {
+        ...conversation,
+        messages: result.messages,
+        updatedAt: new Date().toISOString()
+      }
+      saveConversation(updated)
+    }
+
+    return { compressedCount: result.compressedCount, summary: result.summary }
   })
 }

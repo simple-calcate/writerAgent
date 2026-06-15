@@ -1,23 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import type { UpdateStatus } from '../../../shared/types'
 
-// Simple Markdown to readable text
-function formatReleaseNotes(md: string): string {
-  if (!md) return ''
-  return md
-    .replace(/^### (.+)$/gm, '\n【$1】')
-    .replace(/^## (.+)$/gm, '\n【$1】')
-    .replace(/^# (.+)$/gm, '\n【$1】')
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/`(.+?)`/g, '$1')
-    .replace(/^\s*[-*]\s+/gm, '  • ')
-    .replace(/^\s*\d+\.\s+/gm, (match) => '  ' + match.trim())
-    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
-
 export default function UpdateBanner() {
   const [status, setStatus] = useState<UpdateStatus>({ status: 'idle' })
   const [expanded, setExpanded] = useState(false)
@@ -126,9 +109,10 @@ export default function UpdateBanner() {
                   <button onClick={() => setExpanded(false)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
                 </div>
                 {status.releaseNotes && (
-                  <div className="text-xs text-gray-400 bg-gray-900/50 rounded p-3 mb-3 max-h-40 overflow-y-auto whitespace-pre-wrap leading-relaxed">
-                    {formatReleaseNotes(status.releaseNotes)}
-                  </div>
+                  <div
+                    className="text-xs text-gray-400 bg-gray-900/50 rounded p-3 mb-3 max-h-40 overflow-y-auto leading-relaxed [&_h2]:text-sm [&_h2]:text-gray-200 [&_h2]:font-medium [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:text-gray-300 [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_h4]:text-xs [&_h4]:text-gray-300 [&_h4]:mt-1 [&_h4]:mb-0.5 [&_strong]:text-gray-200 [&_code]:bg-gray-800 [&_code]:px-1 [&_code]:rounded [&_a]:text-blue-400 [&_a]:underline"
+                    dangerouslySetInnerHTML={{ __html: status.releaseNotes }}
+                  />
                 )}
                 <button
                   onClick={handleDownload}

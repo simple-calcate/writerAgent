@@ -201,3 +201,37 @@ export function buildCompressedMessages(
   })))
   return result
 }
+
+/**
+ * 手动压缩对话消息（用于 /compress 命令）
+ * 返回压缩后的 ConversationMessage 数组和摘要
+ */
+export function compressConversationMessages(
+  messages: ConversationMessage[],
+  contextWindow?: number,
+  contextConfig?: ContextConfig
+): { messages: ConversationMessage[]; summary: string; compressedCount: number } {
+  const config = contextConfig || DEFAULT_CONTEXT_CONFIG
+  const apiMessages = messages.map(m => ({ role: m.role, content: m.content }))
+  const result = compressHistory(apiMessages, contextWindow, contextConfig)
+
+  if (result.compressedCount === 0) {
+    return { messages, summary: '', compressedCount: 0 }
+  }
+
+  const keepRecent = config.keepRecentRounds
+  const recentMessages = messages.slice(-keepRecent)
+
+  const summaryMsg: ConversationMessage = {
+    id: crypto.randomUUID(),
+    role: 'assistant',
+    content: result.compressedSummary,
+    timestamp: new Date().toISOString()
+  }
+
+  return {
+    messages: [summaryMsg, ...recentMessages],
+    summary: result.compressedSummary,
+    compressedCount: result.compressedCount
+  }
+}

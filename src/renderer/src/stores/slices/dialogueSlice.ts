@@ -44,6 +44,7 @@ export interface DialogueSlice {
   clearDialogue: () => Promise<void>
   approveTool: (approvalId: string, approved: boolean, refreshCache?: boolean) => void
   deleteMessage: (messageId: string) => Promise<void>
+  compressDialogue: () => Promise<{ compressedCount: number; summary: string }>
 
   // Internal handlers
   _handleStreamChunk: (data: DialogueStreamChunk) => void
@@ -276,5 +277,19 @@ export const createDialogueSlice: StateCreator<
       updatedAt: new Date().toISOString()
     }
     await window.api.saveConversation(conversation)
+  },
+
+  compressDialogue: async () => {
+    const { dialogueLevel, dialogueEntityId } = get()
+    if (!dialogueLevel || !dialogueEntityId) return { compressedCount: 0, summary: '' }
+
+    const result = await window.api.dialogueCompress(dialogueLevel, dialogueEntityId)
+
+    if (result.compressedCount > 0) {
+      const conversation = await window.api.getConversation(dialogueLevel, dialogueEntityId)
+      set({ dialogueMessages: conversation?.messages || [] })
+    }
+
+    return result
   }
 })

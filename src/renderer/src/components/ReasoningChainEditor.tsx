@@ -28,21 +28,29 @@ const emptyChain: ReasoningChain = {
   builtin: false
 }
 
-// 计算拓扑层级用于可视化
+// 计算拓扑层级用于可视化（带循环依赖保护）
 function computeLevels(steps: ReasoningStep[]): number[] {
   const keyToIndex = new Map(steps.map((s, i) => [s.outputKey, i]))
   const levelOf = new Map<string, number>()
+  const visiting = new Set<string>()
 
   const getLevel = (key: string): number => {
     if (levelOf.has(key)) return levelOf.get(key)!
+    if (visiting.has(key)) {
+      levelOf.set(key, 0)
+      return 0
+    }
+    visiting.add(key)
     const step = steps.find(s => s.outputKey === key)
     if (!step || !step.dependsOn || step.dependsOn.length === 0) {
       levelOf.set(key, 0)
+      visiting.delete(key)
       return 0
     }
     const maxDep = Math.max(...step.dependsOn.filter(d => keyToIndex.has(d)).map(d => getLevel(d)))
     const level = maxDep + 1
     levelOf.set(key, level)
+    visiting.delete(key)
     return level
   }
 
@@ -54,10 +62,12 @@ function computeLevels(steps: ReasoningStep[]): number[] {
 
 export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete }: ReasoningChainEditorProps) {
   const [form, setForm] = useState<ReasoningChain>(chain || { ...emptyChain, id: crypto.randomUUID() })
+  const [error, setError] = useState<string | null>(null)
 
   const levels = useMemo(() => computeLevels(form.steps), [form.steps])
 
   const updateForm = (updates: Partial<ReasoningChain>) => {
+    setError(null)
     setForm(prev => ({ ...prev, ...updates }))
   }
 
@@ -72,6 +82,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
   }
 
   const updateStep = (index: number, updates: Partial<ReasoningStep>) => {
+    setError(null)
     const newSteps = [...form.steps]
     newSteps[index] = { ...newSteps[index], ...updates }
     updateForm({ steps: newSteps })
@@ -109,16 +120,16 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
     const chainToSave = { ...form }
 
     if (!chainToSave.name.trim()) {
-      alert('请输入推理链名称')
+      setError('请输入推理链名称')
       return
     }
     if (chainToSave.steps.length === 0) {
-      alert('请至少添加一个推理步骤')
+      setError('请至少添加一个推理步骤')
       return
     }
     for (const step of chainToSave.steps) {
       if (!step.name.trim() || !step.prompt.trim()) {
-        alert('请填写所有步骤的名称和提示词')
+        setError('请填写所有步骤的名称和提示词')
         return
       }
     }
@@ -143,7 +154,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
     }
     for (const step of chainToSave.steps) {
       if (hasCycle(step.outputKey)) {
-        alert('检测到循环依赖，请检查步骤依赖关系')
+        setError('检测到循环依赖，请检查步骤依赖关系')
         return
       }
     }
@@ -166,6 +177,12 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
           <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-300">取消</button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-900/30 border border-red-500/40 rounded px-3 py-2 text-xs text-red-300">
+          {error}
+        </div>
+      )}
 
       {/* Basic Info */}
       <div className="space-y-3">

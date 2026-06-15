@@ -98,6 +98,8 @@ export interface IPCAPI {
   onDialogueThinkingChunk: (callback: (data: DialogueThinkingChunk) => void) => () => void
   onDialogueThinkingDone: (callback: (data: DialogueThinkingDone) => void) => () => void
   dialogueApproveTool: (response: DialogueToolApprovalResponse) => Promise<void>
+  resolveDialogueContextWindow: () => Promise<number | null>
+  dialogueCompress: (level: DialogueLevel, entityId: string) => Promise<{ compressedCount: number; summary: string }>
 
   // Reasoning
   onReasoningStart: (callback: (data: any) => void) => () => void

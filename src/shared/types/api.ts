@@ -74,6 +74,9 @@ export const DEFAULT_CONTINUATION_CONFIG: ContinuationConfig = {
   commentDelayMs: 2000
 }
 
+// 压缩策略类型
+export type CompressionStrategyType = 'rule-based' | 'semantic' | 'auto'
+
 // 上下文管理配置
 export interface ContextConfig {
   // 系统提示词预算分配
@@ -85,6 +88,7 @@ export interface ContextConfig {
   // 对话历史压缩
   keepRecentRounds: number         // 保留最近对话轮数，默认 20
   summaryBudget: number            // 压缩摘要 token 上限，默认 800
+  compressionStrategy?: CompressionStrategyType  // 压缩策略，默认 'rule-based'
 
   // 工具结果限制
   toolResultBudgetRatio: number    // 工具结果总预算占比 (0-1)，默认 0.15
@@ -109,7 +113,20 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 }
 
 // 搜索引擎类型
-export type SearchEngineType = 'duckduckgo' | 'tavily' | 'bing' | 'google'
+export type SearchEngineType = 'duckduckgo' | 'tavily' | 'bing' | 'google' | 'searxng' | 'mojeek' | 'custom'
+
+// 自定义搜索 API 配置
+export interface CustomSearchApiConfig {
+  name: string
+  url: string
+  method?: 'GET' | 'POST'
+  headers?: Record<string, string>
+  params?: Record<string, string>
+  resultsPath?: string
+  titlePath?: string
+  urlPath?: string
+  snippetPath?: string
+}
 
 // 搜索引擎配置
 export interface SearchEngineConfig {
@@ -118,6 +135,13 @@ export interface SearchEngineConfig {
   bingApiKey?: string
   googleApiKey?: string
   googleSearchEngineId?: string
+  searxngBaseUrl?: string
+  customSearchApi?: CustomSearchApiConfig
+  // 并发搜索配置
+  parallelEnabled?: boolean
+  parallelMaxBackends?: number
+  parallelBackends?: SearchEngineType[]
+  dedupeDomains?: boolean
 }
 
 // 全局 LLM 配置

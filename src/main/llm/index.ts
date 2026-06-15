@@ -1,0 +1,10 @@
+// Re-export from sub-modules
+export { executeReasoningChain, buildReasoningContext } from './dialogue-reasoning'
+export { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from './dialogue-stream'
+export { autoPolish, polishText } from './client-polish'
+export { summarizeChapter } from './client-summary'
+export { generateContinuation } from './continuation'
+export { refineSummary } from './refine-summary'
+export { estimateTokens, estimateMessagesTokens, createBudget, truncateToTokenBudget } from './token-counter'
+export { compressHistory, compressConversationMessages, compressForStorage, compressConversationForStorage } from './context-compressor'
+export { getCompressionStrategy } from './compression-strategy'

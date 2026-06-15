@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { ContextConfig } from '../../../../shared/types'
+import type { ContextConfig, CompressionStrategyType } from '../../../../shared/types'
 import { DEFAULT_CONTEXT_CONFIG } from '../../../../shared/types'
 
 interface ContextConfigSectionProps {
@@ -95,29 +95,52 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
           {/* History Compression */}
           <div>
             <label className="block text-xs text-gray-400 mb-2">对话历史压缩</label>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
+              {/* Compression Strategy Selector */}
               <div>
-                <label className="block text-[10px] text-gray-500 mb-1">保留最近轮数</label>
-                <input
-                  type="number"
-                  min={5}
-                  max={50}
-                  value={config.keepRecentRounds}
-                  onChange={e => updateConfig({ keepRecentRounds: Math.max(5, Math.min(50, parseInt(e.target.value) || 20)) })}
+                <label className="block text-[10px] text-gray-500 mb-1">压缩策略</label>
+                <select
+                  value={config.compressionStrategy || 'rule-based'}
+                  onChange={e => updateConfig({ compressionStrategy: e.target.value as CompressionStrategyType })}
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                />
+                >
+                  <option value="rule-based">规则式（零成本，默认）</option>
+                  <option value="semantic">语义压缩（需安装 headroom-ai）</option>
+                  <option value="auto">自动选择</option>
+                </select>
+                <p className="text-[10px] text-gray-500 mt-1">
+                  {config.compressionStrategy === 'semantic' 
+                    ? '使用 ML 模型进行语义压缩，压缩率更高但需要额外依赖'
+                    : config.compressionStrategy === 'auto'
+                    ? '优先使用语义压缩，不可用时回退到规则式'
+                    : '基于规则的快速压缩，零成本无依赖'}
+                </p>
               </div>
-              <div>
-                <label className="block text-[10px] text-gray-500 mb-1">摘要 Token 上限</label>
-                <input
-                  type="number"
-                  min={200}
-                  max={2000}
-                  step={100}
-                  value={config.summaryBudget}
-                  onChange={e => updateConfig({ summaryBudget: Math.max(200, Math.min(2000, parseInt(e.target.value) || 800)) })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
-                />
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">保留最近轮数</label>
+                  <input
+                    type="number"
+                    min={5}
+                    max={50}
+                    value={config.keepRecentRounds}
+                    onChange={e => updateConfig({ keepRecentRounds: Math.max(5, Math.min(50, parseInt(e.target.value) || 20)) })}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] text-gray-500 mb-1">摘要 Token 上限</label>
+                  <input
+                    type="number"
+                    min={200}
+                    max={2000}
+                    step={100}
+                    value={config.summaryBudget}
+                    onChange={e => updateConfig({ summaryBudget: Math.max(200, Math.min(2000, parseInt(e.target.value) || 800)) })}
+                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
             </div>
           </div>

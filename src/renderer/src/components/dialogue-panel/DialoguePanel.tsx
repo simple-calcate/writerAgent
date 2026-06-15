@@ -23,19 +23,15 @@ function estimateTokens(text: string): number {
   return Math.ceil(cjk * 1.5 + nonCjk / 4 + 3)
 }
 
-// 常见模型默认上下文窗口
-const DEFAULT_CONTEXT_WINDOW = 128000
-
 // 上下文使用指示器
-function ContextUsageBar({ messages }: { messages: Array<{ role: string; content: string }> }) {
+function ContextUsageBar({ messages, contextWindow }: { messages: Array<{ role: string; content: string }>; contextWindow: number }) {
   const usage = useMemo(() => {
-    const totalChars = messages.reduce((sum, m) => sum + m.content.length, 0)
     const totalTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content) + 4, 0)
     // 对话历史占总预算的 25%，预留 25% 给输出
-    const historyBudget = Math.floor(DEFAULT_CONTEXT_WINDOW * 0.25)
+    const historyBudget = Math.floor(contextWindow * 0.25)
     const percent = Math.min(100, Math.round((totalTokens / historyBudget) * 100))
     return { totalTokens, historyBudget, percent, messageCount: messages.length }
-  }, [messages])
+  }, [messages, contextWindow])
 
   // 超过 50% 才显示
   if (usage.percent < 50) return null
@@ -44,13 +40,13 @@ function ContextUsageBar({ messages }: { messages: Array<{ role: string; content
   const textColor = usage.percent > 90 ? 'text-red-400' : usage.percent > 70 ? 'text-yellow-400' : 'text-gray-500'
 
   return (
-    <div className="px-3 py-1.5 border-t border-gray-700/30 bg-gray-800/20">
+    <div className="px-3 py-1.5 border-t border-gray-700/30 bg-gray-800/10 opacity-70">
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1 bg-gray-700/50 rounded-full overflow-hidden">
           <div className={`h-full ${barColor} rounded-full transition-all duration-300`} style={{ width: `${usage.percent}%` }} />
         </div>
         <span className={`text-[10px] ${textColor} whitespace-nowrap`}>
-          {usage.percent}% · {usage.messageCount} 条消息
+          {usage.percent}% · {usage.totalTokens.toLocaleString()} / {usage.historyBudget.toLocaleString()} tok · {usage.messageCount} 条
         </span>
       </div>
     </div>
@@ -173,13 +169,15 @@ export default function DialoguePanel() {
     cancelDialogueStream,
     clearDialogue,
     approveTool,
-    deleteMessage
+    deleteMessage,
+    compressDialogue
   } = useAppStore()
 
   const [input, setInput] = useState('')
   const [reasoningChains, setReasoningChains] = useState<ReasoningChain[]>([])
   const [selectedChains, setSelectedChains] = useState<ReasoningChain[]>([])
   const [showChainSelector, setShowChainSelector] = useState(false)
+  const [contextWindow, setContextWindow] = useState<number>(128000)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLTextAreaElement>(null)
   const chainSelectorRef = useRef<HTMLDivElement>(null)
@@ -194,6 +192,13 @@ export default function DialoguePanel() {
     window.api.getReasoningChains().then(setReasoningChains)
   }, [])
 
+  // Load context window from API config
+  useEffect(() => {
+    window.api.resolveDialogueContextWindow().then(cw => {
+      if (cw) setContextWindow(cw)
+    })
+  }, [dialogueLevel])
+
   // Click outside to close chain selector
   useEffect(() => {
     if (!showChainSelector) return
@@ -206,9 +211,24 @@ export default function DialoguePanel() {
     return () => document.removeEventListener('mousedown', handler)
   }, [showChainSelector])
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const text = input.trim()
     if (!text || isStreaming) return
+
+    // Command detection
+    if (text.startsWith('/')) {
+      const command = text.split(/\s+/)[0].toLowerCase()
+      setInput('')
+      setSelectedChains([])
+
+      if (command === '/compress') {
+        await compressDialogue()
+        return
+      }
+
+      // Unknown command
+      return
+    }
 
     const chainIds = selectedChains.map(c => c.id)
     const chainNames = selectedChains.map(c => c.name)
@@ -406,7 +426,7 @@ export default function DialoguePanel() {
       </div>
 
       {/* Context Usage */}
-      <ContextUsageBar messages={dialogueMessages.filter(m => !m.deleted)} />
+      <ContextUsageBar messages={dialogueMessages.filter(m => !m.deleted)} contextWindow={contextWindow} />
 
       {/* Quick Replies */}
       {showQuickReplies && (

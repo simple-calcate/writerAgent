@@ -5,6 +5,7 @@ import { join } from 'path'
 import type { UpdateStatus } from '../shared/types'
 
 const GITEE_RELEASES_API = 'https://gitee.com/api/v5/repos/simple-calcate/writerAgent/releases/latest'
+const GITHUB_RELEASES_API = 'https://api.github.com/repos/simple-calcate/writerAgent/releases/latest'
 
 let mainWindow: BrowserWindow | null = null
 let currentStatus: UpdateStatus = { status: 'idle' }
@@ -38,6 +39,14 @@ export function initUpdater(win: BrowserWindow): void {
       releaseNotes: typeof info.releaseNotes === 'string' ? info.releaseNotes : undefined
     }
     sendStatus()
+
+    // Fetch HTML release notes from GitHub
+    fetchGitHubReleaseNotes(info.version).then(html => {
+      if (html && currentStatus.status === 'available') {
+        currentStatus.releaseNotes = html
+        sendStatus()
+      }
+    }).catch(() => { /* fallback to plain text notes */ })
   })
 
   autoUpdater.on('update-not-available', () => {
@@ -88,6 +97,38 @@ function sendStatus(): void {
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.webContents.send('update:status', currentStatus)
   }
+}
+
+async function fetchGitHubReleaseNotes(version?: string): Promise<string | null> {
+  try {
+    const res = await fetch(GITHUB_RELEASES_API, {
+      headers: { 'Accept': 'application/vnd.github+json' }
+    })
+    if (!res.ok) return null
+    const release = await res.json() as any
+    const body: string = release.body || ''
+    if (!body) return null
+    return mdToHtml(body)
+  } catch {
+    return null
+  }
+}
+
+function mdToHtml(md: string): string {
+  return md
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+    .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/`(.+?)`/g, '<code>$1</code>')
+    .replace(/^\s*[-*]\s+/gm, '<br>• ')
+    .replace(/\[(.+?)\]\((.+?)\)/g, '<a href="$2" class="text-blue-400 underline">$1</a>')
+    .replace(/\n{2,}/g, '<br><br>')
+    .replace(/\n/g, '<br>')
 }
 
 export function getUpdateStatus(): UpdateStatus {

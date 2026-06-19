@@ -44,6 +44,24 @@ export interface AIFeatureConfig {
   summary: AIFeatureEntry
   dialogue: AIFeatureEntry
   refineSummary: AIFeatureEntry
+  agent: AIFeatureEntry
+}
+
+// Agent 专项配置
+export interface AgentFeatureConfig {
+  maxRewriteRounds: number      // 最大重写轮数，默认 3
+  criticThreshold: number       // Critic 通过阈值，默认 7
+  enableMemory: boolean         // 是否启用记忆系统，默认 true
+  enableTrajectory: boolean     // 是否启用轨迹记录，默认 true
+  autoCommitMemory: boolean     // 是否自动提交记忆，默认 true
+}
+
+export const DEFAULT_AGENT_FEATURE_CONFIG: AgentFeatureConfig = {
+  maxRewriteRounds: 3,
+  criticThreshold: 7,
+  enableMemory: true,
+  enableTrajectory: true,
+  autoCommitMemory: true
 }
 
 // 快捷键配置
@@ -154,6 +172,7 @@ export interface LLMConfig {
   contextConfig?: ContextConfig  // 可选，向后兼容
   braveSearchApiKey?: string  // 已废弃，保留向后兼容
   searchEngineConfig?: SearchEngineConfig  // 搜索引擎配置
+  agentConfig?: AgentFeatureConfig  // Agent 专项配置
 }
 
 // AI 高级配置（书籍/卷级别可设）

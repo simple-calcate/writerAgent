@@ -169,7 +169,12 @@ function SuggestionCard({ suggestion }: { suggestion: PolishResult }) {
 }
 
 function PolishContent() {
-  const { isAnalyzing, polishSuggestions, analyzeError, acceptAllSuggestions, dismissAllSuggestions, regeneratePolish, aiIsThinking, aiThinkingText, cancelAIFeature } = useAppStore()
+  const { isAnalyzing, polishSuggestions, analyzeError, analyzeErrorDetail, thinkingHistory, acceptAllSuggestions, dismissAllSuggestions, regeneratePolish, aiIsThinking, aiThinkingText, cancelAIFeature, clearThinkingHistory } = useAppStore()
+  const [showThinking, setShowThinking] = useState(false)
+
+  useEffect(() => {
+    if (thinkingHistory) setShowThinking(true)
+  }, [thinkingHistory])
 
   if (isAnalyzing) {
     return (
@@ -191,19 +196,61 @@ function PolishContent() {
 
   if (analyzeError) {
     return (
-      <div className="flex-1 p-4">
-        <div className="bg-red-900/30 border border-red-800 rounded p-3 text-sm text-red-300">{analyzeError}</div>
-        <button onClick={regeneratePolish} className="mt-3 text-xs text-blue-400 hover:text-blue-300">重新生成</button>
-      </div>
-    )
-  }
-
-  if (polishSuggestions.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center p-4">
-        <div className="text-center text-gray-500">
-          <div className="text-2xl mb-2">~</div>
-          <p className="text-sm">暂无润色建议</p>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Thinking history */}
+        {thinkingHistory && (
+          <div className="border-b border-gray-700/60 shrink-0">
+            <button
+              onClick={() => setShowThinking(!showThinking)}
+              className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                <span className="text-purple-400">◎</span>
+                AI 思考过程
+              </span>
+              <span className="text-gray-600">{showThinking ? '收起' : '展开'}</span>
+            </button>
+            {showThinking && (
+              <div className="px-3 pb-3 max-h-48 overflow-y-auto">
+                <div className="bg-gray-900/60 border border-gray-700/40 rounded p-2.5 text-[11px] leading-relaxed text-gray-500 font-mono whitespace-pre-wrap break-all">
+                  {thinkingHistory}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Error details */}
+        <div className="flex-1 p-4 overflow-y-auto">
+          <div className="bg-red-900/20 border border-red-800/50 rounded-lg p-4">
+            <div className="flex items-start gap-2 mb-3">
+              <span className="text-red-400 text-lg">⚠</span>
+              <div>
+                <p className="text-sm text-red-300 font-medium">润色分析失败</p>
+                <p className="text-xs text-red-400/80 mt-1">{analyzeError}</p>
+              </div>
+            </div>
+            {analyzeErrorDetail && (
+              <div className="bg-gray-900/50 border border-gray-700/30 rounded p-3 mt-3">
+                <p className="text-xs text-gray-400 leading-relaxed">{analyzeErrorDetail}</p>
+              </div>
+            )}
+            <div className="mt-4 flex items-center gap-2">
+              <button
+                onClick={regeneratePolish}
+                className="text-xs text-blue-400 hover:text-blue-300 px-3 py-1.5 rounded bg-blue-500/10 hover:bg-blue-500/20 transition-colors"
+              >
+                重新生成
+              </button>
+              {thinkingHistory && (
+                <button
+                  onClick={clearThinkingHistory}
+                  className="text-xs text-gray-500 hover:text-gray-400 px-3 py-1.5 rounded hover:bg-gray-700/50 transition-colors"
+                >
+                  清除记录
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     )
@@ -211,23 +258,78 @@ function PolishContent() {
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
-      {/* 批量操作 */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/60 shrink-0">
-        <span className="text-xs text-gray-400">{polishSuggestions.length} 条建议</span>
-        <div className="flex gap-2">
-          <button onClick={acceptAllSuggestions} className="text-xs text-green-400 hover:text-green-300">全部采纳</button>
-          <button onClick={dismissAllSuggestions} className="text-xs text-gray-500 hover:text-gray-400">全部忽略</button>
+      {/* Thinking history */}
+      {thinkingHistory && (
+        <div className="border-b border-gray-700/60 shrink-0">
+          <button
+            onClick={() => setShowThinking(!showThinking)}
+            className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+          >
+            <span className="flex items-center gap-1.5">
+              <span className="text-purple-400">◎</span>
+              AI 思考过程
+            </span>
+            <span className="text-gray-600">{showThinking ? '收起' : '展开'}</span>
+          </button>
+          {showThinking && (
+            <div className="px-3 pb-3 max-h-48 overflow-y-auto">
+              <div className="bg-gray-900/60 border border-gray-700/40 rounded p-2.5 text-[11px] leading-relaxed text-gray-500 font-mono whitespace-pre-wrap break-all">
+                {thinkingHistory}
+              </div>
+            </div>
+          )}
         </div>
-      </div>
-      {/* 列表 */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-3">
-        {polishSuggestions.map(s => <SuggestionCard key={s.id} suggestion={s} />)}
-      </div>
-      {/* 重新生成 */}
+      )}
+
+      {/* Error when no suggestions */}
+      {analyzeError && (
+        <div className="px-3 py-2 border-b border-gray-700/60 shrink-0">
+          <div className="bg-yellow-900/20 border border-yellow-800/30 rounded px-3 py-2">
+            <p className="text-xs text-yellow-400/80">{analyzeError}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Batch operations */}
+      {polishSuggestions.length > 0 && (
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-700/60 shrink-0">
+          <span className="text-xs text-gray-400">{polishSuggestions.length} 条建议</span>
+          <div className="flex gap-2">
+            <button onClick={acceptAllSuggestions} className="text-xs text-green-400 hover:text-green-300">全部采纳</button>
+            <button onClick={dismissAllSuggestions} className="text-xs text-gray-500 hover:text-gray-400">全部忽略</button>
+          </div>
+        </div>
+      )}
+
+      {/* Empty state */}
+      {polishSuggestions.length === 0 && !analyzeError && (
+        <div className="flex-1 flex items-center justify-center p-4">
+          <div className="text-center text-gray-500">
+            <div className="text-2xl mb-2">~</div>
+            <p className="text-sm">暂无润色建议</p>
+          </div>
+        </div>
+      )}
+
+      {/* Suggestions list */}
+      {polishSuggestions.length > 0 && (
+        <div className="flex-1 overflow-y-auto p-3 space-y-3">
+          {polishSuggestions.map(s => <SuggestionCard key={s.id} suggestion={s} />)}
+        </div>
+      )}
+
+      {/* Regenerate */}
       <div className="p-2 border-t border-gray-700/60 shrink-0">
-        <button onClick={regeneratePolish} className="w-full text-xs text-blue-400 hover:text-blue-300 py-1.5 rounded hover:bg-gray-700/50 transition-colors">
-          ↻ 重新生成
-        </button>
+        <div className="flex items-center justify-between">
+          <button onClick={regeneratePolish} className="flex-1 text-xs text-blue-400 hover:text-blue-300 py-1.5 rounded hover:bg-gray-700/50 transition-colors">
+            ↻ 重新生成
+          </button>
+          {thinkingHistory && (
+            <button onClick={clearThinkingHistory} className="text-xs text-gray-600 hover:text-gray-400 px-3 py-1.5 rounded hover:bg-gray-700/50 transition-colors ml-2">
+              清除记录
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )

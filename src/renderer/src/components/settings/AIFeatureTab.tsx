@@ -1,7 +1,8 @@
-import type { LLMConfig, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, ContinuationConfig, APIProfile, ContextConfig } from '../../../../shared/types'
-import { DEFAULT_CONTINUATION_CONFIG, DEFAULT_CONTEXT_CONFIG } from '../../../../shared/types'
+import type { LLMConfig, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, ContinuationConfig, APIProfile, ContextConfig, AgentFeatureConfig } from '../../../../shared/types'
+import { DEFAULT_CONTINUATION_CONFIG, DEFAULT_CONTEXT_CONFIG, DEFAULT_AGENT_FEATURE_CONFIG } from '../../../../shared/types'
 import { FEATURE_LIST, THINKING_PRESETS } from '../Settings'
 import ContextConfigSection from './ContextConfigSection'
+import AgentConfigSection from './AgentConfigSection'
 
 interface AIFeatureTabProps {
   form: LLMConfig
@@ -18,20 +19,17 @@ export default function AIFeatureTab({
   handleBindProfile,
   getProfileName
 }: AIFeatureTabProps) {
-  const dialogueEntry = form.aiFeatures.dialogue
-  const isDialogueEnabled = dialogueEntry?.enabled
-
   return (
     <div className="space-y-3">
       {FEATURE_LIST.map(feat => {
         const entry = form.aiFeatures[feat.key]
-        const isDialogue = feat.key === 'dialogue'
+        const isAgent = feat.key === 'agent'
         return (
           <div
             key={feat.key}
             className={`px-3 py-3 rounded-lg border transition-all duration-200 ${
               entry.enabled
-                ? isDialogue
+                ? isAgent
                   ? 'border-blue-500/30 bg-gradient-to-br from-gray-800/80 to-gray-700/50 shadow-lg shadow-blue-500/5'
                   : 'border-gray-600 bg-gray-700/30'
                 : 'border-gray-700/50 bg-gray-800/50 opacity-60'
@@ -39,13 +37,13 @@ export default function AIFeatureTab({
           >
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                {isDialogue && entry.enabled && (
+                {isAgent && entry.enabled && (
                   <div className="w-1 h-8 bg-blue-500 rounded-full" />
                 )}
                 <div>
                   <div className="flex items-center gap-2">
                     <p className="text-sm text-gray-200 font-medium">{feat.label}</p>
-                    {isDialogue && entry.enabled && (
+                    {isAgent && entry.enabled && (
                       <span className="px-1.5 py-0.5 text-[10px] bg-blue-500/20 text-blue-400 rounded-full">高级</span>
                     )}
                   </div>
@@ -146,11 +144,19 @@ export default function AIFeatureTab({
                   <span className="text-[10px] text-gray-500">k {entry.maxTokens ? `(${entry.maxTokens * 1000})` : '默认不限制'}</span>
                 </div>
 
-                {/* Context Config for Dialogue */}
-                {isDialogue && (
+                {/* Context Config for Agent */}
+                {isAgent && (
                   <ContextConfigSection
                     config={form.contextConfig || DEFAULT_CONTEXT_CONFIG}
                     onChange={config => setForm({ ...form, contextConfig: config })}
+                  />
+                )}
+
+                {/* Agent Config */}
+                {isAgent && (
+                  <AgentConfigSection
+                    config={form.agentConfig || DEFAULT_AGENT_FEATURE_CONFIG}
+                    onChange={config => setForm({ ...form, agentConfig: config })}
                   />
                 )}
               </div>

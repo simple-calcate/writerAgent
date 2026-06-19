@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, APIProfile, VersionSnapshot, Conversation, Outline, WritingSkill, ReasoningChain } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, APIProfile, VersionSnapshot, Conversation, Outline, WritingSkill, ReasoningChain, EpisodicMemoryEntry, SemanticMemoryEntry, StyleMemoryEntry } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, BUILTIN_SKILLS } from '../../shared/types'
 
 export interface Store {
@@ -15,6 +15,9 @@ export interface Store {
   outlines: Outline[]
   skills: WritingSkill[]
   reasoningChains: ReasoningChain[]
+  episodicMemories: EpisodicMemoryEntry[]
+  semanticMemories: SemanticMemoryEntry[]
+  styleMemories: StyleMemoryEntry[]
 }
 
 const defaultProfileId = 'default-profile'
@@ -30,7 +33,8 @@ const defaultStore: Store = {
       polish: { enabled: true, profileId: null },
       summary: { enabled: true, profileId: null },
       dialogue: { enabled: true, profileId: null },
-      refineSummary: { enabled: true, profileId: null }
+      refineSummary: { enabled: true, profileId: null },
+      agent: { enabled: true, profileId: null }
     },
     keyBindings: { ...DEFAULT_KEY_BINDINGS },
     continuationConfig: { ...DEFAULT_CONTINUATION_CONFIG },
@@ -40,7 +44,10 @@ const defaultStore: Store = {
   conversations: [],
   outlines: [],
   skills: [],
-  reasoningChains: []
+  reasoningChains: [],
+  episodicMemories: [],
+  semanticMemories: [],
+  styleMemories: []
 }
 
 // App-level config (data path setting)

@@ -3,6 +3,9 @@ import { useAppStore } from '../../stores/useAppStore'
 import type { DialogueLevel, ReasoningChain } from '../../../../shared/types'
 import { ToolCallCard, ThinkingIndicator, QuickReplyGroups, renderMarkdown, type QuestionGroup } from '../dialogue'
 import { PendingApprovalCard, PlanModeBadge } from './ApprovalCard'
+import AgentFlowPanel from '../dialogue/AgentFlowPanel'
+import AgentTrajectoryPanel from '../dialogue/AgentTrajectoryPanel'
+import RewriteApprovalCard from '../dialogue/RewriteApprovalCard'
 
 const LEVEL_META: Record<DialogueLevel, { label: string; icon: string }> = {
   book: { label: '书籍对话', icon: '📚' },
@@ -23,11 +26,22 @@ function estimateTokens(text: string): number {
   return Math.ceil(cjk * 1.5 + nonCjk / 4 + 3)
 }
 
+// 估算单条消息的完整 token 数（含工具调用结果）
+function estimateMessageTokens(msg: { content: string; toolCalls?: Array<{ result?: string }> }): number {
+  let tokens = estimateTokens(msg.content) + 4  // 4 = role/formatting overhead
+  if (msg.toolCalls) {
+    for (const tc of msg.toolCalls) {
+      if (tc.result) tokens += estimateTokens(tc.result) + 4
+    }
+  }
+  return tokens
+}
+
 // 上下文使用指示器
-function ContextUsageBar({ messages, contextWindow }: { messages: Array<{ role: string; content: string }>; contextWindow: number }) {
+function ContextUsageBar({ messages, contextWindow }: { messages: Array<{ content: string; toolCalls?: Array<{ result?: string }> }>; contextWindow: number }) {
   const usage = useMemo(() => {
-    const totalTokens = messages.reduce((sum, m) => sum + estimateTokens(m.content) + 4, 0)
-    // 对话历史占总预算的 25%，预留 25% 给输出
+    const totalTokens = messages.reduce((sum, m) => sum + estimateMessageTokens(m), 0)
+    // 对话历史占总预算的 25%（与后端 DEFAULT_CONTEXT_CONFIG.historyBudgetRatio 一致）
     const historyBudget = Math.floor(contextWindow * 0.25)
     const percent = Math.min(100, Math.round((totalTokens / historyBudget) * 100))
     return { totalTokens, historyBudget, percent, messageCount: messages.length }
@@ -424,6 +438,11 @@ export default function DialoguePanel() {
 
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Agent Panels */}
+      <AgentFlowPanel />
+      <AgentTrajectoryPanel />
+      <RewriteApprovalCard />
 
       {/* Context Usage */}
       <ContextUsageBar messages={dialogueMessages.filter(m => !m.deleted)} contextWindow={contextWindow} />

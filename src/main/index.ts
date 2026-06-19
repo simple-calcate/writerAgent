@@ -5,6 +5,7 @@ import { initUpdater, checkForUpdates } from './updater'
 import { registerAIHandlers } from './ipc-handlers/ai'
 import { registerDataHandlers } from './ipc-handlers/data'
 import { registerConfigHandlers } from './ipc-handlers/config'
+import { registerAgentHandlers } from './ipc-handlers/agent'
 
 let mainWindow: BrowserWindow | null = null
 const currentAIAbort: { controller: AbortController | null } = { controller: null }
@@ -42,6 +43,7 @@ function registerIPC(): void {
   registerAIHandlers(mainWindow, currentAIAbort, (ctrl) => { currentAIAbort.controller = ctrl })
   registerDataHandlers(mainWindow)
   registerConfigHandlers(mainWindow)
+  registerAgentHandlers(mainWindow)
 }
 
 app.whenReady().then(() => {

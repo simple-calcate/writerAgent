@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain, AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete, WACState, AgentFlowSnapshot, WritingTrajectory } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -329,7 +329,83 @@ const api: IPCAPI = {
     ipcRenderer.invoke('visual:scan-wallpapers', path),
 
   prepareWallpaper: (filePath: string) =>
-    ipcRenderer.invoke('visual:prepare-wallpaper', filePath)
+    ipcRenderer.invoke('visual:prepare-wallpaper', filePath),
+
+  // Agent (Writer Agent System)
+  agentProcess: (level: DialogueLevel, entityId: string, userRequest: string) =>
+    ipcRenderer.invoke('agent:process', level, entityId, userRequest),
+
+  agentCancel: () =>
+    ipcRenderer.invoke('agent:cancel'),
+
+  agentGetState: () =>
+    ipcRenderer.invoke('agent:get-state'),
+
+  agentRoute: (level: DialogueLevel, entityId: string, input: string) =>
+    ipcRenderer.invoke('agent:route', level, entityId, input),
+
+  agentApproveRewrite: (approvalId: string, approved: boolean) =>
+    ipcRenderer.invoke('agent:approve-rewrite', approvalId, approved),
+
+  onAgentRewriteApproval: (callback: (data: { approvalId: string; taskId: string; score: any; strategy: string; instruction: string; round: number }) => void) => {
+    const handler = (_event: any, data: any) => callback(data)
+    ipcRenderer.on('agent:rewrite-approval', handler)
+    return () => { ipcRenderer.removeListener('agent:rewrite-approval', handler) }
+  },
+
+  onAgentPhaseChange: (callback: (data: AgentPhaseChange) => void) => {
+    const handler = (_event: any, data: AgentPhaseChange) => callback(data)
+    ipcRenderer.on('agent:phase-change', handler)
+    return () => { ipcRenderer.removeListener('agent:phase-change', handler) }
+  },
+
+  onAgentSubTaskUpdate: (callback: (data: AgentSubTaskUpdate) => void) => {
+    const handler = (_event: any, data: AgentSubTaskUpdate) => callback(data)
+    ipcRenderer.on('agent:subtask-update', handler)
+    return () => { ipcRenderer.removeListener('agent:subtask-update', handler) }
+  },
+
+  onAgentCriticResult: (callback: (data: AgentCriticResult) => void) => {
+    const handler = (_event: any, data: AgentCriticResult) => callback(data)
+    ipcRenderer.on('agent:critic-result', handler)
+    return () => { ipcRenderer.removeListener('agent:critic-result', handler) }
+  },
+
+  onAgentTaskComplete: (callback: (data: AgentTaskComplete) => void) => {
+    const handler = (_event: any, data: AgentTaskComplete) => callback(data)
+    ipcRenderer.on('agent:task-complete', handler)
+    return () => { ipcRenderer.removeListener('agent:task-complete', handler) }
+  },
+
+  onAgentChunk: (callback: (data: { streamId: string; chunk: string }) => void) => {
+    const handler = (_event: any, data: { streamId: string; chunk: string }) => callback(data)
+    ipcRenderer.on('agent:chunk', handler)
+    return () => { ipcRenderer.removeListener('agent:chunk', handler) }
+  },
+
+  onAgentThinkingChunk: (callback: (data: { streamId: string; chunk: string }) => void) => {
+    const handler = (_event: any, data: { streamId: string; chunk: string }) => callback(data)
+    ipcRenderer.on('agent:thinking-chunk', handler)
+    return () => { ipcRenderer.removeListener('agent:thinking-chunk', handler) }
+  },
+
+  onAgentThinkingDone: (callback: (data: { streamId: string }) => void) => {
+    const handler = (_event: any, data: { streamId: string }) => callback(data)
+    ipcRenderer.on('agent:thinking-done', handler)
+    return () => { ipcRenderer.removeListener('agent:thinking-done', handler) }
+  },
+
+  onAgentFlowUpdate: (callback: (data: AgentFlowSnapshot) => void) => {
+    const handler = (_event: any, data: AgentFlowSnapshot) => callback(data)
+    ipcRenderer.on('agent:flow-update', handler)
+    return () => { ipcRenderer.removeListener('agent:flow-update', handler) }
+  },
+
+  onAgentTrajectory: (callback: (data: WritingTrajectory) => void) => {
+    const handler = (_event: any, data: WritingTrajectory) => callback(data)
+    ipcRenderer.on('agent:trajectory', handler)
+    return () => { ipcRenderer.removeListener('agent:trajectory', handler) }
+  }
 }
 
 contextBridge.exposeInMainWorld('api', api)

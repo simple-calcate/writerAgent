@@ -9,11 +9,13 @@ export interface PolishSlice {
   isAnalyzing: boolean
   polishSuggestions: PolishResult[]
   analyzeError: string | null
+  analyzeErrorDetail: string | null
   activeSuggestionId: string | null
   previewOriginalContent: string | null
   scrollToPosition: number | null
   aiIsThinking: boolean
   aiThinkingText: string
+  thinkingHistory: string
 
   // Actions
   autoAnalyze: () => Promise<void>
@@ -25,6 +27,7 @@ export interface PolishSlice {
   setActiveSuggestion: (id: string | null) => void
   clearScrollToPosition: () => void
   cancelAIFeature: () => void
+  clearThinkingHistory: () => void
 }
 
 export const createPolishSlice: StateCreator<
@@ -36,11 +39,13 @@ export const createPolishSlice: StateCreator<
   isAnalyzing: false,
   polishSuggestions: [],
   analyzeError: null,
+  analyzeErrorDetail: null,
   activeSuggestionId: null,
   previewOriginalContent: null,
   scrollToPosition: null,
   aiIsThinking: false,
   aiThinkingText: '',
+  thinkingHistory: '',
 
   cancelAIFeature: () => {
     window.api.aiCancel()
@@ -51,6 +56,10 @@ export const createPolishSlice: StateCreator<
       isSummarizing: false,
       isRefining: false
     } as any)
+  },
+
+  clearThinkingHistory: () => {
+    set({ thinkingHistory: '' })
   },
 
   autoAnalyze: async () => {
@@ -73,11 +82,13 @@ export const createPolishSlice: StateCreator<
     set({
       isAnalyzing: true,
       analyzeError: null,
+      analyzeErrorDetail: null,
       polishSuggestions: [],
       activeSuggestionId: null,
       previewOriginalContent: null,
       aiIsThinking: false,
-      aiThinkingText: ''
+      aiThinkingText: '',
+      thinkingHistory: ''
     })
     const unsubChunk = window.api.onAIThinkingChunk((data) => {
       set(s => ({ aiIsThinking: true, aiThinkingText: s.aiThinkingText + data.chunk }))
@@ -87,9 +98,40 @@ export const createPolishSlice: StateCreator<
     })
     try {
       const result = await window.api.autoPolish(currentChapter.content, mergedAI)
-      set({ polishSuggestions: result.suggestions, isAnalyzing: false })
+      const { aiThinkingText } = get()
+      set({
+        polishSuggestions: result.suggestions,
+        isAnalyzing: false,
+        thinkingHistory: aiThinkingText,
+        aiThinkingText: ''
+      })
+      if (result.suggestions.length === 0) {
+        set({ analyzeError: '未找到需要润色的段落' })
+      }
     } catch (e: any) {
-      set({ analyzeError: e.message, isAnalyzing: false })
+      const errorMsg = e.message || '未知错误'
+      let detail = ''
+      if (errorMsg.includes('JSON') || errorMsg.includes('parse')) {
+        detail = 'AI 返回的内容无法解析为有效的 JSON 格式。这可能是由于模型输出格式不正确或响应被截断导致的。'
+      } else if (errorMsg.includes('timeout') || errorMsg.includes('超时')) {
+        detail = '请求超时，AI 服务响应时间过长。请检查网络连接或尝试减少文本长度。'
+      } else if (errorMsg.includes('network') || errorMsg.includes('网络')) {
+        detail = '网络连接失败，请检查网络设置和 API 配置。'
+      } else if (errorMsg.includes('api') || errorMsg.includes('key') || errorMsg.includes('auth')) {
+        detail = 'API 认证失败，请检查 API Key 配置是否正确。'
+      } else if (errorMsg.includes('rate') || errorMsg.includes('limit')) {
+        detail = 'API 调用频率超限，请稍后再试。'
+      } else {
+        detail = `错误详情：${errorMsg}`
+      }
+      const { aiThinkingText } = get()
+      set({
+        analyzeError: errorMsg,
+        analyzeErrorDetail: detail,
+        isAnalyzing: false,
+        thinkingHistory: aiThinkingText,
+        aiThinkingText: ''
+      })
     } finally {
       unsubChunk()
       unsubDone()

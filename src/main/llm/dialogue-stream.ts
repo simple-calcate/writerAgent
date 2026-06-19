@@ -69,7 +69,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       ].filter(Boolean)
 
       if (outlines.length > 0) {
-        contextParts.push(`## 大纲\n${outlines.map(o => o.content).join('\n\n')}`)
+        contextParts.push(`## 大纲\n${outlines.map(o => o!.content).join('\n\n')}`)
       }
 
       if (params.messages.length > 0) {
@@ -327,7 +327,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
               aiConfig,
               refreshCache: true,
               mainWindow,
-              dialogueMessages: params.messages,
+              dialogueMessages: params.messages.map(m => ({ ...m, id: '', timestamp: '' })) as any,
               executedReasoningChains,
               contextConfig
             })

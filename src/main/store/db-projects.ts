@@ -29,7 +29,9 @@ export function createProject(name: string, genre?: string | null): Project {
     dialogue: [...builtinIds],
     polish: getSkillIdsByCategories(['style', 'formatting']),
     summary: [],
-    continuation: getSkillIdsByCategories(['scene', 'dialogue', 'pacing', 'style', 'character', 'structure'])
+    continuation: getSkillIdsByCategories(['scene', 'dialogue', 'pacing', 'style', 'character', 'structure']),
+    outline: [],
+    chapterContent: []
   }
 
   const project: Project = { id: randomUUID(), name, genre: genre || null, aiConfig, featureSkillIds, createdAt: now, updatedAt: now }

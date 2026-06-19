@@ -13,7 +13,7 @@ export async function searchBing(query: string, count: number, apiKey: string): 
     throw new Error(`Bing 请求失败 (HTTP ${response.status})`)
   }
 
-  const data = await response.json()
+  const data: any = await response.json()
   const results = data.webPages?.value || []
 
   return results.slice(0, count).map((r: any) => ({

@@ -69,6 +69,7 @@ export interface Volume {
   projectId: string
   name: string
   orderIndex: number
+  aiConfig?: Record<string, unknown>
   createdAt: string
   updatedAt: string
 }

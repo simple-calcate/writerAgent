@@ -5,7 +5,42 @@ import { refineSummary } from '../llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from '../llm/dialogue'
 import { generateContinuation } from '../llm/continuation'
 import { compressConversationForStorage, compressConversationMessages } from '../llm/context-compressor'
-import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation } from '../../shared/types'
+import { getAgentRuntime } from '../agent/runtime'
+import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation, Volume, Chapter, AnalysisResult } from '../../shared/types'
+
+function formatAnalysisForDialogue(result: AnalysisResult): string {
+  const { score, summary } = result
+  const lines = [
+    '## 内容分析报告',
+    '',
+    `**综合评分：${score.overall}/10**`,
+    '',
+    '| 维度 | 评分 |',
+    '|------|------|',
+    `| 结构完整性 | ${score.structure}/10 |`,
+    `| 节奏 | ${score.pacing}/10 |`,
+    `| 冲突强度 | ${score.conflict}/10 |`,
+    `| 信息密度 | ${score.infoDensity}/10 |`,
+    `| 文风一致性 | ${score.styleConsistency}/10 |`,
+    ''
+  ]
+
+  if (score.issues.length > 0) {
+    lines.push('### 发现的问题')
+    score.issues.forEach(issue => lines.push(`- ${issue}`))
+    lines.push('')
+  }
+
+  if (score.suggestions.length > 0) {
+    lines.push('### 改进建议')
+    score.suggestions.forEach(s => lines.push(`- ${s}`))
+    lines.push('')
+  }
+
+  lines.push(`> ${summary}`)
+
+  return lines.join('\n')
+}
 
 export function registerAIHandlers(
   mainWindow: BrowserWindow,
@@ -133,31 +168,55 @@ export function registerAIHandlers(
     const allVolumes = getVolumes(project.id)
     const allChapters = getChapters(project.id)
 
-    let volume = null
-    let chapter = null
+    let volume: Volume | null = null
+    let chapter: Chapter | null = null
 
     if (level === 'volume') {
       volume = allVolumes.find(v => v.id === entityId) || null
     } else if (level === 'chapter') {
       chapter = allChapters.find(c => c.id === entityId) || null
-      if (chapter?.volumeId) {
-        volume = allVolumes.find(v => v.id === chapter.volumeId) || null
+      if (chapter && chapter.volumeId) {
+        volume = allVolumes.find(v => v.id === chapter!.volumeId) || null
       }
     }
 
-    return startDialogueStream({
-      config,
-      mainWindow: mainWindow,
-      level,
-      project,
-      volume,
-      chapter,
-      allVolumes,
-      allChapters,
-      aiConfig: resolveAIConfig(project),
-      messages,
-      contextConfig: getContextConfig()
-    })
+    // All input goes through intent classification → router
+    const lastUserMsg = [...messages].reverse().find(m => m.role === 'user')
+    const userContent = lastUserMsg?.content || ''
+
+    const runtime = getAgentRuntime(mainWindow)
+    const streamId = `agent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+    try {
+      const { classification, result } = await runtime.route(
+        userContent, project, volume, chapter, level, config, undefined, streamId
+      )
+
+      if (result.pipeline === 'analysis') {
+        const analysisMsg = formatAnalysisForDialogue(result.result)
+        mainWindow.webContents.send('dialogue:chunk', { streamId, chunk: analysisMsg })
+        mainWindow.webContents.send('dialogue:done', { streamId })
+        return { streamId }
+      }
+
+      // writing or chat pipeline — streamId passed to router, matches frontend's activeStreamId
+      return { streamId: result.streamId }
+    } catch (err: any) {
+      console.error('[Dialogue] Router error, falling back to dialogue stream:', err)
+      return startDialogueStream({
+        config,
+        mainWindow,
+        level,
+        project,
+        volume,
+        chapter,
+        allVolumes,
+        allChapters,
+        aiConfig: resolveAIConfig(project),
+        messages,
+        contextConfig: getContextConfig()
+      })
+    }
   })
 
   ipcMain.handle('dialogue:cancel', (_e, streamId: string) => {

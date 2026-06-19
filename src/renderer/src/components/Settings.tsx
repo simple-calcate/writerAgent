@@ -34,7 +34,7 @@ export const FEATURE_LIST: { key: keyof AIFeatureConfig; label: string; desc: st
   { key: 'polish', label: '润色优化', desc: '自动检测并优化薄弱片段' },
   { key: 'summary', label: '章节摘要', desc: '生成章节结构化摘要（人物、事件、伏笔）' },
   { key: 'refineSummary', label: '精炼总结', desc: '用一段话精炼概括章节核心情节' },
-  { key: 'dialogue', label: 'AI 对话', desc: '与 AI 进行创作对话、剧情规划' }
+  { key: 'agent', label: 'Agent 系统', desc: '意图驱动的多智能体系统（自动分类写作/分析/对话）' }
 ]
 
 export const THINKING_PRESETS: { value: ThinkingDepthPreset | 'custom'; label: string; desc: string }[] = [

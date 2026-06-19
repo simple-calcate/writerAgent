@@ -12,6 +12,11 @@ import type {
   DialogueThinkingChunk, DialogueThinkingDone,
   AIThinkingChunk, AIThinkingDone
 } from './dialogue'
+import type {
+  AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete,
+  WritingPhase, WACState, AgentFlowSnapshot, WritingTrajectory,
+  IntentClassifierResult
+} from './agent'
 
 export interface IPCAPI {
   // AI
@@ -135,4 +140,21 @@ export interface IPCAPI {
   selectFolder: () => Promise<string | null>
   scanWallpapers: (path: string) => Promise<WallpaperInfo[]>
   prepareWallpaper: (filePath: string) => Promise<string | null>
+
+  // Agent (Writer Agent System)
+  agentProcess: (level: DialogueLevel, entityId: string, userRequest: string) => Promise<{ streamId: string }>
+  agentCancel: () => Promise<void>
+  agentGetState: () => Promise<WACState>
+  agentRoute: (level: DialogueLevel, entityId: string, input: string) => Promise<{ classification: IntentClassifierResult; result: any }>
+  agentApproveRewrite: (approvalId: string, approved: boolean) => Promise<void>
+  onAgentRewriteApproval: (callback: (data: { approvalId: string; taskId: string; score: any; strategy: string; instruction: string; round: number }) => void) => () => void
+  onAgentPhaseChange: (callback: (data: AgentPhaseChange) => void) => () => void
+  onAgentSubTaskUpdate: (callback: (data: AgentSubTaskUpdate) => void) => () => void
+  onAgentCriticResult: (callback: (data: AgentCriticResult) => void) => () => void
+  onAgentTaskComplete: (callback: (data: AgentTaskComplete) => void) => () => void
+  onAgentChunk: (callback: (data: { streamId: string; chunk: string }) => void) => () => void
+  onAgentThinkingChunk: (callback: (data: { streamId: string; chunk: string }) => void) => () => void
+  onAgentThinkingDone: (callback: (data: { streamId: string }) => void) => () => void
+  onAgentFlowUpdate: (callback: (data: AgentFlowSnapshot) => void) => () => void
+  onAgentTrajectory: (callback: (data: WritingTrajectory) => void) => () => void
 }

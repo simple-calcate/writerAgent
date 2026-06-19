@@ -16,7 +16,7 @@ export async function searchTavily(query: string, count: number, apiKey: string)
     throw new Error(`Tavily 请求失败 (HTTP ${response.status})`)
   }
 
-  const data = await response.json()
+  const data: any = await response.json()
   const results = data.results || []
 
   return results.slice(0, count).map((r: any) => ({

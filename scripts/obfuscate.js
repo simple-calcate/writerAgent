@@ -51,9 +51,27 @@ function obfuscateFile(filePath, configName) {
   console.log(`Obfuscated: ${filePath} (${configName})`)
 }
 
+function findIndexFile(dir) {
+  if (!fs.existsSync(dir)) return null
+  const files = fs.readdirSync(dir)
+  const indexFile = files.find(f => f.startsWith('index') && f.endsWith('.js'))
+  return indexFile ? path.join(dir, indexFile) : null
+}
+
 const outDir = path.join(__dirname, '..', 'out')
 
-obfuscateFile(path.join(outDir, 'main', 'index.js'), 'main')
-obfuscateFile(path.join(outDir, 'preload', 'index.js'), 'preload')
+const mainIndex = findIndexFile(path.join(outDir, 'main'))
+if (mainIndex) {
+  obfuscateFile(mainIndex, 'main')
+} else {
+  console.warn('Main index.js not found')
+}
+
+const preloadIndex = findIndexFile(path.join(outDir, 'preload'))
+if (preloadIndex) {
+  obfuscateFile(preloadIndex, 'preload')
+} else {
+  console.warn('Preload index.js not found')
+}
 
 console.log('Obfuscation complete.')

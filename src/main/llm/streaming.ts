@@ -22,7 +22,7 @@ export async function streamWithThinking(
       ...params,
       stream: true,
       ...thinkingParams
-    } as any, { signal })
+    } as any, { signal }) as any
   } catch (err: any) {
     if (signal?.aborted) throw err
     // thinking params 导致 400/422，降级重试
@@ -30,7 +30,7 @@ export async function streamWithThinking(
       stream = await client.chat.completions.create({
         ...params,
         stream: true
-      } as any, { signal })
+      } as any, { signal }) as any
     } else {
       throw err
     }

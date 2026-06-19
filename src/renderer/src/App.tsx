@@ -129,22 +129,22 @@ export default function App() {
       <RainEffect />
 
       {/* Title bar */}
-      <div className="relative z-[1] flex items-center justify-between px-3 py-1.5 glass-panel border-b select-none">
+      <div className="relative z-[1] flex items-center justify-between px-4 py-2 glass-panel border-b select-none">
         <div className="flex items-center gap-2">
           <button
             onClick={() => useAppStore.getState().toggleSidebar()}
-            className="text-gray-500 hover:text-gray-300 text-xs px-1.5 py-0.5 rounded hover:bg-gray-700 transition-colors"
+            className="text-gray-400 hover:text-gray-200 text-sm px-2 py-1 rounded-md hover:bg-white/5 transition-all"
             title={showSidebar ? '隐藏侧栏' : '显示侧栏'}
           >
             {showSidebar ? '◀' : '▶'}
           </button>
-          <h1 className="text-xs font-medium text-gray-400">网文写作助手</h1>
+          <h1 className="text-sm font-medium text-[--nw-text-secondary] tracking-wide">网文写作助手</h1>
         </div>
         <div className="flex items-center gap-2">
           <UpdateBanner />
           <button
             onClick={toggleSettings}
-            className="text-[11px] text-gray-500 hover:text-gray-300 px-2 py-0.5 rounded hover:bg-gray-700 transition-colors"
+            className="text-[12px] text-gray-400 hover:text-gray-200 px-3 py-1 rounded-md hover:bg-white/5 transition-all"
           >
             ⚙ 设置
           </button>
@@ -162,17 +162,17 @@ export default function App() {
 
         {/* Center area - Editor or Reasoning Panel */}
         {showReasoningPanel && reasoningStatus !== 'idle' ? (
-          <div className="flex-1 flex flex-col min-w-0 bg-gray-900/30">
+          <div className="flex-1 flex flex-col min-w-0 bg-[--nw-bg-color]">
             {/* Tab bar */}
-            <div className="flex items-center gap-1 px-2 py-1 border-b border-gray-700/50 bg-gray-800/30">
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[#2a3347] bg-[--nw-surface-1]">
               <button
                 onClick={toggleReasoningPanel}
-                className="px-3 py-1 text-[11px] text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 rounded transition-colors"
+                className="px-3 py-1 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-primary] hover:bg-[--nw-surface-2] rounded-md transition-colors"
               >
                 ← 返回编辑
               </button>
               <div className="flex-1" />
-              <span className="text-[10px] text-gray-600">🧠 推理分析</span>
+              <span className="text-[10px] text-[--nw-accent] font-medium tracking-wide">🧠 推理分析</span>
             </div>
             <div className="flex-1 overflow-hidden">
               <ReasoningPanel
@@ -198,10 +198,10 @@ export default function App() {
       {reasoningStatus === 'running' && !showReasoningPanel && (
         <button
           onClick={toggleReasoningPanel}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-2 px-3 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg shadow-lg transition-colors"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 bg-[--nw-accent] hover:bg-[--nw-accent-hover] text-white rounded-xl shadow-lg shadow-[--nw-accent-glow] transition-all duration-200 hover:shadow-xl"
         >
           <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
-          <span className="text-xs">推理进行中...</span>
+          <span className="text-[12px] font-medium">推理进行中...</span>
         </button>
       )}
 

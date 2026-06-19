@@ -123,8 +123,8 @@ export function emitCriticResult(mainWindow: BrowserWindow, taskId: string, scor
   mainWindow.webContents.send('agent:critic-result', { taskId, score } satisfies AgentCriticResult)
 }
 
-export function emitTaskComplete(mainWindow: BrowserWindow, taskId: string, result: string, writingPhase: WritingPhase): void {
+export function emitTaskComplete(mainWindow: BrowserWindow, taskId: string, result: string, writingPhase: WritingPhase, streamId?: string): void {
   mainWindow.webContents.send('agent:task-complete', { taskId, result, writingPhase } satisfies AgentTaskComplete)
-  // 桥接回前端对话系统
-  mainWindow.webContents.send('dialogue:done', { streamId: taskId, fullText: result })
+  // 桥接回前端对话系统：使用前端传来的 streamId，确保 _handleStreamDone 能匹配
+  mainWindow.webContents.send('dialogue:done', { streamId: streamId || taskId, fullText: result })
 }

@@ -28,11 +28,11 @@ export default function ThinkingIndicator({ text, onCancel }: { text: string; on
           <div className="absolute inset-0 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
         </div>
         <span className="text-xs text-purple-400 font-medium tracking-wide">思考中</span>
-        <span className="text-[10px] text-gray-600">{text.length > 0 ? `${text.length} 字` : ''}</span>
+        <span className="text-[10px] text-[--nw-text-muted]">{text.length > 0 ? `${text.length} 字` : ''}</span>
         {onCancel && (
           <button
             onClick={onCancel}
-            className="ml-auto text-[10px] text-red-400 hover:text-red-300 px-2 py-0.5 rounded border border-red-500/30 hover:border-red-400/50 transition-colors"
+            className="ml-auto text-[11px] text-red-400 hover:text-red-300 px-2.5 py-1 rounded-lg border border-red-500/30 hover:border-red-400/50 hover:bg-red-500/10 transition-all"
           >
             停止
           </button>
@@ -42,19 +42,19 @@ export default function ThinkingIndicator({ text, onCancel }: { text: string; on
       {text.length > 0 && (
         <div
           ref={scrollRef}
-          className="flex-1 min-h-0 overflow-y-auto rounded bg-gray-900/60 border border-gray-700/40"
+          className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-gray-900/50 border border-white/5"
         >
-          <div className="p-2.5 text-[13px] leading-[1.7] text-gray-400 font-mono whitespace-pre-wrap break-all">
-            {stablePart && <span className="text-gray-600">{stablePart}</span>}
-            {tailPart && <span className="text-gray-400">{tailPart}</span>}
-            <span key={text.length} className="thinking-tail text-gray-200">{newPart}</span>
+          <div className="p-3 text-[13px] leading-[1.7] text-[--nw-text-secondary] font-mono whitespace-pre-wrap break-all">
+            {stablePart && <span className="text-[--nw-text-muted]">{stablePart}</span>}
+            {tailPart && <span className="text-[--nw-text-secondary]">{tailPart}</span>}
+            <span key={text.length} className="thinking-tail text-[--nw-text-primary]">{newPart}</span>
           </div>
         </div>
       )}
       {/* Empty state */}
       {text.length === 0 && (
         <div className="flex-1 min-h-0 flex items-center justify-center">
-          <div className="flex gap-1">
+          <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
               <div
                 key={i}

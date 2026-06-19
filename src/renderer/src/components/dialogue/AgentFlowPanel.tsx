@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react'
 import type { AgentFlowSnapshot } from '../../../../shared/types'
 
 const STATUS_COLORS: Record<string, string> = {
-  pending: 'bg-gray-600',
+  pending: 'bg-[--nw-text-muted]',
   running: 'bg-blue-500 animate-pulse',
-  done: 'bg-green-500',
+  done: 'bg-emerald-500',
   failed: 'bg-red-500',
-  skipped: 'bg-gray-500'
+  skipped: 'bg-[--nw-text-muted]'
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -44,17 +44,17 @@ export default function AgentFlowPanel() {
   const phase = PHASE_LABELS[snapshot.phase] || snapshot.phase
 
   return (
-    <div className="border-t border-gray-700/40 bg-gray-800/20">
+    <div className="rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] transition-colors duration-150"
       >
         <div className="flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full ${snapshot.currentNodeId ? 'bg-blue-500 animate-pulse' : 'bg-gray-600'}`} />
+          <div className={`w-1.5 h-1.5 rounded-full ${snapshot.currentNodeId ? 'bg-blue-500 animate-pulse' : 'bg-[--nw-text-muted]'}`} />
           <span>Agent 流程</span>
           <span className="px-1.5 py-0.5 text-[9px] bg-blue-500/20 text-blue-400 rounded">{phase}</span>
         </div>
-        <svg className={`w-3 h-3 transition-transform ${collapsed ? '' : 'rotate-180'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className={`w-3 h-3 transition-transform duration-200 ${collapsed ? '' : 'rotate-180'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
@@ -63,26 +63,26 @@ export default function AgentFlowPanel() {
         <div className="px-3 pb-2 space-y-1">
           {snapshot.nodes.filter(n => n.type !== 'start' && n.type !== 'end').map(node => (
             <div key={node.id} className="flex items-center gap-2 py-0.5">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLORS[node.status] || 'bg-gray-600'}`} />
-              <span className="text-[10px] text-gray-300 truncate flex-1">{node.label}</span>
-              <span className="text-[9px] text-gray-600 shrink-0">{STATUS_LABELS[node.status] || node.status}</span>
+              <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_COLORS[node.status] || 'bg-[--nw-text-muted]'}`} />
+              <span className="text-[10px] text-[--nw-text-secondary] truncate flex-1">{node.label}</span>
+              <span className="text-[9px] text-[--nw-text-muted] shrink-0">{STATUS_LABELS[node.status] || node.status}</span>
               {node.duration && (
-                <span className="text-[9px] text-gray-600 shrink-0">{(node.duration / 1000).toFixed(1)}s</span>
+                <span className="text-[9px] text-[--nw-text-muted] shrink-0">{(node.duration / 1000).toFixed(1)}s</span>
               )}
             </div>
           ))}
 
           {snapshot.criticScores.length > 0 && (
-            <div className="mt-1 pt-1 border-t border-gray-700/30">
-              <p className="text-[9px] text-gray-600 mb-0.5">Critic 评分</p>
+            <div className="mt-1 pt-1 border-t border-[--nw-border]">
+              <p className="text-[9px] text-[--nw-text-muted] mb-0.5">Critic 评分</p>
               {snapshot.criticScores.map((score, i) => (
                 <div key={i} className="flex items-center gap-2 text-[10px]">
-                  <span className="text-gray-400">#{i + 1}</span>
-                  <span className={`${score.overall >= 7 ? 'text-green-400' : score.overall >= 5 ? 'text-yellow-400' : 'text-red-400'}`}>
+                  <span className="text-[--nw-text-secondary]">#{i + 1}</span>
+                  <span className={`${score.overall >= 7 ? 'text-emerald-400' : score.overall >= 5 ? 'text-yellow-400' : 'text-red-400'}`}>
                     {score.overall.toFixed(1)}/10
                   </span>
                   {score.issues.length > 0 && (
-                    <span className="text-gray-600 truncate">{score.issues[0]}</span>
+                    <span className="text-[--nw-text-muted] truncate">{score.issues[0]}</span>
                   )}
                 </div>
               ))}

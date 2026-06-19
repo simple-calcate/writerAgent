@@ -108,6 +108,7 @@ export class WriterAgentController {
         task.phase = 'writing'
         emitPhaseChange(this.mainWindow, task.id, 'writing')
 
+        // 简单任务路径
         const result = await executeSingleTask(plan.subTasks[0], execContext, this.memoryContext, streamId)
 
         this.stateMachine.transition('finalizing')
@@ -121,7 +122,7 @@ export class WriterAgentController {
         this.trajectory.record('complete', { success: true })
         emitTrajectory(this.mainWindow, this.trajectory.getTrajectory(result.content))
         finalizeTask(task, this.state, this.stateMachine)
-        emitTaskComplete(this.mainWindow, task.id, result.content, 'finalizing')
+        emitTaskComplete(this.mainWindow, task.id, result.content, 'finalizing', streamId)
         console.log(`[WAC] 任务完成 (简单路径)`)
         return result.content
       }
@@ -141,17 +142,17 @@ export class WriterAgentController {
       }
 
       this.trajectory.record('complete', { success: true })
-      emitTrajectory(this.mainWindow, this.trajectory.getTrajectory(finalContent))
-      finalizeTask(task, this.state, this.stateMachine)
-      emitTaskComplete(this.mainWindow, task.id, finalContent, 'finalizing')
-      console.log(`[WAC] 任务完成 (Critic Loop 路径)`)
+        emitTrajectory(this.mainWindow, this.trajectory.getTrajectory(finalContent))
+        finalizeTask(task, this.state, this.stateMachine)
+        emitTaskComplete(this.mainWindow, task.id, finalContent, 'finalizing', streamId)
+        console.log(`[WAC] 任务完成 (Critic Loop 路径)`)
       return finalContent
 
     } catch (err: any) {
       const errorMsg = err.message || 'Agent 执行失败'
       console.error(`[WAC] 任务失败: ${errorMsg}`)
-      // 桥接回前端对话系统
-      this.mainWindow.webContents.send('dialogue:error', { streamId: task.id, error: errorMsg })
+      // 桥接回前端对话系统：使用前端传来的 streamId
+      this.mainWindow.webContents.send('dialogue:error', { streamId: streamId || task.id, error: errorMsg })
       if (this.abortController?.signal.aborted) {
         this.stateMachine.forceTransition('idle')
         finalizeTask(task, this.state, this.stateMachine)

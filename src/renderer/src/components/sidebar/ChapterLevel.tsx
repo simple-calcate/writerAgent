@@ -19,32 +19,32 @@ export function ChapterLevel() {
         {marksCount > 0 && (
           <button
             onClick={() => setRightPanel('polish')}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-blue-300 hover:bg-blue-600/10 transition-colors"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-blue-300 hover:bg-blue-500/10 transition-colors"
           >
-            <span className="text-[11px]">◎</span>
+            <span className="text-[12px]">◎</span>
             <span>润色标记</span>
-            <span className="ml-auto text-gray-500">{marksCount}</span>
+            <span className="ml-auto text-[--nw-text-muted]">{marksCount}</span>
           </button>
         )}
         {hasSummary && (
           <button
             onClick={() => setRightPanel('summary')}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-purple-300 hover:bg-purple-600/10 transition-colors"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-purple-300 hover:bg-purple-500/10 transition-colors"
           >
-            <span className="text-[11px]">◉</span>
+            <span className="text-[12px]">◉</span>
             <span>章节摘要</span>
           </button>
         )}
 
         {/* AI actions */}
-        <div className="border-t border-gray-700/50 mt-1 pt-1">
+        <div className="border-t border-[#2a3347] mt-1 pt-1">
           {features.polish.enabled && (
             <button
               onClick={autoAnalyze}
               disabled={isAnalyzing}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-blue-400 hover:bg-blue-600/10 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-blue-400 hover:bg-blue-500/10 transition-colors disabled:opacity-50"
             >
-              <span className="text-[11px]">◎</span>
+              <span className="text-[12px]">◎</span>
               <span>{isAnalyzing ? '正在润色...' : '开始润色'}</span>
             </button>
           )}
@@ -52,9 +52,9 @@ export function ChapterLevel() {
             <button
               onClick={summarizeChapter}
               disabled={isSummarizing}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-purple-400 hover:bg-purple-600/10 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-purple-400 hover:bg-purple-500/10 transition-colors disabled:opacity-50"
             >
-              <span className="text-[11px]">◉</span>
+              <span className="text-[12px]">◉</span>
               <span>{isSummarizing ? '正在生成...' : '生成摘要'}</span>
             </button>
           )}
@@ -62,26 +62,26 @@ export function ChapterLevel() {
             <button
               onClick={refineSummary}
               disabled={isRefining}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-orange-400 hover:bg-orange-600/10 transition-colors disabled:opacity-50"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-orange-400 hover:bg-orange-500/10 transition-colors disabled:opacity-50"
             >
-              <span className="text-[11px]">📝</span>
+              <span className="text-[12px]">📝</span>
               <span>{isRefining ? '正在精炼...' : '精炼总结'}</span>
             </button>
           )}
           {features.dialogue.enabled && (
             <button
               onClick={() => openDialogue('chapter')}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-green-400 hover:bg-green-600/10 transition-colors"
+              className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10 transition-colors"
             >
-              <span className="text-[11px]">💬</span>
+              <span className="text-[12px]">💬</span>
               <span>AI 对话</span>
             </button>
           )}
           <button
             onClick={() => openOutline('chapter', currentChapter.id)}
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs text-emerald-400 hover:bg-emerald-600/10 transition-colors"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10 transition-colors"
           >
-            <span className="text-[11px]">📋</span>
+            <span className="text-[12px]">📋</span>
             <span>章纲</span>
           </button>
         </div>

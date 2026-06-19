@@ -11,11 +11,11 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
   const showResult = toolCall.status === 'done' && toolCall.result && expanded
 
   return (
-    <div className="border border-gray-700/40 bg-gray-800/40 mb-1.5 overflow-hidden">
+    <div className="rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out overflow-hidden">
       <button
         onClick={() => toolCall.status === 'done' && setExpanded(!expanded)}
-        className={`w-full flex items-center gap-2 px-2.5 py-1.5 text-xs transition-colors ${
-          toolCall.status === 'done' ? 'cursor-pointer hover:bg-gray-700/30' : 'cursor-default'
+        className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] transition-colors duration-150 ${
+          toolCall.status === 'done' ? 'cursor-pointer hover:bg-[--nw-surface-1]' : 'cursor-default'
         }`}
       >
         {toolCall.status === 'running' ? (
@@ -23,65 +23,63 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
         ) : toolCall.status === 'pending_approval' ? (
           <span className="text-yellow-400">⏳</span>
         ) : (
-          <span className="text-green-400">✓</span>
+          <span className="text-emerald-400">✓</span>
         )}
         <span className={
           toolCall.status === 'running' ? 'text-amber-300' :
           toolCall.status === 'pending_approval' ? 'text-yellow-300' :
-          'text-gray-300'
+          'text-[--nw-text-primary]'
         }>
           {toolCall.displayName}
         </span>
         {toolCall.status === 'done' && (
-          <span className="ml-auto text-gray-600 text-[10px]">{expanded ? '收起' : '展开'}</span>
+          <span className="ml-auto text-[--nw-text-muted] text-[10px]">{expanded ? '收起' : '展开'}</span>
         )}
       </button>
 
       {/* Approval UI */}
       {toolCall.status === 'pending_approval' && approval && (
-        <div className="px-3 pb-3 border-t border-gray-700/40 pt-2 space-y-2">
-          <p className="text-xs text-gray-400">{approval.description}</p>
+        <div className="px-3 pb-3 border-t border-[--nw-border] pt-2.5 space-y-2.5">
+          <p className="text-[11px] text-[--nw-text-secondary]">{approval.description}</p>
 
-          {/* Cache hit: show cached result + 3 buttons */}
           {approval.cachedResult && CACHEABLE_TOOLS.has(toolCall.toolName) ? (
             <>
-              <div className="text-xs text-gray-500 bg-gray-900/40 rounded p-2 max-h-32 overflow-y-auto">
-                <p className="text-[10px] text-gray-600 mb-1">缓存结果：</p>
+              <div className="text-[11px] text-[--nw-text-muted] bg-[--nw-surface-1] rounded-md p-2.5 max-h-32 overflow-y-auto">
+                <p className="text-[10px] text-[--nw-text-muted] mb-1">缓存结果：</p>
                 {renderMarkdown(approval.cachedResult.substring(0, 200) + (approval.cachedResult.length > 200 ? '...' : ''))}
               </div>
               <div className="flex gap-1.5">
                 <button
                   onClick={() => onApprove(approval.approvalId, true, false)}
-                  className="flex-1 bg-green-600/80 hover:bg-green-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+                  className="flex-1 bg-emerald-600/80 hover:bg-emerald-600 text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
                 >
                   使用缓存
                 </button>
                 <button
                   onClick={() => onApprove(approval.approvalId, true, true)}
-                  className="flex-1 bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+                  className="flex-1 bg-[--nw-accent]/80 hover:bg-[--nw-accent] text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
                 >
                   刷新
                 </button>
                 <button
                   onClick={() => onApprove(approval.approvalId, false)}
-                  className="flex-1 bg-gray-600/80 hover:bg-gray-600 text-gray-200 px-2 py-1.5 rounded text-[11px] transition-colors"
+                  className="flex-1 bg-[--nw-surface-1] hover:bg-[--nw-surface-2] text-[--nw-text-secondary] px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
                 >
                   拒绝
                 </button>
               </div>
             </>
           ) : (
-            /* Write tool: confirm/reject */
             <div className="flex gap-1.5">
               <button
                 onClick={() => onApprove(approval.approvalId, true)}
-                className="flex-1 bg-green-600/80 hover:bg-green-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+                className="flex-1 bg-emerald-600/80 hover:bg-emerald-600 text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
               >
                 确认执行
               </button>
               <button
                 onClick={() => onApprove(approval.approvalId, false)}
-                className="flex-1 bg-red-600/80 hover:bg-red-600 text-white px-2 py-1.5 rounded text-[11px] transition-colors"
+                className="flex-1 bg-red-600/80 hover:bg-red-600 text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
               >
                 拒绝
               </button>
@@ -90,10 +88,10 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
         </div>
       )}
 
-      {/* Done: show result for write tools (auto-expanded), or collapsible for others */}
+      {/* Done: show result */}
       {showResult && toolCall.result && (
-        <div className="px-3 pb-3 border-t border-gray-700/40 pt-2">
-          <div className="text-xs text-gray-400 leading-relaxed max-h-64 overflow-y-auto">
+        <div className="px-3 pb-3 border-t border-[--nw-border] pt-2.5">
+          <div className="text-[11px] text-[--nw-text-secondary] leading-relaxed max-h-64 overflow-y-auto">
             {renderMarkdown(toolCall.result)}
           </div>
         </div>

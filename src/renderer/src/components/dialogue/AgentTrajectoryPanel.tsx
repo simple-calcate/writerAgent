@@ -14,8 +14,8 @@ const EVENT_ICONS: Record<string, string> = {
 
 const EVENT_COLORS: Record<string, string> = {
   phase_change: 'text-blue-400',
-  subtask_start: 'text-gray-400',
-  subtask_done: 'text-green-400',
+  subtask_start: 'text-[--nw-text-muted]',
+  subtask_done: 'text-emerald-400',
   subtask_failed: 'text-red-400',
   critic_score: 'text-yellow-400',
   rewrite: 'text-orange-400',
@@ -64,7 +64,6 @@ export default function AgentTrajectoryPanel() {
     return unsub
   }, [])
 
-  // 流式结束后折叠为一行
   useEffect(() => {
     if (prevStreaming.current && !isStreaming && trajectory) {
       setCollapsed(true)
@@ -73,12 +72,10 @@ export default function AgentTrajectoryPanel() {
     prevStreaming.current = isStreaming
   }, [isStreaming, trajectory])
 
-  // 新对话开始时（用户发消息且不在流式中）清除轨迹
   const dialogueMessages = useAppStore(s => s.dialogueMessages)
   const msgCount = dialogueMessages.length
   useEffect(() => {
     if (!isStreaming && trajectory && collapsed) {
-      // 用户发了新消息 → 清除轨迹
       const timer = setTimeout(() => {
         setTrajectory(null)
         setCollapsed(false)
@@ -90,28 +87,28 @@ export default function AgentTrajectoryPanel() {
 
   if (!trajectory || trajectory.entries.length === 0) return null
 
-  // 折叠状态：只显示一行摘要
+  // Collapsed: single line summary
   if (collapsed && !expanded) {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="w-full border-t border-gray-700/40 bg-gray-800/20 px-3 py-1.5 flex items-center gap-2 hover:bg-gray-800/30 transition-colors"
+        className="w-full rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out px-3 py-2 flex items-center gap-2"
       >
-        <span className="text-[10px] text-gray-500">写作轨迹</span>
-        <span className="text-[9px] text-gray-600">{trajectory.entries.length} 条</span>
+        <span className="text-[10px] text-[--nw-text-muted]">写作轨迹</span>
+        <span className="text-[9px] text-[--nw-text-muted]">{trajectory.entries.length} 条</span>
         {trajectory.totalDuration && (
-          <span className="text-[9px] text-gray-600">{formatDuration(trajectory.totalDuration)}</span>
+          <span className="text-[9px] text-[--nw-text-muted]">{formatDuration(trajectory.totalDuration)}</span>
         )}
-        <svg className="w-3 h-3 text-gray-600 ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-3 h-3 text-[--nw-text-muted] ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
     )
   }
 
-  // 展开状态
+  // Expanded
   return (
-    <div className="border-t border-gray-700/40 bg-gray-800/20">
+    <div className="rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out">
       <button
         onClick={() => {
           if (collapsed) {
@@ -121,16 +118,16 @@ export default function AgentTrajectoryPanel() {
             setExpanded(false)
           }
         }}
-        className="w-full flex items-center justify-between px-3 py-2 text-xs text-gray-400 hover:text-gray-300 transition-colors"
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] transition-colors duration-150"
       >
         <div className="flex items-center gap-2">
           <span>写作轨迹</span>
-          <span className="text-[9px] text-gray-600">{trajectory.entries.length} 条记录</span>
+          <span className="text-[9px] text-[--nw-text-muted]">{trajectory.entries.length} 条记录</span>
           {trajectory.totalDuration && (
-            <span className="text-[9px] text-gray-600">{formatDuration(trajectory.totalDuration)}</span>
+            <span className="text-[9px] text-[--nw-text-muted]">{formatDuration(trajectory.totalDuration)}</span>
           )}
         </div>
-        <svg className="w-3 h-3 transition-transform rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-3 h-3 transition-transform duration-200 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
@@ -138,13 +135,13 @@ export default function AgentTrajectoryPanel() {
       <div className="px-3 pb-2 space-y-0.5 max-h-48 overflow-y-auto">
         {trajectory.entries.map((entry, i) => (
           <div key={i} className="flex items-start gap-2 py-0.5">
-            <span className={`text-[10px] shrink-0 w-3 text-center ${EVENT_COLORS[entry.event] || 'text-gray-500'}`}>
+            <span className={`text-[10px] shrink-0 w-3 text-center ${EVENT_COLORS[entry.event] || 'text-[--nw-text-muted]'}`}>
               {EVENT_ICONS[entry.event] || '·'}
             </span>
-            <span className="text-[9px] text-gray-600 shrink-0 w-14 font-mono">
+            <span className="text-[9px] text-[--nw-text-muted] shrink-0 w-14 font-mono">
               {formatTime(entry.timestamp)}
             </span>
-            <span className="text-[10px] text-gray-400 truncate flex-1">
+            <span className="text-[10px] text-[--nw-text-secondary] truncate flex-1">
               {entrySummary(entry)}
             </span>
           </div>

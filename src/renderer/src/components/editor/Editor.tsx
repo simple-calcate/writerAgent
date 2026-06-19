@@ -32,13 +32,13 @@ function ToolBtn({
       onClick={onClick}
       disabled={disabled}
       title={title}
-      className={`px-2 py-1 text-xs rounded transition-colors inline-flex items-center gap-1 ${
+      className={`px-2.5 py-1.5 text-[12px] rounded-md transition-all duration-150 inline-flex items-center gap-1.5 ${
         variant === 'primary'
-          ? 'bg-blue-600 hover:bg-blue-700 text-white disabled:bg-gray-600'
+          ? 'bg-[--nw-accent] hover:bg-[--nw-accent-hover] text-white disabled:bg-[#3a4255] shadow-sm shadow-[--nw-accent-glow]'
           : active
-            ? 'bg-gray-600 text-white'
-            : 'bg-gray-700/50 hover:bg-gray-600 text-gray-300 hover:text-white disabled:opacity-40'
-      } disabled:cursor-not-allowed`}
+            ? 'bg-[#2a3347] text-[--nw-text-primary]'
+            : 'bg-[--nw-surface-1] hover:bg-[#2a3347] text-[--nw-text-secondary] hover:text-[--nw-text-primary]'
+      } disabled:opacity-40 disabled:cursor-not-allowed`}
     >
       {children}
     </button>
@@ -46,7 +46,7 @@ function ToolBtn({
 }
 
 function Divider() {
-  return <div className="w-px h-4 bg-gray-700/60" />
+  return <div className="w-px h-5 bg-white/10" />
 }
 
 function ExportMenu({
@@ -60,22 +60,22 @@ function ExportMenu({
   const { currentProject } = useAppStore()
 
   return (
-    <div className="relative">
+      <div className="relative">
       <ToolBtn onClick={() => setOpen(!open)} title="导出">
         ↓ 导出
       </ToolBtn>
       {open && (
-        <div className="absolute top-full right-0 mt-1 bg-gray-800 border border-gray-700 rounded-lg shadow-xl py-1 w-40 z-50">
+        <div className="absolute top-full right-0 mt-1.5 bg-gray-800/95 backdrop-blur border border-white/10 rounded-lg shadow-xl py-1.5 w-44 z-50">
           <button
             onClick={() => { onExportCurrent(); setOpen(false) }}
-            className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+            className="w-full text-left px-3 py-2 text-[12px] text-[--nw-text-secondary] hover:bg-white/5 hover:text-[--nw-text-primary] transition-colors"
           >
             导出当前章节
           </button>
           {currentProject && (
             <button
               onClick={() => { onBatchExport(); setOpen(false) }}
-              className="w-full text-left px-3 py-2 text-xs text-gray-300 hover:bg-gray-700 hover:text-white transition-colors"
+              className="w-full text-left px-3 py-2 text-[12px] text-[--nw-text-secondary] hover:bg-white/5 hover:text-[--nw-text-primary] transition-colors"
             >
               批量导出项目
             </button>
@@ -462,9 +462,9 @@ export default function Editor() {
   // ── Empty state ─────────────────────────────────────────
   if (!currentChapter) {
     return (
-      <div className="flex-1 flex items-center justify-center text-gray-500">
+      <div className="flex-1 flex items-center justify-center text-[--nw-text-muted]">
         <div className="text-center">
-          <p className="text-lg mb-2">选择或创建一个章节开始写作</p>
+          <p className="text-lg mb-2 text-[--nw-text-secondary]">选择或创建一个章节开始写作</p>
           <p className="text-sm">在左侧栏选择项目和章节</p>
         </div>
       </div>
@@ -478,32 +478,32 @@ export default function Editor() {
   return (
     <div className="flex-1 flex flex-col">
       {/* Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 border-b glass-panel">
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-[#2a3347] glass-panel">
         <div className="flex items-center gap-3 min-w-0">
-          <h2 className="text-sm font-medium text-gray-300 truncate">{currentChapter.title}</h2>
-          <span className={`text-[11px] px-1.5 py-0.5 rounded shrink-0 ${
-            saveStatus === 'saved' ? 'text-green-500/70' :
-            saveStatus === 'saving' ? 'text-blue-400' :
-            'text-gray-500'
+          <h2 className="text-[13px] font-medium text-[--nw-text-primary] truncate">{currentChapter.title}</h2>
+          <span className={`text-[11px] px-2 py-0.5 rounded-md shrink-0 ${
+            saveStatus === 'saved' ? 'text-emerald-400/80 bg-emerald-500/10' :
+            saveStatus === 'saving' ? 'text-blue-400 bg-blue-500/10' :
+            'text-[--nw-text-muted] bg-[--nw-surface-1]'
           }`}>
             {saveStatus === 'saved' ? '已保存' :
              saveStatus === 'saving' ? '保存中...' :
              '未保存'}
           </span>
           {isPreviewing && (
-            <span className="text-[11px] text-yellow-400 bg-yellow-500/10 px-1.5 py-0.5 rounded shrink-0">
+            <span className="text-[11px] text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md shrink-0">
               润色预览中
             </span>
           )}
           {continuationLoading && (
-            <span className="text-[11px] text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded shrink-0">
+            <span className="text-[11px] text-[--nw-accent] bg-[--nw-accent-glow] px-2 py-0.5 rounded-md shrink-0">
               AI 续写中...
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1.5 shrink-0">
-          <span className="text-[11px] text-gray-500 mr-1">
+        <div className="flex items-center gap-2 shrink-0">
+          <span className="text-[11px] text-[--nw-text-muted] mr-1">
             {wordCount} 字{markCount > 0 ? ` · ${markCount} 处润色` : ''}
           </span>
 
@@ -551,9 +551,9 @@ export default function Editor() {
 
       {/* Loading indicator */}
       {continuationLoading && (
-        <div className="border-t border-gray-700/60 bg-gray-800/60 px-4 py-2 flex items-center gap-2">
-          <div className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />
-          <span className="text-xs text-purple-400">AI 正在思考续写建议...</span>
+        <div className="border-t border-[#2a3347] bg-[--nw-surface-1]/80 px-4 py-2.5 flex items-center gap-2">
+          <div className="w-3 h-3 border-2 border-[--nw-accent] border-t-transparent rounded-full animate-spin" />
+          <span className="text-[12px] text-[--nw-accent]">AI 正在思考续写建议...</span>
         </div>
       )}
 

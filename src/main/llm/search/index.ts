@@ -1,6 +1,5 @@
 import type { SearchEngineConfig, SearchEngineType } from '../../../shared/types'
 import type { SearchResult } from './types'
-import { searchDuckDuckGo } from './duckduckgo'
 import { searchTavily } from './tavily'
 import { searchBing } from './bing'
 import { searchGoogle } from './google'
@@ -44,7 +43,7 @@ export async function searchWithBackend(
       if (!config.customSearchApi) throw new Error('未配置自定义搜索 API')
       return searchCustom(query, count, config.customSearchApi)
     default:
-      return searchDuckDuckGo(query, count)
+      throw new Error('未配置搜索引擎，请在设置中选择')
   }
 }
 

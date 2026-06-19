@@ -302,7 +302,7 @@ export default function ApiTab({
           <div>
             <label className="text-xs text-gray-400 mb-1 block">搜索引擎</label>
             <select
-              value={form.searchEngineConfig?.engine || 'duckduckgo'}
+              value={form.searchEngineConfig?.engine || 'tavily'}
               onChange={e => setForm({
                 ...form,
                 searchEngineConfig: {
@@ -312,18 +312,13 @@ export default function ApiTab({
               })}
               className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
             >
-              <option value="duckduckgo">DuckDuckGo（免费，无需 Key）</option>
               <option value="tavily">Tavily（免费 1000次/月）</option>
               <option value="bing">Bing（免费 1000次/月）</option>
               <option value="google">Google（免费 100次/天）</option>
             </select>
           </div>
 
-          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'duckduckgo' && (
-            <p className="text-[10px] text-gray-500">免费使用，无需配置 API Key。</p>
-          )}
-
-          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'tavily' && (
+          {(form.searchEngineConfig?.engine || 'tavily') === 'tavily' && (
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Tavily API Key</label>
               <input
@@ -342,7 +337,7 @@ export default function ApiTab({
             </div>
           )}
 
-          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'bing' && (
+          {(form.searchEngineConfig?.engine || 'tavily') === 'bing' && (
             <div>
               <label className="text-xs text-gray-400 mb-1 block">Bing API Key</label>
               <input
@@ -361,7 +356,7 @@ export default function ApiTab({
             </div>
           )}
 
-          {(form.searchEngineConfig?.engine || 'duckduckgo') === 'google' && (
+          {(form.searchEngineConfig?.engine || 'tavily') === 'google' && (
             <div className="space-y-2">
               <div>
                 <label className="text-xs text-gray-400 mb-1 block">Google API Key</label>

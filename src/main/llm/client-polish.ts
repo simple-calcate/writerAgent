@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, PolishResult, AutoPolishResult, DiffItem, BookAIConfig, AIFeatureAdvancedConfig } from '../../shared/types'
 import { streamWithThinking } from './streaming'
+import { fixMojibake } from './streaming'
 import { getFeatureSkillContent } from './feature-skills'
 import { createClient, isLocalProvider } from './client'
 
@@ -60,7 +61,7 @@ export async function polishText(
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...jsonFormat
     })
-    content = response.choices[0]?.message?.content?.trim() || '{}'
+    content = fixMojibake(response.choices[0]?.message?.content?.trim() || '{}')
   }
   let polished = original
   let reason = '未提供理由'
@@ -145,7 +146,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...jsonFormat
     })
-    rawContent = response.choices[0]?.message?.content ?? undefined
+    rawContent = fixMojibake(response.choices[0]?.message?.content ?? '')
   }
 
   console.log('[polish] raw response:', rawContent?.substring(0, 500))
@@ -153,23 +154,44 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
   const parseContent = rawContent?.trim() || '{"results":[]}'
   let results: { index: number; polished: string; reason: string }[] = []
 
-  try {
-    const parsed = JSON.parse(parseContent)
-    results = parsed.results || []
-  } catch (e) {
-    // Try extracting JSON from markdown code block
-    const jsonMatch = parseContent.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (jsonMatch) {
-      try {
-        const parsed = JSON.parse(jsonMatch[1].trim())
-        results = parsed.results || []
-      } catch {
-        console.log('[polish] failed to parse code block JSON')
-        return { suggestions: [] }
-      }
+  const extractResults = (parsed: any): { index: number; polished: string; reason: string }[] => {
+    if (Array.isArray(parsed)) return parsed
+    if (parsed.results && Array.isArray(parsed.results)) return parsed.results
+    if (parsed.polished) return [parsed]
+    for (const key of Object.keys(parsed)) {
+      if (Array.isArray(parsed[key])) return parsed[key]
+    }
+    return []
+  }
+
+  const normalizeItem = (item: any, i: number): { index: number; polished: string; reason: string } | null => {
+    if (!item || typeof item !== 'object' || !item.polished) return null
+    const idx = typeof item.index === 'number' ? item.index : typeof item.value === 'number' ? item.value : i
+    return { index: idx, polished: item.polished, reason: item.reason || '' }
+  }
+
+  const tryParse = (text: string): boolean => {
+    try {
+      const parsed = JSON.parse(text)
+      const raw = extractResults(parsed)
+      results = raw.map((item, i) => normalizeItem(item, i)).filter(Boolean) as typeof results
+      return results.length > 0
+    } catch { return false }
+  }
+
+  if (!tryParse(parseContent)) {
+    const codeBlockMatch = parseContent.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (codeBlockMatch && tryParse(codeBlockMatch[1].trim())) {
+      // parsed from code block
+    } else if (tryParse('{"results":' + parseContent + '}')) {
+      // bare array or object without wrapper
     } else {
-      console.log('[polish] JSON parse failed:', e)
-      return { suggestions: [] }
+      const arrayMatch = parseContent.match(/\[[\s\S]*\]/)
+      if (arrayMatch && tryParse(arrayMatch[0])) {
+        // extracted array from malformed JSON
+      } else {
+        console.log('[polish] all parse attempts failed, raw:', parseContent.substring(0, 200))
+      }
     }
   }
 

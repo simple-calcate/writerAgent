@@ -38,7 +38,7 @@ const defaultStore: Store = {
     },
     keyBindings: { ...DEFAULT_KEY_BINDINGS },
     continuationConfig: { ...DEFAULT_CONTINUATION_CONFIG },
-    searchEngineConfig: { engine: 'duckduckgo' }
+    searchEngineConfig: { engine: 'tavily' }
   },
   versions: {},
   conversations: [],

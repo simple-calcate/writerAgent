@@ -3,6 +3,20 @@ import type OpenAI from 'openai'
 import type { LLMConfigSingle } from '../../shared/types'
 import { buildThinkingParams, hasThinkingParams } from './client'
 
+// 检测并修复 mojibake（UTF-8 字节被错误解码为 Latin-1）
+export function fixMojibake(text: string): string {
+  if (!text) return text
+  try {
+    // 将字符串按 Latin-1 编码为 Buffer，再按 UTF-8 解码
+    const recovered = Buffer.from(text, 'latin1').toString('utf8')
+    // 验证修复结果：包含 CJK 字符且没有替换字符
+    if (/[\u4e00-\u9fff]/.test(recovered) && !recovered.includes('\ufffd')) {
+      return recovered
+    }
+  } catch { /* ignore */ }
+  return text
+}
+
 /**
  * 通用流式 LLM 调用，捕获 reasoning_content 并通过 IPC 发送给渲染进程。
  * 适用于润色、摘要、精炼等非对话类 AI 功能。
@@ -62,6 +76,9 @@ export async function streamWithThinking(
   if (!thinkingDone) {
     mainWindow.webContents.send('ai:thinking-done', {})
   }
+
+  // 修复可能的编码损坏（部分 API 返回 UTF-8 字节但声明为 Latin-1）
+  fullText = fixMojibake(fullText)
 
   return fullText
 }

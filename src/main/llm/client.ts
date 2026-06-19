@@ -8,7 +8,11 @@ export { summarizeChapter, diagnoseLocalModel } from './client-summary'
 export function createClient(config: LLMConfigSingle): OpenAI {
   return new OpenAI({
     apiKey: config.apiKey || 'ollama',
-    baseURL: config.baseUrl || 'https://api.openai.com/v1'
+    baseURL: config.baseUrl || 'https://api.openai.com/v1',
+    defaultHeaders: {
+      'Accept': 'application/json; charset=utf-8',
+      'Accept-Charset': 'utf-8'
+    }
   })
 }
 

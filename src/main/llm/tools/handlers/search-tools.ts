@@ -10,7 +10,7 @@ export async function handleSearchTools(
   if (!query) return '错误：缺少搜索关键词'
 
   const llmConfig = getLLMConfig()
-  const searchConfig = llmConfig.searchEngineConfig || { engine: 'duckduckgo' }
+  const searchConfig = llmConfig.searchEngineConfig || { engine: 'tavily' }
 
   try {
     const { searchWeb } = await import('../../search')

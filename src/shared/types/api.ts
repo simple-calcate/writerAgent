@@ -131,7 +131,7 @@ export const DEFAULT_CONTEXT_CONFIG: ContextConfig = {
 }
 
 // 搜索引擎类型
-export type SearchEngineType = 'duckduckgo' | 'tavily' | 'bing' | 'google' | 'searxng' | 'mojeek' | 'custom'
+export type SearchEngineType = 'tavily' | 'bing' | 'google' | 'searxng' | 'mojeek' | 'custom'
 
 // 自定义搜索 API 配置
 export interface CustomSearchApiConfig {

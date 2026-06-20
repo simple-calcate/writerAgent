@@ -3,18 +3,37 @@
 @tailwind utilities;
 
 :root {
-  --nw-bg-color: #0f1117;
+  /* Background - 3 layers */
+  --bg: #0f1117;
+  --surface-1: rgba(24, 30, 44, 0.7);
+  --surface-2: rgba(16, 20, 30, 0.85);
+
+  /* Text - 3 levels */
+  --text-primary: #dce1ef;
+  --text-secondary: #8b94a8;
+  --text-muted: #4f5668;
+
+  /* Semantic colors */
+  --color-user: #60a5fa;
+  --color-ai: #34d399;
+  --color-thinking: #a78bfa;
+  --color-running: #fbbf24;
+  --color-error: #f87171;
+  --color-success: #22c55e;
+
+  /* Legacy aliases (deprecated) */
+  --nw-bg-color: var(--bg);
   --nw-panel-bg-glass: rgba(22, 27, 38, 0.82);
   --nw-panel-border: rgba(48, 56, 72, 0.5);
   --nw-glass-blur: 14px;
   --nw-accent: #5c8bff;
   --nw-accent-hover: #7aa0ff;
   --nw-accent-glow: rgba(92, 139, 255, 0.15);
-  --nw-surface-1: rgba(24, 30, 44, 0.7);
-  --nw-surface-2: rgba(16, 20, 30, 0.85);
-  --nw-text-primary: #dce1ef;
-  --nw-text-secondary: #8b94a8;
-  --nw-text-muted: #4f5668;
+  --nw-surface-1: var(--surface-1);
+  --nw-surface-2: var(--surface-2);
+  --nw-text-primary: var(--text-primary);
+  --nw-text-secondary: var(--text-secondary);
+  --nw-text-muted: var(--text-muted);
 }
 
 body {
@@ -42,11 +61,11 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-gray-600/60 rounded-full;
+  @apply bg-white/10 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  @apply bg-gray-500/60;
+  @apply bg-white/15;
 }
 
 ::-webkit-scrollbar-track {
@@ -94,7 +113,7 @@ body {
 }
 
 .rich-editor .ghost-text {
-  color: #6b7280;
+  color: var(--text-muted);
   opacity: 0.5;
   pointer-events: none;
 }
@@ -113,7 +132,7 @@ body {
 }
 
 .rich-editor .ghost-text {
-  color: #5a6278;
+  color: var(--text-muted);
   opacity: 0.45;
   pointer-events: none;
 }
@@ -145,15 +164,15 @@ body {
 }
 
 .reasoning-content strong {
-  @apply text-[#c8d0e0];
+  @apply text-[--text-primary];
 }
 
 .reasoning-content em {
-  @apply text-[#8b94a8] italic;
+  @apply text-[--text-secondary] italic;
 }
 
 .reasoning-content code {
-  @apply bg-[#1a2233] text-[#7dd3fc] px-1.5 py-0.5 rounded text-[11px];
+  @apply bg-[--surface-2] text-[--color-user] px-1.5 py-0.5 rounded text-[11px];
 }
 
 /* ─── Micro-animations ─── */
@@ -174,13 +193,13 @@ body {
 }
 
 .reasoning-content strong {
-  @apply text-gray-200;
+  @apply text-[--text-primary];
 }
 
 .reasoning-content em {
-  @apply text-gray-400 italic;
+  @apply text-[--text-secondary] italic;
 }
 
 .reasoning-content code {
-  @apply bg-gray-800 px-1 rounded text-green-300 text-[10px];
+  @apply bg-[--surface-2] px-1 rounded text-[--color-ai] text-[10px];
 }

@@ -180,15 +180,15 @@ export default function Settings() {
                 <button
                   key={tab.key}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`w-full text-left px-3 py-2.5 rounded-xl text-[12px] transition-all ${
+                  className={`w-full text-left px-3 py-2.5 rounded-xl text-[12px] transition-all border ${
                     activeTab === tab.key
-                      ? 'bg-blue-500/15 text-blue-300 border border-blue-500/20'
-                      : 'text-[--nw-text-muted] hover:text-[--nw-text-secondary] hover:bg-white/5'
+                      ? 'bg-blue-500/15 text-blue-300 border-blue-500/20'
+                      : 'border-transparent text-[--nw-text-muted] hover:text-[--nw-text-secondary] hover:bg-white/5'
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     {tab.label}
-                    {needsAttention && <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse shrink-0" />}
+                    {needsAttention && <span className="w-2 h-2 rounded-full bg-[--color-user] animate-pulse shrink-0" />}
                   </span>
                 </button>
               )

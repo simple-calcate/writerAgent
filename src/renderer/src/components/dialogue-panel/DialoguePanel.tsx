@@ -1,138 +1,21 @@
 import { useState, useRef, useEffect, useMemo } from 'react'
 import { useAppStore } from '../../stores/useAppStore'
 import type { DialogueLevel, ReasoningChain } from '../../../../shared/types'
-import { ToolCallCard, ThinkingIndicator, QuickReplyGroups, renderMarkdown, type QuestionGroup } from '../dialogue'
+import { ToolCallCard, ThinkingIndicator, renderMarkdown } from '../dialogue'
 import { PendingApprovalCard, PlanModeBadge } from './ApprovalCard'
 import AgentFlowPanel from '../dialogue/AgentFlowPanel'
 import AgentTrajectoryPanel from '../dialogue/AgentTrajectoryPanel'
 import RewriteApprovalCard from '../dialogue/RewriteApprovalCard'
-
-const LEVEL_META: Record<DialogueLevel, { label: string; icon: string }> = {
-  book: { label: '书籍对话', icon: '📚' },
-  volume: { label: '卷对话', icon: '📖' },
-  chapter: { label: '章节对话', icon: '📝' }
-}
-
-function formatTime(iso: string): string {
-  const d = new Date(iso)
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
-}
-
-// ─── Token Estimation ───
-
-function estimateTokens(text: string): number {
-  if (!text) return 0
-  const cjk = (text.match(/[\u4e00-\u9fff]/g) || []).length
-  const nonCjk = text.length - cjk
-  return Math.ceil(cjk * 1.5 + nonCjk / 4 + 3)
-}
-
-function estimateMessageTokens(msg: { content: string; toolCalls?: Array<{ result?: string }> }): number {
-  let tokens = estimateTokens(msg.content) + 4
-  if (msg.toolCalls) {
-    for (const tc of msg.toolCalls) {
-      if (tc.result) tokens += estimateTokens(tc.result) + 4
-    }
-  }
-  return tokens
-}
-
-// ─── Quick Reply Extraction ───
-
-const NUM_RE = /^(\d+)[\.\)、]\s+(.+)/
-const LET_RE = /^([A-Za-z])[\.、]\s+(.+)/
-
-function stripMarkdown(line: string): string {
-  return line
-    .replace(/\*\*(.+?)\*\*/g, '$1')
-    .replace(/__(.+?)__/g, '$1')
-    .replace(/\*(.+?)\*/g, '$1')
-    .replace(/_(.+?)_/g, '$1')
-    .replace(/`(.+?)`/g, '$1')
-    .replace(/\[(.+?)\]\(.+?\)/g, '$1')
-    .replace(/^#{1,6}\s+/, '')
-    .trim()
-}
-
-function extractQuestionGroups(text: string): QuestionGroup[] {
-  if (!text) return []
-
-  const lines = text.split('\n')
-  const groups: QuestionGroup[] = []
-
-  const segments: string[][] = []
-  let current: string[] = []
-  for (const line of lines) {
-    if (!line.trim()) {
-      if (current.length > 0) {
-        segments.push(current)
-        current = []
-      }
-    } else {
-      current.push(line.trim())
-    }
-  }
-  if (current.length > 0) segments.push(current)
-
-  for (const seg of segments) {
-    const options: { label: string; value: string }[] = []
-    let question = ''
-
-    for (let i = 0; i < seg.length; i++) {
-      const clean = stripMarkdown(seg[i])
-      const numMatch = clean.match(NUM_RE)
-      const letMatch = clean.match(LET_RE)
-
-      if (numMatch) {
-        const num = parseInt(numMatch[1])
-        if (options.length > 0) {
-          const lastNum = parseInt(options[options.length - 1].label)
-          if (num <= lastNum) {
-            if (options.length >= 2) {
-              groups.push({ question, options: [...options] })
-            }
-            options.length = 0
-            question = ''
-          }
-        }
-        if (options.length === 0 && i > 0 && question === '') {
-          const preceding = seg.slice(0, i).filter(l => {
-            const c = stripMarkdown(l)
-            return !c.match(NUM_RE) && !c.match(LET_RE)
-          })
-          if (preceding.length > 0) question = preceding.map(stripMarkdown).join(' ')
-        }
-        options.push({ label: `${numMatch[1]}. ${numMatch[2].trim()}`, value: numMatch[2].trim() })
-      } else if (letMatch) {
-        const curChar = letMatch[1].toUpperCase()
-        if (options.length > 0) {
-          const lastChar = options[options.length - 1].label[0]
-          if (/[A-Z]/.test(lastChar) && curChar <= lastChar) {
-            if (options.length >= 2) {
-              groups.push({ question, options: [...options] })
-            }
-            options.length = 0
-            question = ''
-          }
-        }
-        if (options.length === 0 && i > 0 && question === '') {
-          const preceding = seg.slice(0, i).filter(l => {
-            const c = stripMarkdown(l)
-            return !c.match(NUM_RE) && !c.match(LET_RE)
-          })
-          if (preceding.length > 0) question = preceding.map(stripMarkdown).join(' ')
-        }
-        options.push({ label: `${curChar}. ${letMatch[2].trim()}`, value: letMatch[2].trim() })
-      }
-    }
-
-    if (options.length >= 2) {
-      groups.push({ question, options })
-    }
-  }
-
-  return groups
-}
+import ExecutionGraphView from '../dialogue/ExecutionGraphView'
+import MemoryPanel from '../dialogue/MemoryPanel'
+import InspectorPanel from '../dialogue/InspectorPanel'
+import CommandCenter from '../dialogue/CommandCenter'
+import MultiAgentCanvas from '../dialogue/MultiAgentCanvas'
+import MemoryGraphView from '../dialogue/MemoryGraphView'
+import ConflictResolver from '../dialogue/ConflictResolver'
+import ExecutionInspector from '../dialogue/ExecutionInspector'
+import { LEVEL_META, formatTime, estimateMessageTokens, extractQuestionGroups } from './helpers'
+import InputDock from './InputDock'
 
 // ═══════════════════════════════════════════════════════
 // MESSAGE LAYER
@@ -143,7 +26,6 @@ function MessageCard({ msg, onDelete }: { msg: any; onDelete: (id: string) => vo
 
   return (
     <div className="group space-y-1">
-      {/* metadata — fades on idle, reveals on hover */}
       <div className="flex items-center gap-2 text-[11px] text-[--nw-text-muted] opacity-60 group-hover:opacity-100 transition-opacity duration-150">
         <span className="font-mono">{formatTime(msg.timestamp)}</span>
         <span className={isUser ? 'text-blue-400' : 'text-emerald-400'}>
@@ -169,7 +51,6 @@ function MessageCard({ msg, onDelete }: { msg: any; onDelete: (id: string) => vo
         </button>
       </div>
 
-      {/* content — hover physics */}
       <div className="rounded-md bg-[--nw-surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] group-hover:translate-y-[-1px] transition-all duration-150 ease-out px-3 py-2">
         {isUser ? (
           <p className="text-[12px] text-[--nw-text-secondary] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
@@ -197,89 +78,6 @@ function StatusDot({ status }: { status: string }) {
   if (status === 'pending_approval') return <span className="w-2 h-2 rounded-full bg-yellow-500" />
   if (status === 'done') return <span className="w-2 h-2 rounded-full bg-emerald-500" />
   return <span className="w-2 h-2 rounded-full bg-[--nw-text-muted]" />
-}
-
-function ExecutionTimeline({
-  toolCalls,
-  approvals,
-  onApprove
-}: {
-  toolCalls: any[]
-  approvals: any[]
-  onApprove: (approvalId: string, approved: boolean, refreshCache?: boolean) => void
-}) {
-  const [expanded, setExpanded] = useState(true)
-
-  if (toolCalls.length === 0) return null
-
-  return (
-    <div className="rounded-md bg-[--nw-surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
-      <button
-        onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] transition-colors duration-150"
-      >
-        <div className="flex items-center gap-2">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-          <span>工具执行</span>
-          <span className="text-[10px] text-[--nw-text-muted]">{toolCalls.length} 个</span>
-        </div>
-        <svg className={`w-3 h-3 transition-transform duration-200 ${expanded ? 'rotate-180' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-
-      {expanded && (
-        <div className="relative px-3 pb-2">
-          {/* vertical timeline line */}
-          <div className="absolute left-[22px] top-0 bottom-2 w-[1px] bg-[--nw-border]" />
-
-          <div className="space-y-1">
-            {toolCalls.map((tc, idx) => (
-              <div key={tc.id} className="relative">
-                {/* flow dot on timeline */}
-                <div className="absolute left-[17px] top-[10px] z-10">
-                  <span className={`w-2 h-2 rounded-full block ${
-                    tc.status === 'running' ? 'bg-amber-400 animate-pulse' :
-                    tc.status === 'pending_approval' ? 'bg-yellow-400' :
-                    tc.status === 'done' ? 'bg-emerald-400' :
-                    'bg-[--nw-text-muted]'
-                  }`} />
-                </div>
-
-                {/* card */}
-                <div className="ml-8 flex items-center gap-2 px-2 py-1.5 rounded bg-[--nw-surface-2] hover:translate-y-[-1px] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.06)] transition-all duration-150 ease-out">
-                  <span className={`text-[11px] flex-1 ${
-                    tc.status === 'running' ? 'text-amber-300' :
-                    tc.status === 'pending_approval' ? 'text-yellow-300' :
-                    'text-[--nw-text-primary]'
-                  }`}>
-                    {tc.displayName}
-                  </span>
-                  <span className="text-[10px] text-[--nw-text-muted]">
-                    {tc.status === 'running' ? '执行中' : tc.status === 'pending_approval' ? '等待确认' : '完成'}
-                  </span>
-                </div>
-
-                {/* Approval UI inline */}
-                {tc.status === 'pending_approval' && (
-                  <div className="ml-8 mt-1">
-                    <ToolCallCard toolCall={tc} approval={approvals.find(a => a.toolCallId === tc.id)} onApprove={onApprove} />
-                  </div>
-                )}
-
-                {/* Result inline */}
-                {tc.status === 'done' && tc.result && (
-                  <div className="ml-8 mt-1 text-[11px] text-[--nw-text-muted] bg-[--nw-surface-2] rounded px-2 py-1.5 max-h-24 overflow-y-auto">
-                    {renderMarkdown(tc.result.substring(0, 200) + (tc.result.length > 200 ? '...' : ''))}
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
 }
 
 // ═══════════════════════════════════════════════════════
@@ -311,177 +109,6 @@ function ContextUsageBar({ messages, contextWindow }: { messages: Array<{ conten
   )
 }
 
-function SystemInspector({
-  messages,
-  contextWindow
-}: {
-  messages: Array<{ content: string; toolCalls?: Array<{ result?: string }> }>
-  contextWindow: number
-}) {
-  return (
-    <div className="border-t border-[--nw-border] bg-[--nw-surface-1] px-3 py-2">
-      <ContextUsageBar messages={messages} contextWindow={contextWindow} />
-      <div className="flex gap-2 mt-2">
-        <div className="flex-1">
-          <AgentFlowPanel />
-        </div>
-        <div className="flex-1">
-          <AgentTrajectoryPanel />
-        </div>
-      </div>
-      <RewriteApprovalCard />
-    </div>
-  )
-}
-
-// ═══════════════════════════════════════════════════════
-// INPUT DOCK
-// ═══════════════════════════════════════════════════════
-
-function InputDock({
-  input,
-  setInput,
-  onSend,
-  onKeyDown,
-  isStreaming,
-  selectedChains,
-  onRemoveChain,
-  onToggleChain,
-  showChainSelector,
-  setShowChainSelector,
-  reasoningChains,
-  chainSelectorRef,
-  showQuickReplies,
-  questionGroups,
-  onQuickReply,
-  cancelStream
-}: {
-  input: string
-  setInput: (v: string) => void
-  onSend: () => void
-  onKeyDown: (e: React.KeyboardEvent) => void
-  isStreaming: boolean
-  selectedChains: ReasoningChain[]
-  onRemoveChain: (id: string) => void
-  onToggleChain: (chain: ReasoningChain) => void
-  showChainSelector: boolean
-  setShowChainSelector: (v: boolean) => void
-  reasoningChains: ReasoningChain[]
-  chainSelectorRef: React.RefObject<HTMLDivElement>
-  showQuickReplies: boolean
-  questionGroups: QuestionGroup[]
-  onQuickReply: (value: string) => void
-  cancelStream: () => void
-}) {
-  return (
-    <div className="border-t border-[--nw-border] p-3 bg-[--nw-surface-1]">
-      {/* quick replies */}
-      {showQuickReplies && (
-        <div className="mb-2">
-          <QuickReplyGroups groups={questionGroups} onSend={onQuickReply} />
-        </div>
-      )}
-
-      {/* selected chains */}
-      {selectedChains.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-2">
-          {selectedChains.map(chain => (
-            <span
-              key={chain.id}
-              className="inline-flex items-center gap-1 px-2 py-1 text-[10px] bg-purple-600/20 text-purple-300 rounded-full"
-            >
-              🧠 {chain.name}
-              <button
-                onClick={() => onRemoveChain(chain.id)}
-                className="text-purple-400 hover:text-purple-200 ml-0.5"
-              >
-                ✕
-              </button>
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* input row */}
-      <div className="flex gap-2">
-        <div className="relative flex-1" ref={chainSelectorRef}>
-          <textarea
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            onKeyDown={onKeyDown}
-            placeholder="输入你的想法..."
-            rows={2}
-            className="w-full bg-[--nw-surface-2] rounded-md px-3 py-2 pr-9 text-[13px] text-[--nw-text-primary] border border-[--nw-border] outline-none focus:border-[--nw-accent] resize-none placeholder:text-[--nw-text-muted] transition-colors duration-150"
-          />
-          <button
-            onClick={() => setShowChainSelector(!showChainSelector)}
-            className={`absolute right-2 bottom-2 w-7 h-7 flex items-center justify-center rounded-md transition-all duration-150 ${
-              selectedChains.length > 0
-                ? 'text-purple-400 bg-purple-500/20'
-                : 'text-[--nw-text-muted] hover:text-purple-400 hover:bg-white/5'
-            }`}
-            title="添加推理链"
-          >
-            🧠
-          </button>
-
-          {/* Chain selector dropdown */}
-          {showChainSelector && (
-            <div className="absolute bottom-full left-0 right-0 mb-2 bg-[--nw-surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] rounded-md overflow-hidden z-10">
-              <div className="p-2.5 border-b border-[--nw-border]">
-                <p className="text-[11px] text-[--nw-text-muted]">选择推理链（可多选）</p>
-              </div>
-              <div className="max-h-48 overflow-y-auto">
-                {reasoningChains.map(chain => {
-                  const isSelected = selectedChains.some(c => c.id === chain.id)
-                  return (
-                    <button
-                      key={chain.id}
-                      onClick={() => onToggleChain(chain)}
-                      className={`w-full px-3 py-2.5 text-left hover:bg-white/5 transition-colors duration-150 ${
-                        isSelected ? 'bg-purple-500/10' : ''
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {isSelected && <span className="text-purple-400 text-[10px]">✓</span>}
-                          <span className="text-[12px] text-[--nw-text-secondary]">{chain.name}</span>
-                        </div>
-                        <span className="text-[10px] text-[--nw-text-muted]">{chain.steps.length} 步</span>
-                      </div>
-                      <p className="text-[11px] text-[--nw-text-muted] truncate mt-0.5">{chain.description}</p>
-                    </button>
-                  )
-                })}
-              </div>
-              {reasoningChains.length === 0 && (
-                <p className="text-[11px] text-[--nw-text-muted] text-center py-4">暂无推理链</p>
-              )}
-            </div>
-          )}
-        </div>
-
-        {isStreaming ? (
-          <button
-            onClick={cancelStream}
-            className="self-end bg-red-600/80 hover:bg-red-600 text-white px-4 py-2 rounded-md text-[12px] font-medium transition-colors duration-150"
-          >
-            停止
-          </button>
-        ) : (
-          <button
-            onClick={onSend}
-            disabled={!input.trim() && selectedChains.length === 0}
-            className="self-end bg-[--nw-accent] hover:bg-[--nw-accent-hover] text-white px-4 py-2 rounded-md text-[12px] font-medium transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed"
-          >
-            发送
-          </button>
-        )}
-      </div>
-    </div>
-  )
-}
-
 // ═══════════════════════════════════════════════════════
 // MAIN PANEL
 // ═══════════════════════════════════════════════════════
@@ -503,7 +130,15 @@ export default function DialoguePanel() {
     clearDialogue,
     approveTool,
     deleteMessage,
-    compressDialogue
+    compressDialogue,
+    currentRun,
+    runtimePause,
+    runtimeResume,
+    maRun,
+    maPause,
+    maResume,
+    maReplay,
+    currentProject
   } = useAppStore()
 
   const [input, setInput] = useState('')
@@ -512,7 +147,6 @@ export default function DialoguePanel() {
   const [showChainSelector, setShowChainSelector] = useState(false)
   const [contextWindow, setContextWindow] = useState<number>(128000)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLTextAreaElement>(null)
   const chainSelectorRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -647,12 +281,10 @@ export default function DialoguePanel() {
 
               {planModeActive && <PlanModeBadge />}
 
-              {/* Streaming thinking (historical) */}
               {isThinking && thinkingText && (
                 <ThinkingIndicator text={thinkingText} />
               )}
 
-              {/* Streaming content */}
               {streamingText && (
                 <div className="rounded-md bg-[--nw-surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] px-3 py-2">
                   <div className="text-[12px] leading-relaxed">{renderMarkdown(streamingText)}</div>
@@ -670,15 +302,22 @@ export default function DialoguePanel() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* EXECUTION LAYER */}
-        {(streamingToolCalls.length > 0 || pendingApprovals.length > 0) && (
+        {/* EXECUTION LAYER — v4 Multi-Agent Canvas (fallback to v3) */}
+        {maRun && maRun.agents.length > 0 ? (
           <div className="border-t border-[--nw-border] px-4 py-2">
-            <ExecutionTimeline
-              toolCalls={streamingToolCalls}
-              approvals={pendingApprovals}
-              onApprove={approveTool}
+            <MultiAgentCanvas agents={maRun.agents} />
+            {pendingApprovals
+              .filter(a => !streamingToolCalls.some(tc => tc.id === a.toolCallId))
+              .map(a => (
+                <PendingApprovalCard key={a.approvalId} approval={a} onApprove={approveTool} />
+              ))}
+          </div>
+        ) : (streamingToolCalls.length > 0 || pendingApprovals.length > 0 || (currentRun && currentRun.nodes.length > 0)) && (
+          <div className="border-t border-[--nw-border] px-4 py-2">
+            <ExecutionGraphView
+              nodes={currentRun?.nodes ?? []}
+              edges={currentRun?.edges ?? []}
             />
-            {/* Standalone pending approvals */}
             {pendingApprovals
               .filter(a => !streamingToolCalls.some(tc => tc.id === a.toolCallId))
               .map(a => (
@@ -687,31 +326,52 @@ export default function DialoguePanel() {
           </div>
         )}
 
-        {/* SYSTEM INSPECTOR */}
-        <SystemInspector
-          messages={activeMessages}
-          contextWindow={contextWindow}
-        />
+        {/* SYSTEM INSPECTOR — v4 (fallback to v3) */}
+        {maRun ? (
+          <div className="border-t border-[--nw-border] px-4 py-2 space-y-2">
+            <ExecutionInspector run={maRun} />
+            <MemoryGraphView memory={maRun.sharedMemory} />
+            <ConflictResolver conflicts={maRun.sharedMemory.conflictLog} />
+            <AgentFlowPanel />
+            <AgentTrajectoryPanel />
+            <RewriteApprovalCard />
+          </div>
+        ) : currentRun && (
+          <div className="border-t border-[--nw-border] px-4 py-2 space-y-2">
+            <InspectorPanel run={currentRun} />
+            <MemoryPanel memory={currentRun.memory} projectId={currentProject?.id} />
+            <AgentFlowPanel />
+            <AgentTrajectoryPanel />
+            <RewriteApprovalCard />
+          </div>
+        )}
 
-        {/* INPUT DOCK */}
-        <InputDock
-          input={input}
-          setInput={setInput}
-          onSend={handleSend}
-          onKeyDown={handleKeyDown}
-          isStreaming={isStreaming}
-          selectedChains={selectedChains}
-          onRemoveChain={handleRemoveChain}
-          onToggleChain={handleToggleChain}
-          showChainSelector={showChainSelector}
-          setShowChainSelector={setShowChainSelector}
-          reasoningChains={reasoningChains}
-          chainSelectorRef={chainSelectorRef as React.RefObject<HTMLDivElement>}
-          showQuickReplies={showQuickReplies}
-          questionGroups={questionGroups}
-          onQuickReply={handleQuickReply}
-          cancelStream={cancelDialogueStream}
-        />
+        {/* INPUT DOCK — v4 CommandCenter */}
+        <CommandCenter
+          runState={maRun?.state ?? currentRun?.state ?? 'idle'}
+          onPause={maRun ? maPause : runtimePause}
+          onResume={maRun ? maResume : runtimeResume}
+          onReplay={maRun ? () => maReplay() : undefined}
+        >
+          <InputDock
+            input={input}
+            setInput={setInput}
+            onSend={handleSend}
+            onKeyDown={handleKeyDown}
+            isStreaming={isStreaming}
+            selectedChains={selectedChains}
+            onRemoveChain={handleRemoveChain}
+            onToggleChain={handleToggleChain}
+            showChainSelector={showChainSelector}
+            setShowChainSelector={setShowChainSelector}
+            reasoningChains={reasoningChains}
+            chainSelectorRef={chainSelectorRef as React.RefObject<HTMLDivElement>}
+            showQuickReplies={showQuickReplies}
+            questionGroups={questionGroups}
+            onQuickReply={handleQuickReply}
+            cancelStream={cancelDialogueStream}
+          />
+        </CommandCenter>
 
       </div>
     </div>

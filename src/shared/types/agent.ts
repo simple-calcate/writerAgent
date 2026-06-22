@@ -266,11 +266,23 @@ export interface StyleMemoryEntry {
   updatedAt: string
 }
 
+// 对话摘要条目（语义压缩产物）
+export interface DialogueSummaryEntry {
+  id: string
+  projectId: string
+  level: string
+  entityId: string
+  summary: string
+  messageCount: number
+  compressedAt: string
+}
+
 // 项目记忆集合
 export interface ProjectMemory {
   projectId: string
   episodic: EpisodicMemoryEntry[]
   semantic: SemanticMemoryEntry[]
   style: StyleMemoryEntry[]
+  dialogue: DialogueSummaryEntry[]
   lastUpdated: string
 }

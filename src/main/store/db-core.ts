@@ -2,7 +2,7 @@ import { app, shell } from 'electron'
 import { join } from 'path'
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs'
 import { randomUUID } from 'crypto'
-import type { Project, Chapter, Volume, LLMConfig, APIProfile, VersionSnapshot, Conversation, Outline, WritingSkill, ReasoningChain, EpisodicMemoryEntry, SemanticMemoryEntry, StyleMemoryEntry } from '../../shared/types'
+import type { Project, Chapter, Volume, LLMConfig, APIProfile, VersionSnapshot, Conversation, Outline, WritingSkill, ReasoningChain, EpisodicMemoryEntry, SemanticMemoryEntry, StyleMemoryEntry, DialogueSummaryEntry } from '../../shared/types'
 import { DEFAULT_BOOK_AI_CONFIG, DEFAULT_KEY_BINDINGS, DEFAULT_CONTINUATION_CONFIG, BUILTIN_SKILLS } from '../../shared/types'
 
 export interface Store {
@@ -18,6 +18,7 @@ export interface Store {
   episodicMemories: EpisodicMemoryEntry[]
   semanticMemories: SemanticMemoryEntry[]
   styleMemories: StyleMemoryEntry[]
+  dialogueSummaries: DialogueSummaryEntry[]
 }
 
 const defaultProfileId = 'default-profile'
@@ -47,7 +48,8 @@ const defaultStore: Store = {
   reasoningChains: [],
   episodicMemories: [],
   semanticMemories: [],
-  styleMemories: []
+  styleMemories: [],
+  dialogueSummaries: []
 }
 
 // App-level config (data path setting)

@@ -1,16 +1,20 @@
-# AI Agent Design System v2.0（Production Grade）
+# AI Agent Design System v4.0（Multi-Agent Runtime）
 
-> From Chat UI → Agent OS Interface
+> From AI Runtime Visualization → Multi-Agent Operating System
 
 ## 0. 核心升级思想
 
 v1 → 是"规则集合"
 v2 → 是"可执行系统"
+v3 → 是"运行时可视化"
+v4 → 是"多智能体操作系统"
 
-v2 的本质：
+v4 的本质：
 ```
-UI = Tokens + Primitives + Composition + State Machine
+UI = Multi-Agent Runtime + Parallel Lanes + Shared Memory + Conflict Resolution
 ```
+
+你不再做单 Agent 可视化，你在做 AI multi-agent operating system
 
 ## 1. Token System
 
@@ -383,6 +387,199 @@ UI 回答三个问题：
 
 This is NOT a chat app. It is:
 
-> **AI Agent Operating System**
+> **AI Runtime Visualization System**
 
-Objects: Intent → Execution → State → Visualization
+Objects: Input → Runtime Graph → Execution Nodes → System State → UI Sync
+
+## 14. v3 Runtime Types
+
+### 14.1 AgentRun（核心运行状态）
+
+```typescript
+interface AgentRun {
+  id: string
+  input: string
+  state: "idle" | "running" | "paused" | "done" | "error"
+  nodes: ExecutionNode[]
+  edges: ExecutionEdge[]
+  memory: MemoryState
+  context: ContextState
+  result?: string
+}
+```
+
+### 14.2 ExecutionNode（AI 运行单元）
+
+```typescript
+interface ExecutionNode {
+  id: string
+  type: "tool" | "thinking" | "retrieval" | "rewrite"
+  label: string
+  status: "pending" | "running" | "done" | "error"
+  input?: unknown
+  output?: unknown
+  startTime?: number
+  endTime?: number
+  metadata?: { tokens?: number; cost?: number }
+}
+```
+
+### 14.3 ExecutionEdge（AI 思维流）
+
+```typescript
+interface ExecutionEdge { from: string; to: string }
+```
+
+### 14.4 MemoryState（AI 记忆系统）
+
+```typescript
+interface MemoryState { shortTerm: string[]; longTerm: string[]; embeddings?: number[] }
+```
+
+### 14.5 ContextState（上下文压缩）
+
+```typescript
+interface ContextState { windowSize: number; usedTokens: number; compressionRatio: number }
+```
+
+## 15. v3 UI Components
+
+### 15.1 ExecutionGraphView
+- DAG 可视化，替代 flat timeline
+- 每个 node = 一个 AI step
+- StatusDot 驱动状态色
+- Running node: `scale-[1.02]` + pulse
+
+### 15.2 MemoryPanel
+- 短期记忆 + 长期记忆
+- 折叠/展开
+
+### 15.3 InspectorPanel
+- 状态、节点数、tokens、上下文进度条
+
+### 15.4 CommandCenter
+- 运行状态 badge + 暂停/继续控制
+- 包裹 InputDock，提供运行时上下文
+
+## 16. v3 Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│ CommandCenter          (input + run trigger) │
+├─────────────────────────────────────────────┤
+│  ExecutionGraphView    (DAG visualization)  │
+│   ├── ExecutionNodeView (per node)          │
+│   └── ExecutionEdgeView (per edge)          │
+├──────────────────┬──────────────────────────┤
+│ MemoryPanel      │ InspectorPanel           │
+│  shortTerm[]     │  tokens / nodes / state  │
+│  longTerm[]      │  context compression     │
+├──────────────────┴──────────────────────────┤
+│ OutputStream           (streaming text)     │
+└─────────────────────────────────────────────┘
+```
+
+### Runtime Flow
+```
+input → AgentRuntime.start() → state="running"
+  → addNode(tool) → UI renders node
+  → updateNode(id, {status:"done"}) → UI updates
+  → finish(result) → state="done"
+```
+
+### State Integration
+```
+AgentRuntime → emit events → Zustand runtimeSlice → React re-render
+```
+
+## 17. v4 Multi-Agent Types
+
+### 17.1 MultiAgentRun
+```typescript
+interface MultiAgentRun {
+  id: string
+  agents: AgentInstance[]
+  sharedMemory: GlobalMemory
+  timeline: ExecutionTimeline[]
+  state: "running" | "paused" | "replaying" | "done"
+}
+```
+
+### 17.2 AgentInstance
+```typescript
+interface AgentInstance {
+  id: string
+  role: MARole  // "planner" | "executor" | "critic" | "researcher"
+  status: AgentStatus  // "idle" | "active" | "blocked"
+  currentNodeId?: string
+  graph: ExecutionGraph  // { nodes: ExecutionNode[], edges: ExecutionEdge[] }
+}
+```
+
+### 17.3 GlobalMemory
+```typescript
+interface GlobalMemory {
+  facts: string[]
+  decisions: string[]
+  embeddings?: number[]
+  conflictLog: string[]
+}
+```
+
+## 18. v4 UI Components
+
+### 18.1 MultiAgentCanvas
+- 多 Agent 并行轨道可视化
+- 每个 agent = 一个 AgentLane（水平节点流）
+- 替代 v3 的单一 ExecutionGraphView
+
+### 18.2 AgentSidebar
+- Agent 列表 + 状态指示
+- 点击聚焦特定 agent
+
+### 18.3 MemoryGraphView
+- 共享记忆：事实 + 决策 + 冲突日志
+- 替代 v3 的 MemoryPanel
+
+### 18.4 ConflictResolver
+- 冲突日志展示
+- 多 agent 观点竞争的可视化
+
+### 18.5 ExecutionInspector
+- 系统级统计：agent 数量、状态、记忆大小、节点数
+- 替代 v3 的 InspectorPanel
+
+### 18.6 CommandCenter (v4)
+- 支持 MultiAgentRunState
+- 暂停/继续/回放 控制
+
+## 19. v4 Architecture
+
+```
+┌─────────────────────────────────────────────┐
+│ CommandCenter    (input + multi-agent ctrl) │
+├─────────────────────────────────────────────┤
+│  MultiAgentCanvas    (parallel lanes)       │
+│   ├── AgentLane: planner  [N1] [N2] [N3]   │
+│   ├── AgentLane: executor [N1] [N2]        │
+│   └── AgentLane: critic   [N1]             │
+├──────────────────┬──────────────────────────┤
+│ MemoryGraphView  │ ExecutionInspector       │
+│  facts[]         │  agents / nodes / state  │
+│  decisions[]     │  memory / timeline       │
+│  conflictLog[]   │                          │
+├──────────────────┴──────────────────────────┤
+│ ConflictResolver    (conflict display)      │
+├─────────────────────────────────────────────┤
+│ OutputStream           (streaming text)     │
+└─────────────────────────────────────────────┘
+```
+
+### v4 vs v3
+| 维度 | v3 | v4 |
+|------|----|----|
+| Agent | 单体 | 多智能体 |
+| Execution | 单 DAG | DAG + 并行 |
+| Memory | local | global shared |
+| Thinking | linear | graph + conflict |
+| UI | debugger | operating system |

@@ -105,12 +105,12 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
                   className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
                 >
                   <option value="rule-based">规则式（零成本，默认）</option>
-                  <option value="semantic">语义压缩（需安装 headroom-ai）</option>
+                  <option value="semantic">语义压缩（LLM 驱动）</option>
                   <option value="auto">自动选择</option>
                 </select>
                 <p className="text-[10px] text-gray-500 mt-1">
                   {config.compressionStrategy === 'semantic' 
-                    ? '使用 ML 模型进行语义压缩，压缩率更高但需要额外依赖'
+                    ? '使用 LLM 进行智能摘要压缩，保留关键信息，压缩率更高'
                     : config.compressionStrategy === 'auto'
                     ? '优先使用语义压缩，不可用时回退到规则式'
                     : '基于规则的快速压缩，零成本无依赖'}

@@ -1,6 +1,6 @@
 import type { BrowserWindow } from 'electron'
 import type {
-  Project, Volume, Chapter, LLMConfigSingle,
+  Project, Volume, Chapter, LLMConfigSingle, ContextConfig,
   IntentClassifierResult, AnalysisResult
 } from '../../shared/types'
 import { classifyIntent } from './intent-classifier'
@@ -17,6 +17,8 @@ export interface RouteContext {
   config: LLMConfigSingle
   signal?: AbortSignal
   streamId?: string
+  messages?: { role: 'user' | 'assistant'; content: string }[]
+  contextConfig?: ContextConfig
 }
 
 export type RouteResult =
@@ -61,7 +63,9 @@ export async function routeRequest(
     case 'chat':
     case 'tool':
     default: {
-      const messages = [{ role: 'user' as const, content: input }]
+      const messages = ctx.messages && ctx.messages.length > 0
+        ? ctx.messages
+        : [{ role: 'user' as const, content: input }]
       const streamResult = await startDialogueStream({
         config: ctx.config,
         mainWindow: ctx.mainWindow,
@@ -72,7 +76,7 @@ export async function routeRequest(
         allVolumes: [],
         allChapters: [],
         messages,
-        contextConfig: undefined
+        contextConfig: ctx.contextConfig
       })
       return { classification, result: { pipeline: 'chat', streamId: streamResult.streamId } }
     }

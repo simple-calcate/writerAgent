@@ -405,7 +405,17 @@ const api: IPCAPI = {
     const handler = (_event: any, data: WritingTrajectory) => callback(data)
     ipcRenderer.on('agent:trajectory', handler)
     return () => { ipcRenderer.removeListener('agent:trajectory', handler) }
-  }
+  },
+
+  // Memory
+  memoryGetContext: (projectId: string) =>
+    ipcRenderer.invoke('memory:get-context', projectId),
+
+  memoryGetSummary: (projectId: string) =>
+    ipcRenderer.invoke('memory:get-summary', projectId),
+
+  memoryClear: (projectId: string, layer: 'episodic' | 'semantic' | 'style' | 'dialogue' | 'all') =>
+    ipcRenderer.invoke('memory:clear', projectId, layer)
 }
 
 contextBridge.exposeInMainWorld('api', api)

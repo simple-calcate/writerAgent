@@ -11,6 +11,7 @@ import { createSkillSlice, type SkillSlice } from './slices/skillSlice'
 import { createReasoningSlice, type ReasoningSlice } from './slices/reasoningSlice'
 import { createOutlineSlice, type OutlineSlice } from './slices/outlineSlice'
 import { createImportSlice, type ImportSlice } from './slices/importSlice'
+import { createRuntimeSlice, type RuntimeSlice } from './slices/runtimeSlice'
 
 export type AppState = ProjectSlice &
   ChapterSlice &
@@ -23,7 +24,8 @@ export type AppState = ProjectSlice &
   SkillSlice &
   ReasoningSlice &
   OutlineSlice &
-  ImportSlice
+  ImportSlice &
+  RuntimeSlice
 
 export const useAppStore = create<AppState>()((...a) => ({
   ...createProjectSlice(...a),
@@ -37,5 +39,6 @@ export const useAppStore = create<AppState>()((...a) => ({
   ...createSkillSlice(...a),
   ...createReasoningSlice(...a),
   ...createOutlineSlice(...a),
-  ...createImportSlice(...a)
+  ...createImportSlice(...a),
+  ...createRuntimeSlice(...a)
 }))

@@ -189,7 +189,7 @@ export function registerAIHandlers(
 
     try {
       const { classification, result } = await runtime.route(
-        userContent, project, volume, chapter, level, config, undefined, streamId
+        userContent, project, volume, chapter, level, config, undefined, streamId, messages, getContextConfig()
       )
 
       if (result.pipeline === 'analysis') {
@@ -268,5 +268,21 @@ export function registerAIHandlers(
     }
 
     return { compressedCount: result.compressedCount, summary: result.summary }
+  })
+
+  // Memory
+  ipcMain.handle('memory:get-context', (_e, projectId: string) => {
+    const { getMemoryContext } = require('../memory/manager')
+    return getMemoryContext(projectId)
+  })
+
+  ipcMain.handle('memory:get-summary', (_e, projectId: string) => {
+    const { getMemorySummary } = require('../memory/manager')
+    return getMemorySummary(projectId)
+  })
+
+  ipcMain.handle('memory:clear', (_e, projectId: string, layer: string) => {
+    const { clearMemory } = require('../memory/manager')
+    clearMemory(projectId, layer as any)
   })
 }

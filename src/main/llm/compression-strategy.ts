@@ -1,5 +1,8 @@
-import type { ContextConfig, ConversationMessage } from '../../shared/types'
-import { compressHistory, buildCompressedMessages, compressForStorage } from './context-compressor'
+import type { LLMConfigSingle, ContextConfig, ConversationMessage } from '../../shared/types'
+import { DEFAULT_CONTEXT_CONFIG } from '../../shared/types'
+import { compressHistory as ruleCompressHistory, buildCompressedMessages, compressForStorage } from './context-compressor'
+import { compressHistoryWithSummary } from './history-compressor'
+import { createBudget } from './token-counter'
 
 export interface CompressedResult {
   messages: Array<{ role: 'user' | 'assistant' | 'system' | 'tool'; content: string; tool_call_id?: string }>
@@ -13,8 +16,10 @@ export interface CompressionStrategy {
   compressHistory(
     messages: Array<{ role: string; content: string }>,
     contextWindow?: number,
-    contextConfig?: ContextConfig
-  ): CompressedResult
+    contextConfig?: ContextConfig,
+    llmConfig?: LLMConfigSingle,
+    signal?: AbortSignal
+  ): Promise<CompressedResult>
   compressForStorage(messages: ConversationMessage[]): ConversationMessage[]
   isAvailable(): boolean
 }
@@ -22,12 +27,12 @@ export interface CompressionStrategy {
 class RuleBasedStrategy implements CompressionStrategy {
   name = 'rule-based'
 
-  compressHistory(
+  async compressHistory(
     messages: Array<{ role: string; content: string }>,
     contextWindow?: number,
     contextConfig?: ContextConfig
-  ): CompressedResult {
-    const result = compressHistory(messages, contextWindow, contextConfig)
+  ): Promise<CompressedResult> {
+    const result = ruleCompressHistory(messages, contextWindow, contextConfig)
     return {
       messages: buildCompressedMessages(result),
       compressedSummary: result.compressedSummary,
@@ -47,78 +52,54 @@ class RuleBasedStrategy implements CompressionStrategy {
 
 class SemanticStrategy implements CompressionStrategy {
   name = 'semantic'
-  private headroomModule: any = null
-  private loadAttempted = false
 
-  async loadHeadroom(): Promise<boolean> {
-    if (this.loadAttempted) return this.headroomModule !== null
-    this.loadAttempted = true
-    
-    try {
-      // 使用 Function 构造器避免 TypeScript 和 Vite 的静态分析
-      const dynamicImport = new Function('specifier', 'return import(specifier)')
-      this.headroomModule = await dynamicImport('headroom-ai')
-      return true
-    } catch {
-      console.warn('headroom-ai not installed, falling back to rule-based compression')
-      return false
-    }
-  }
-
-  async compressHistoryAsync(
+  async compressHistory(
     messages: Array<{ role: string; content: string }>,
     contextWindow?: number,
-    contextConfig?: ContextConfig
+    contextConfig?: ContextConfig,
+    llmConfig?: LLMConfigSingle,
+    signal?: AbortSignal
   ): Promise<CompressedResult> {
-    if (!await this.loadHeadroom()) {
-      return getRuleBasedStrategy().compressHistory(messages, contextWindow, contextConfig)
+    if (!llmConfig) {
+      return ruleBasedStrategy.compressHistory(messages, contextWindow, contextConfig)
     }
 
+    const config = contextConfig || DEFAULT_CONTEXT_CONFIG
+    const budget = createBudget(contextWindow, contextConfig)
+    const historyBudget = Math.floor(budget.available * config.historyBudgetRatio)
+
     try {
-      const result = await this.headroomModule.compress(messages, {
-        model: 'kompress-v2-base',
-        targetRatio: 0.3
-      })
-      
+      const result = await compressHistoryWithSummary(messages, llmConfig, historyBudget, signal)
+
       return {
-        messages: result.compressed || messages,
+        messages: result.messages.map(m => ({
+          role: m.role as 'user' | 'assistant' | 'system' | 'tool',
+          content: m.content
+        })),
         compressedSummary: result.summary || '',
-        totalTokenEstimate: result.tokenCount || 0,
-        compressedCount: messages.length - (result.compressed?.length || messages.length)
+        totalTokenEstimate: 0,
+        compressedCount: messages.length - result.messages.length
       }
     } catch (err) {
-      console.error('Headroom compression failed, falling back:', err)
-      return getRuleBasedStrategy().compressHistory(messages, contextWindow, contextConfig)
+      console.error('Semantic compression failed, falling back to rule-based:', err)
+      return ruleBasedStrategy.compressHistory(messages, contextWindow, contextConfig)
     }
-  }
-
-  compressHistory(
-    messages: Array<{ role: string; content: string }>,
-    contextWindow?: number,
-    contextConfig?: ContextConfig
-  ): CompressedResult {
-    // 同步回退到规则式
-    return getRuleBasedStrategy().compressHistory(messages, contextWindow, contextConfig)
   }
 
   compressForStorage(messages: ConversationMessage[]): ConversationMessage[] {
-    return getRuleBasedStrategy().compressForStorage(messages)
+    return compressForStorage(messages)
   }
 
   isAvailable(): boolean {
-    return this.headroomModule !== null
+    return true
   }
 }
 
 const ruleBasedStrategy = new RuleBasedStrategy()
 const semanticStrategy = new SemanticStrategy()
 
-function getRuleBasedStrategy(): RuleBasedStrategy {
-  return ruleBasedStrategy
-}
-
 export function getCompressionStrategy(preferSemantic = false): CompressionStrategy {
-  if (preferSemantic && semanticStrategy.isAvailable()) {
+  if (preferSemantic) {
     return semanticStrategy
   }
   return ruleBasedStrategy

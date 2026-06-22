@@ -53,11 +53,13 @@ export class AgentRuntime {
     level: 'book' | 'volume' | 'chapter',
     config: LLMConfigSingle,
     signal?: AbortSignal,
-    streamId?: string
+    streamId?: string,
+    messages?: { role: 'user' | 'assistant'; content: string }[],
+    contextConfig?: import('../../shared/types').ContextConfig
   ): Promise<{ classification: IntentClassifierResult; result: RouteResult }> {
     return routeRequest(input, {
       mainWindow: this.mainWindow,
-      project, volume, chapter, level, config, signal, streamId
+      project, volume, chapter, level, config, signal, streamId, messages, contextConfig
     }, () => this.getWAC())
   }
 

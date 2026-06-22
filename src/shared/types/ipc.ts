@@ -157,4 +157,9 @@ export interface IPCAPI {
   onAgentThinkingDone: (callback: (data: { streamId: string }) => void) => () => void
   onAgentFlowUpdate: (callback: (data: AgentFlowSnapshot) => void) => () => void
   onAgentTrajectory: (callback: (data: WritingTrajectory) => void) => () => void
+
+  // Memory
+  memoryGetContext: (projectId: string) => Promise<{ episodic: string; semantic: string; style: string; dialogue: string; combined: string }>
+  memoryGetSummary: (projectId: string) => Promise<{ episodicCount: number; semanticCount: number; styleCount: number; dialogueCount: number; lastUpdated: string | null }>
+  memoryClear: (projectId: string, layer: 'episodic' | 'semantic' | 'style' | 'dialogue' | 'all') => Promise<void>
 }

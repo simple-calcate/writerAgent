@@ -34,6 +34,7 @@ interface ToolCallAccumulator {
 
 export async function startDialogueStream(params: StartStreamParams): Promise<{ streamId: string }> {
   const { config, mainWindow, messages, aiConfig, contextConfig, ...promptParams } = params
+  const { project, level } = params
   const streamId = randomUUID()
   const controller = new AbortController()
   activeStreams.set(streamId, controller)
@@ -133,8 +134,14 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
     trimOldToolResults(cleanedMessages, config.contextWindow, contextConfig)
 
-    const compressed = compressDialogueHistory(cleanedMessages, config.contextWindow, contextConfig)
+    const compressed = await compressDialogueHistory(cleanedMessages, config.contextWindow, contextConfig, config, controller.signal)
     const finalMessages = compressed.messages
+
+    // 语义压缩产出的摘要写入记忆系统
+    if (compressed.compressedSummary && compressed.compressedCount > 0) {
+      const { saveDialogueSummary } = await import('../memory/manager')
+      saveDialogueSummary(project.id, level, project.id, compressed.compressedSummary, compressed.compressedCount)
+    }
 
     const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [
       { role: 'system', content: systemPrompt },

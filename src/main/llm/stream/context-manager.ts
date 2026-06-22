@@ -1,4 +1,4 @@
-import type { ContextConfig } from '../../../shared/types'
+import type { LLMConfigSingle, ContextConfig } from '../../../shared/types'
 import { DEFAULT_CONTEXT_CONFIG } from '../../../shared/types'
 import { estimateMessagesTokens, createBudget } from '../token-counter'
 import { getCompressionStrategy } from '../compression-strategy'
@@ -27,7 +27,13 @@ export function trimOldToolResults(messages: Array<{ role: string; content: stri
   }
 }
 
-export function compressDialogueHistory(messages: Array<{ role: string; content: string }>, contextWindow?: number, contextConfig?: ContextConfig) {
+export async function compressDialogueHistory(
+  messages: Array<{ role: string; content: string }>,
+  contextWindow?: number,
+  contextConfig?: ContextConfig,
+  llmConfig?: LLMConfigSingle,
+  signal?: AbortSignal
+) {
   const strategy = getCompressionStrategy(contextConfig?.compressionStrategy === 'semantic')
-  return strategy.compressHistory(messages, contextWindow, contextConfig)
+  return strategy.compressHistory(messages, contextWindow, contextConfig, llmConfig, signal)
 }

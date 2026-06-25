@@ -6,7 +6,7 @@ import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } fro
 import { generateContinuation } from '../llm/continuation'
 import { compressConversationForStorage, compressConversationMessages } from '../llm/context-compressor'
 import { getAgentRuntime } from '../agent/runtime'
-import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation, Volume, Chapter, AnalysisResult } from '../../shared/types'
+import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation, ConversationMessage, Volume, Chapter, AnalysisResult } from '../../shared/types'
 
 function formatAnalysisForDialogue(result: AnalysisResult): string {
   const { score, summary } = result
@@ -248,7 +248,7 @@ export function registerAIHandlers(
   })
 
   // Manual dialogue compression
-  ipcMain.handle('dialogue:compress', (_e, level: DialogueLevel, entityId: string) => {
+  ipcMain.handle('dialogue:compress', async (_e, level: DialogueLevel, entityId: string) => {
     const conversation = getConversation(level, entityId)
     if (!conversation || conversation.messages.length === 0) {
       return { compressedCount: 0, summary: '' }
@@ -256,7 +256,32 @@ export function registerAIHandlers(
 
     const config = resolveFeatureConfig('dialogue')
     const contextConfig = getContextConfig()
-    const result = compressConversationMessages(conversation.messages, config?.contextWindow, contextConfig)
+
+    let result: { messages: ConversationMessage[]; summary: string; compressedCount: number }
+
+    if (contextConfig?.compressionStrategy === 'semantic') {
+      const { compressHistoryWithSummary } = require('../llm/history-compressor')
+      const budget = Math.floor((config?.contextWindow || 128000) * 0.25 * (contextConfig.historyBudgetRatio || 0.25))
+      const apiMessages = conversation.messages.map(m => ({ role: m.role, content: m.content }))
+      const llmResult = await compressHistoryWithSummary(apiMessages, config, budget)
+
+      const keepRecent = contextConfig.keepRecentRounds || 20
+      const recentMessages = conversation.messages.slice(-keepRecent)
+      const summaryMsg: ConversationMessage = {
+        id: crypto.randomUUID(),
+        role: 'assistant',
+        content: llmResult.summary || '',
+        timestamp: new Date().toISOString()
+      }
+
+      result = {
+        messages: llmResult.summary ? [summaryMsg, ...recentMessages] : conversation.messages,
+        summary: llmResult.summary || '',
+        compressedCount: llmResult.summary ? conversation.messages.length - recentMessages.length : 0
+      }
+    } else {
+      result = compressConversationMessages(conversation.messages, config?.contextWindow, contextConfig)
+    }
 
     if (result.compressedCount > 0) {
       const updated: Conversation = {
@@ -265,6 +290,18 @@ export function registerAIHandlers(
         updatedAt: new Date().toISOString()
       }
       saveConversation(updated)
+
+      // 压缩摘要写入记忆系统
+      const { saveDialogueSummary } = require('../memory/manager')
+      const projects = getProjects()
+      const project = projects.find(p => {
+        if (level === 'book') return p.id === entityId
+        if (level === 'volume') return getVolumes(p.id).some(v => v.id === entityId)
+        return getChapters(p.id).some(c => c.id === entityId)
+      })
+      if (project && result.summary) {
+        saveDialogueSummary(project.id, level, entityId, result.summary, result.compressedCount)
+      }
     }
 
     return { compressedCount: result.compressedCount, summary: result.summary }

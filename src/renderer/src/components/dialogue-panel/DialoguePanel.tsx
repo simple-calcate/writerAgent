@@ -146,6 +146,7 @@ export default function DialoguePanel() {
   const [selectedChains, setSelectedChains] = useState<ReasoningChain[]>([])
   const [showChainSelector, setShowChainSelector] = useState(false)
   const [contextWindow, setContextWindow] = useState<number>(128000)
+  const [memoryRefreshKey, setMemoryRefreshKey] = useState(0)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chainSelectorRef = useRef<HTMLDivElement>(null)
 
@@ -184,6 +185,7 @@ export default function DialoguePanel() {
       setSelectedChains([])
       if (command === '/compress') {
         await compressDialogue()
+        setMemoryRefreshKey(k => k + 1)
       }
       return
     }
@@ -339,7 +341,7 @@ export default function DialoguePanel() {
         ) : currentRun && (
           <div className="border-t border-[--nw-border] px-4 py-2 space-y-2">
             <InspectorPanel run={currentRun} />
-            <MemoryPanel memory={currentRun.memory} projectId={currentProject?.id} />
+            <MemoryPanel memory={currentRun.memory} projectId={currentProject?.id} refreshKey={memoryRefreshKey} />
             <AgentFlowPanel />
             <AgentTrajectoryPanel />
             <RewriteApprovalCard />

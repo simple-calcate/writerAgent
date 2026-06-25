@@ -11,9 +11,10 @@ interface BackendMemory {
 interface MemoryPanelProps {
   memory: MemoryState
   projectId?: string | null
+  refreshKey?: number
 }
 
-export default function MemoryPanel({ memory, projectId }: MemoryPanelProps) {
+export default function MemoryPanel({ memory, projectId, refreshKey }: MemoryPanelProps) {
   const [collapsed, setCollapsed] = useState(false)
   const [showLongTerm, setShowLongTerm] = useState(false)
   const [showBackend, setShowBackend] = useState(false)
@@ -31,7 +32,7 @@ export default function MemoryPanel({ memory, projectId }: MemoryPanelProps) {
         })
       }
     }).catch(() => {})
-  }, [projectId])
+  }, [projectId, refreshKey])
 
   const hasRuntime = memory.shortTerm.length > 0 || memory.longTerm.length > 0
   const hasBackend = backendMemory && (backendMemory.episodic || backendMemory.semantic || backendMemory.style || backendMemory.dialogue)

@@ -341,10 +341,20 @@ export default function DialoguePanel() {
         ) : currentRun && (
           <div className="border-t border-[--nw-border] px-4 py-2 space-y-2">
             <InspectorPanel run={currentRun} />
-            <MemoryPanel memory={currentRun.memory} projectId={currentProject?.id} refreshKey={memoryRefreshKey} />
             <AgentFlowPanel />
             <AgentTrajectoryPanel />
             <RewriteApprovalCard />
+          </div>
+        )}
+
+        {/* MEMORY — 始终可见（持久记忆 + 运行时记忆） */}
+        {currentProject && (
+          <div className="border-t border-[--nw-border] px-4 py-2">
+            <MemoryPanel
+              memory={currentRun?.memory ?? { shortTerm: [], longTerm: [] }}
+              projectId={currentProject.id}
+              refreshKey={memoryRefreshKey}
+            />
           </div>
         )}
 

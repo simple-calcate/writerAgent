@@ -19,9 +19,11 @@ export default function MemoryPanel({ memory, projectId, refreshKey }: MemoryPan
   const [showLongTerm, setShowLongTerm] = useState(false)
   const [showBackend, setShowBackend] = useState(false)
   const [backendMemory, setBackendMemory] = useState<BackendMemory | null>(null)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     if (!projectId) return
+    setLoading(true)
     window.api.memoryGetContext(projectId).then(ctx => {
       if (ctx && (ctx.episodic || ctx.semantic || ctx.style || ctx.dialogue)) {
         setBackendMemory({
@@ -30,14 +32,16 @@ export default function MemoryPanel({ memory, projectId, refreshKey }: MemoryPan
           style: ctx.style,
           dialogue: ctx.dialogue
         })
+      } else {
+        setBackendMemory(null)
       }
-    }).catch(() => {})
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [projectId, refreshKey])
 
   const hasRuntime = memory.shortTerm.length > 0 || memory.longTerm.length > 0
   const hasBackend = backendMemory && (backendMemory.episodic || backendMemory.semantic || backendMemory.style || backendMemory.dialogue)
 
-  if (!hasRuntime && !hasBackend) return null
+  if (!hasRuntime && !hasBackend && !loading) return null
 
   return (
     <div className="rounded-md bg-[--surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">

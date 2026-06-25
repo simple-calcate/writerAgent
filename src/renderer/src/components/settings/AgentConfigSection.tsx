@@ -61,6 +61,13 @@ export default function AgentConfigSection({ config, onChange }: AgentConfigSect
         value={config.autoCommitMemory}
         onChange={v => update({ autoCommitMemory: v })}
       />
+
+      <ToggleRow
+        label="显示记忆面板"
+        desc="在对话面板底部显示持久记忆（事件/语义/风格/对话摘要）"
+        value={config.showMemoryPanel}
+        onChange={v => update({ showMemoryPanel: v })}
+      />
     </div>
   )
 }

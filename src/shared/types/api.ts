@@ -54,6 +54,7 @@ export interface AgentFeatureConfig {
   enableMemory: boolean         // 是否启用记忆系统，默认 true
   enableTrajectory: boolean     // 是否启用轨迹记录，默认 true
   autoCommitMemory: boolean     // 是否自动提交记忆，默认 true
+  showMemoryPanel: boolean      // 是否在对话面板显示记忆面板，默认 true
 }
 
 export const DEFAULT_AGENT_FEATURE_CONFIG: AgentFeatureConfig = {
@@ -61,7 +62,8 @@ export const DEFAULT_AGENT_FEATURE_CONFIG: AgentFeatureConfig = {
   criticThreshold: 7,
   enableMemory: true,
   enableTrajectory: true,
-  autoCommitMemory: true
+  autoCommitMemory: true,
+  showMemoryPanel: true
 }
 
 // 快捷键配置

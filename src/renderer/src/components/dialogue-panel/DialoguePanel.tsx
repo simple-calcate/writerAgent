@@ -147,6 +147,7 @@ export default function DialoguePanel() {
   const [showChainSelector, setShowChainSelector] = useState(false)
   const [contextWindow, setContextWindow] = useState<number>(128000)
   const [memoryRefreshKey, setMemoryRefreshKey] = useState(0)
+  const [showMemoryPanel, setShowMemoryPanel] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const chainSelectorRef = useRef<HTMLDivElement>(null)
 
@@ -156,6 +157,12 @@ export default function DialoguePanel() {
 
   useEffect(() => {
     window.api.getReasoningChains().then(setReasoningChains)
+  }, [])
+
+  useEffect(() => {
+    window.api.getLLMConfig().then(cfg => {
+      setShowMemoryPanel(cfg.agentConfig?.showMemoryPanel !== false)
+    }).catch(() => {})
   }, [])
 
   useEffect(() => {
@@ -348,7 +355,7 @@ export default function DialoguePanel() {
         )}
 
         {/* MEMORY — 始终可见（持久记忆 + 运行时记忆） */}
-        {currentProject && (
+        {currentProject && showMemoryPanel && (
           <div className="border-t border-[--nw-border] px-4 py-2">
             <MemoryPanel
               memory={currentRun?.memory ?? { shortTerm: [], longTerm: [] }}

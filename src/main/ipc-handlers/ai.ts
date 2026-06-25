@@ -5,7 +5,9 @@ import { refineSummary } from '../llm/refine-summary'
 import { startDialogueStream, cancelDialogueStream, handleApprovalResponse } from '../llm/dialogue'
 import { generateContinuation } from '../llm/continuation'
 import { compressConversationForStorage, compressConversationMessages } from '../llm/context-compressor'
+import { compressHistoryWithSummary } from '../llm/history-compressor'
 import { getAgentRuntime } from '../agent/runtime'
+import { recordMemory, getMemoryContext, getMemorySummary, clearMemory } from '../memory/manager'
 import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation, ConversationMessage, Volume, Chapter, AnalysisResult } from '../../shared/types'
 
 function formatAnalysisForDialogue(result: AnalysisResult): string {
@@ -259,9 +261,8 @@ export function registerAIHandlers(
 
     let result: { messages: ConversationMessage[]; summary: string; compressedCount: number }
 
-    if (contextConfig?.compressionStrategy === 'semantic') {
-      const { compressHistoryWithSummary } = require('../llm/history-compressor')
-      const budget = Math.floor((config?.contextWindow || 128000) * 0.25 * (contextConfig.historyBudgetRatio || 0.25))
+    if (contextConfig?.compressionStrategy === 'semantic' && config) {
+      const budget = Math.floor((config.contextWindow || 128000) * 0.25 * (contextConfig.historyBudgetRatio || 0.25))
       const apiMessages = conversation.messages.map(m => ({ role: m.role, content: m.content }))
       const llmResult = await compressHistoryWithSummary(apiMessages, config, budget)
 
@@ -292,7 +293,6 @@ export function registerAIHandlers(
       saveConversation(updated)
 
       // 压缩摘要写入记忆系统
-      const { recordMemory } = require('../memory/manager')
       const projects = getProjects()
       const project = projects.find(p => {
         if (level === 'book') return p.id === entityId
@@ -309,17 +309,14 @@ export function registerAIHandlers(
 
   // Memory
   ipcMain.handle('memory:get-context', (_e, projectId: string) => {
-    const { getMemoryContext } = require('../memory/manager')
     return getMemoryContext(projectId)
   })
 
   ipcMain.handle('memory:get-summary', (_e, projectId: string) => {
-    const { getMemorySummary } = require('../memory/manager')
     return getMemorySummary(projectId)
   })
 
   ipcMain.handle('memory:clear', (_e, projectId: string, layer: string) => {
-    const { clearMemory } = require('../memory/manager')
     clearMemory(projectId, layer as any)
   })
 }

@@ -4,6 +4,27 @@ import { getEpisodicMemories, extractEpisodicMemory, getEpisodicContext } from '
 import { getSemanticMemories, extractSemanticMemory, getSemanticContext } from './semantic'
 import { getStyleMemories, analyzeStyle, getStyleContext } from './style'
 
+// ─── 统一记忆事件接口 ───
+
+export type MemoryEvent =
+  | { type: 'dialogue_compressed'; projectId: string; level: string; entityId: string; summary: string; messageCount: number }
+  | { type: 'chapter_written'; projectId: string; chapterId: string; chapterTitle: string; content: string; config: LLMConfigSingle; signal?: AbortSignal }
+
+/**
+ * 统一记忆写入入口
+ * 调用方只需传入事件对象，由 manager 决定写入哪个记忆层
+ */
+export async function recordMemory(event: MemoryEvent): Promise<void> {
+  switch (event.type) {
+    case 'dialogue_compressed':
+      saveDialogueSummary(event.projectId, event.level, event.entityId, event.summary, event.messageCount)
+      break
+    case 'chapter_written':
+      await commitChapterMemory(event.projectId, event.chapterId, event.chapterTitle, event.content, event.config, event.signal)
+      break
+  }
+}
+
 export interface MemoryContext {
   episodic: string
   semantic: string
@@ -36,6 +57,22 @@ export function getMemoryContext(projectId: string, maxChars: number = 5000): Me
 /**
  * 在写作任务完成后自动提取和更新记忆
  */
+async function commitChapterMemory(
+  projectId: string,
+  chapterId: string,
+  chapterTitle: string,
+  content: string,
+  config: LLMConfigSingle,
+  signal?: AbortSignal
+): Promise<void> {
+  await Promise.allSettled([
+    extractEpisodicMemory(chapterId, chapterTitle, content, projectId, config, signal),
+    extractSemanticMemory(content, projectId, config, signal),
+    analyzeStyle(content, projectId, config, signal)
+  ])
+}
+
+/** @deprecated 使用 recordMemory({ type: 'chapter_written', ... }) */
 export async function commitMemory(
   projectId: string,
   chapterId: string,
@@ -44,12 +81,7 @@ export async function commitMemory(
   config: LLMConfigSingle,
   signal?: AbortSignal
 ): Promise<void> {
-  // 并行提取三种记忆
-  await Promise.allSettled([
-    extractEpisodicMemory(chapterId, chapterTitle, content, projectId, config, signal),
-    extractSemanticMemory(content, projectId, config, signal),
-    analyzeStyle(content, projectId, config, signal)
-  ])
+  return commitChapterMemory(projectId, chapterId, chapterTitle, content, config, signal)
 }
 
 /**
@@ -114,12 +146,9 @@ export function buildMemorySystemPrompt(projectId: string): string {
   return ctx.combined
 }
 
-// ─── 对话摘要记忆 ───
+// ─── 对话摘要记忆（内部实现） ───
 
-/**
- * 保存对话压缩摘要到记忆系统
- */
-export function saveDialogueSummary(
+function saveDialogueSummary(
   projectId: string,
   level: string,
   entityId: string,
@@ -145,7 +174,6 @@ export function saveDialogueSummary(
 
   store.dialogueSummaries.push(entry)
 
-  // 每个项目最多保留 50 条对话摘要
   const projectSummaries = store.dialogueSummaries.filter(m => m.projectId === projectId)
   if (projectSummaries.length > 50) {
     const toRemove = projectSummaries.slice(0, projectSummaries.length - 50)
@@ -164,9 +192,6 @@ export function getDialogueSummaries(projectId: string): DialogueSummaryEntry[] 
   return (store.dialogueSummaries || []).filter(m => m.projectId === projectId)
 }
 
-/**
- * 获取对话摘要上下文字符串（用于注入提示词）
- */
 function getDialogueSummaryContext(projectId: string): string {
   const summaries = getDialogueSummaries(projectId)
   if (summaries.length === 0) return ''

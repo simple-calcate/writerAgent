@@ -292,7 +292,7 @@ export function registerAIHandlers(
       saveConversation(updated)
 
       // 压缩摘要写入记忆系统
-      const { saveDialogueSummary } = require('../memory/manager')
+      const { recordMemory } = require('../memory/manager')
       const projects = getProjects()
       const project = projects.find(p => {
         if (level === 'book') return p.id === entityId
@@ -300,7 +300,7 @@ export function registerAIHandlers(
         return getChapters(p.id).some(c => c.id === entityId)
       })
       if (project && result.summary) {
-        saveDialogueSummary(project.id, level, entityId, result.summary, result.compressedCount)
+        recordMemory({ type: 'dialogue_compressed', projectId: project.id, level, entityId, summary: result.summary, messageCount: result.compressedCount })
       }
     }
 

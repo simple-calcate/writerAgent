@@ -139,8 +139,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
     // 语义压缩产出的摘要写入记忆系统
     if (compressed.compressedSummary && compressed.compressedCount > 0) {
-      const { saveDialogueSummary } = await import('../memory/manager')
-      saveDialogueSummary(project.id, level, project.id, compressed.compressedSummary, compressed.compressedCount)
+      const { recordMemory } = await import('../memory/manager')
+      recordMemory({ type: 'dialogue_compressed', projectId: project.id, level, entityId: project.id, summary: compressed.compressedSummary, messageCount: compressed.compressedCount })
     }
 
     const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [

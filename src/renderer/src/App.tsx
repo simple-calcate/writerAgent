@@ -1,20 +1,24 @@
-import { useEffect, useState, useCallback } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useState } from 'react'
 import { useAppStore } from './stores/useAppStore'
 import { useVisualTheme } from './hooks/useVisualTheme'
 import Sidebar from './components/Sidebar'
 import Editor from './components/editor'
 import RightPanel from './components/RightPanel'
-import Settings from './components/Settings'
-import HistoryPanel from './components/HistoryPanel'
 import ResizeHandle from './components/ResizeHandle'
-import ImportPreviewDialog from './components/ImportPreviewDialog'
-import SkillImportPreview from './components/SkillImportPreview'
-import UpdateBanner from './components/UpdateBanner'
 import BackgroundLayer from './components/BackgroundLayer'
 import MouseGlow from './components/MouseGlow'
 import RainEffect from './components/RainEffect'
-import WhatsNewDialog from './components/WhatsNewDialog'
-import ReasoningPanel from './components/ReasoningPanel'
+import ErrorBoundary from './components/ErrorBoundary'
+import LoadingFallback from './components/LoadingFallback'
+
+// 非首屏组件懒加载（按需显示 / 始终挂载但可延后）
+const Settings = lazy(() => import('./components/Settings'))
+const HistoryPanel = lazy(() => import('./components/HistoryPanel'))
+const ImportPreviewDialog = lazy(() => import('./components/ImportPreviewDialog'))
+const SkillImportPreview = lazy(() => import('./components/SkillImportPreview'))
+const UpdateBanner = lazy(() => import('./components/UpdateBanner'))
+const WhatsNewDialog = lazy(() => import('./components/WhatsNewDialog'))
+const ReasoningPanel = lazy(() => import('./components/ReasoningPanel'))
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
@@ -141,7 +145,11 @@ export default function App() {
           <h1 className="text-sm font-medium text-[var(--nw-text-secondary)] tracking-wide">网文写作助手</h1>
         </div>
         <div className="flex items-center gap-2">
-          <UpdateBanner />
+          <ErrorBoundary name="更新检查">
+            <Suspense fallback={<div className="h-6" />}>
+              <UpdateBanner />
+            </Suspense>
+          </ErrorBoundary>
           <button
             onClick={toggleSettings}
             className="text-[12px] text-gray-400 hover:text-gray-200 px-3 py-1 rounded-md hover:bg-white/5 transition-all"
@@ -155,7 +163,9 @@ export default function App() {
       <div className="relative z-[1] flex-1 flex overflow-hidden">
         {showSidebar && (
           <>
-            <Sidebar width={sidebarWidth} />
+            <ErrorBoundary name="侧栏">
+              <Sidebar width={sidebarWidth} />
+            </ErrorBoundary>
             <ResizeHandle onResize={handleSidebarResize} />
           </>
         )}
@@ -175,23 +185,31 @@ export default function App() {
               <span className="text-[10px] text-[var(--nw-accent)] font-medium tracking-wide">🧠 推理分析</span>
             </div>
             <div className="flex-1 overflow-hidden">
-              <ReasoningPanel
-                sessionId={reasoningSessionId}
-                chainName={reasoningChainName}
-                steps={reasoningSteps}
-                stepResults={reasoningStepResults}
-                status={reasoningStatus}
-                includeInContext={reasoningIncludeInContext}
-                onClose={toggleReasoningPanel}
-              />
+              <ErrorBoundary name="推理面板">
+                <Suspense fallback={<LoadingFallback label="加载推理面板" />}>
+                  <ReasoningPanel
+                    sessionId={reasoningSessionId}
+                    chainName={reasoningChainName}
+                    steps={reasoningSteps}
+                    stepResults={reasoningStepResults}
+                    status={reasoningStatus}
+                    includeInContext={reasoningIncludeInContext}
+                    onClose={toggleReasoningPanel}
+                  />
+                </Suspense>
+              </ErrorBoundary>
             </div>
           </div>
         ) : (
-          <Editor />
+          <ErrorBoundary name="编辑器">
+            <Editor />
+          </ErrorBoundary>
         )}
 
         {rightPanel && <ResizeHandle onResize={handleRightResize} />}
-        <RightPanel width={rightWidth} />
+        <ErrorBoundary name="右侧面板">
+          <RightPanel width={rightWidth} />
+        </ErrorBoundary>
       </div>
 
       {/* Reasoning indicator - show when reasoning is running but panel is closed */}
@@ -205,17 +223,39 @@ export default function App() {
         </button>
       )}
 
-      {/* Modals */}
-      {showSettings && <Settings />}
-      {whatsNewVersion && (
-        <WhatsNewDialog
-          version={whatsNewVersion}
-          onClose={() => setWhatsNewVersion(null)}
-        />
+      {/* Modals - 懒加载，Suspense 包裹 */}
+      {showSettings && (
+        <ErrorBoundary name="设置">
+          <Suspense fallback={<LoadingFallback label="加载设置" />}>
+            <Settings />
+          </Suspense>
+        </ErrorBoundary>
       )}
-      <HistoryPanel />
-      <ImportPreviewDialog />
-      <SkillImportPreview />
+      {whatsNewVersion && (
+        <ErrorBoundary name="更新日志">
+          <Suspense fallback={<LoadingFallback label="加载更新日志" />}>
+            <WhatsNewDialog
+              version={whatsNewVersion}
+              onClose={() => setWhatsNewVersion(null)}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      <ErrorBoundary name="历史面板">
+        <Suspense fallback={null}>
+          <HistoryPanel />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary name="导入预览">
+        <Suspense fallback={null}>
+          <ImportPreviewDialog />
+        </Suspense>
+      </ErrorBoundary>
+      <ErrorBoundary name="技能导入">
+        <Suspense fallback={null}>
+          <SkillImportPreview />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   )
 }

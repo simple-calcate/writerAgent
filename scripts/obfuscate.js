@@ -2,53 +2,32 @@ const JavaScriptObfuscator = require('javascript-obfuscator')
 const fs = require('fs')
 const path = require('path')
 
-const configs = {
-  main: {
-    compact: true,
-    controlFlowFlattening: true,
-    controlFlowFlatteningThreshold: 0.75,
-    deadCodeInjection: true,
-    deadCodeInjectionThreshold: 0.4,
-    identifierNamesGenerator: 'hexadecimal',
-    renameGlobals: false,
-    selfDefending: true,
-    stringArray: true,
-    stringArrayCallsTransform: true,
-    stringArrayCallsTransformThreshold: 0.5,
-    stringArrayEncoding: ['rc4'],
-    stringArrayIndexShift: true,
-    stringArrayRotate: true,
-    stringArrayShuffle: true,
-    stringArrayWrappersCount: 2,
-    stringArrayWrappersType: 'function',
-    stringArrayThreshold: 0.75,
-    transformObjectKeys: true,
-    unicodeEscapeSequence: false
-  },
-  preload: {
-    compact: true,
-    controlFlowFlattening: true,
-    controlFlowFlatteningThreshold: 0.5,
-    identifierNamesGenerator: 'hexadecimal',
-    renameGlobals: false,
-    stringArray: true,
-    stringArrayEncoding: ['rc4'],
-    stringArrayThreshold: 0.5,
-    selfDefending: true,
-    unicodeEscapeSequence: false
-  }
+// 轻量混淆策略
+// 本项目为 AGPL-3.0 开源，源码已公开，混淆保护意义有限。
+// 此前使用的 controlFlowFlattening + deadCodeInjection + rc4 字符串加密会
+// 显著拖慢构建和主进程运行时（IPC 启动变慢），收益却很低。
+// 现降级为：仅标识符重命名 + 基础字符串数组（不加密），保护 API 端点等字面量即可。
+const config = {
+  compact: true,
+  identifierNamesGenerator: 'hexadecimal',
+  renameGlobals: false,
+  stringArray: true,
+  stringArrayEncoding: [],
+  stringArrayThreshold: 0.5,
+  // 移除：controlFlowFlattening / deadCodeInjection / selfDefending / rc4
+  // 这些会拖慢运行时且对开源项目无实际保护价值
+  unicodeEscapeSequence: false
 }
 
-function obfuscateFile(filePath, configName) {
+function obfuscateFile(filePath) {
   if (!fs.existsSync(filePath)) {
     console.warn(`Skipping: ${filePath} (not found)`)
     return
   }
   const code = fs.readFileSync(filePath, 'utf-8')
-  const config = configs[configName]
   const result = JavaScriptObfuscator.obfuscate(code, config)
   fs.writeFileSync(filePath, result.getObfuscatedCode())
-  console.log(`Obfuscated: ${filePath} (${configName})`)
+  console.log(`Obfuscated: ${filePath}`)
 }
 
 function findIndexFile(dir) {
@@ -62,16 +41,17 @@ const outDir = path.join(__dirname, '..', 'out')
 
 const mainIndex = findIndexFile(path.join(outDir, 'main'))
 if (mainIndex) {
-  obfuscateFile(mainIndex, 'main')
+  obfuscateFile(mainIndex)
 } else {
   console.warn('Main index.js not found')
 }
 
 const preloadIndex = findIndexFile(path.join(outDir, 'preload'))
 if (preloadIndex) {
-  obfuscateFile(preloadIndex, 'preload')
+  obfuscateFile(preloadIndex)
 } else {
   console.warn('Preload index.js not found')
 }
 
 console.log('Obfuscation complete.')
+

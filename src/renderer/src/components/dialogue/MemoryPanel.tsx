@@ -44,15 +44,15 @@ export default function MemoryPanel({ memory, projectId, refreshKey }: MemoryPan
   if (!hasRuntime && !hasBackend && !loading) return null
 
   return (
-    <div className="rounded-md bg-[--surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+    <div className="rounded-md bg-[var(--surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[--text-muted] hover:text-[--text-secondary] transition-colors duration-150"
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-150"
       >
         <div className="flex items-center gap-2">
           <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
           <span>记忆</span>
-          <span className="text-[10px] text-[--text-muted]">
+          <span className="text-[10px] text-[var(--text-muted)]">
             {memory.shortTerm.length + memory.longTerm.length}{hasBackend ? `+${backendMemory ? 4 : 0}` : ''} 条
           </span>
         </div>
@@ -66,20 +66,20 @@ export default function MemoryPanel({ memory, projectId, refreshKey }: MemoryPan
           {/* Runtime: Short-term */}
           {hasRuntime && (
             <div>
-              <p className="text-[10px] text-[--text-muted] mb-1">运行时 · 短期</p>
+              <p className="text-[10px] text-[var(--text-muted)] mb-1">运行时 · 短期</p>
               {memory.shortTerm.length > 0 ? (
                 <div className="space-y-0.5">
                   {memory.shortTerm.slice(-5).map((m, i) => (
-                    <div key={i} className="text-[11px] text-[--text-secondary] truncate px-2 py-0.5 rounded bg-[--surface-2]">
+                    <div key={i} className="text-[11px] text-[var(--text-secondary)] truncate px-2 py-0.5 rounded bg-[var(--surface-2)]">
                       {m}
                     </div>
                   ))}
                   {memory.shortTerm.length > 5 && (
-                    <p className="text-[9px] text-[--text-muted] pl-2">+{memory.shortTerm.length - 5} 更多</p>
+                    <p className="text-[9px] text-[var(--text-muted)] pl-2">+{memory.shortTerm.length - 5} 更多</p>
                   )}
                 </div>
               ) : (
-                <p className="text-[10px] text-[--text-muted] italic">暂无</p>
+                <p className="text-[10px] text-[var(--text-muted)] italic">暂无</p>
               )}
             </div>
           )}
@@ -89,14 +89,14 @@ export default function MemoryPanel({ memory, projectId, refreshKey }: MemoryPan
             <div>
               <button
                 onClick={() => setShowLongTerm(!showLongTerm)}
-                className="text-[10px] text-[--text-muted] hover:text-[--text-secondary] transition-colors"
+                className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors"
               >
                 运行时 · 长期 ({memory.longTerm.length}) {showLongTerm ? '▾' : '▸'}
               </button>
               {showLongTerm && (
                 <div className="mt-1 space-y-0.5">
                   {memory.longTerm.slice(-5).map((m, i) => (
-                    <div key={i} className="text-[11px] text-[--text-secondary] truncate px-2 py-0.5 rounded bg-[--surface-2]">
+                    <div key={i} className="text-[11px] text-[var(--text-secondary)] truncate px-2 py-0.5 rounded bg-[var(--surface-2)]">
                       {m}
                     </div>
                   ))}
@@ -144,19 +144,19 @@ function BackendSection({ label, content }: { label: string; content: string }) 
   const preview = lines.slice(0, 3).join(' ')
 
   return (
-    <div className="rounded bg-[--surface-2] px-2 py-1">
+    <div className="rounded bg-[var(--surface-2)] px-2 py-1">
       <button
         onClick={() => setExpanded(!expanded)}
-        className="text-[10px] text-[--text-muted] hover:text-[--text-secondary] transition-colors w-full text-left"
+        className="text-[10px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors w-full text-left"
       >
         {label} ({lines.length} 行) {expanded ? '▾' : '▸'}
       </button>
       {expanded ? (
-        <div className="mt-0.5 text-[10px] text-[--text-secondary] whitespace-pre-wrap max-h-40 overflow-y-auto">
+        <div className="mt-0.5 text-[10px] text-[var(--text-secondary)] whitespace-pre-wrap max-h-40 overflow-y-auto">
           {content}
         </div>
       ) : (
-        <p className="text-[10px] text-[--text-muted] truncate mt-0.5">{preview}</p>
+        <p className="text-[10px] text-[var(--text-muted)] truncate mt-0.5">{preview}</p>
       )}
     </div>
   )

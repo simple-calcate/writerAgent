@@ -12,33 +12,33 @@ export default function AgentConfigSection({ config, onChange }: AgentConfigSect
   }
 
   return (
-    <div className="space-y-2.5 mt-2 pt-2 border-t border-gray-700/30">
-      <p className="text-[10px] text-gray-500 uppercase tracking-wider">Agent 配置</p>
+    <div className="space-y-2.5 mt-2 pt-2 border-t border-white/10/30">
+      <p className="text-[10px] text-[var(--nw-text-muted)] uppercase tracking-wider">Agent 配置</p>
 
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-gray-500 shrink-0 w-20">最大重写轮数</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)] shrink-0 w-20">最大重写轮数</span>
         <input
           type="number"
           min={1}
           max={10}
           value={config.maxRewriteRounds}
           onChange={e => update({ maxRewriteRounds: Math.max(1, Math.min(10, parseInt(e.target.value) || 3)) })}
-          className="w-16 bg-gray-800/80 border border-gray-600/50 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+          className="w-16 bg-[var(--nw-surface-2)]/80 border border-white/15/50 rounded px-2 py-1 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
         />
-        <span className="text-[10px] text-gray-600">轮</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)]">轮</span>
       </div>
 
       <div className="flex items-center gap-2">
-        <span className="text-[10px] text-gray-500 shrink-0 w-20">Critic 阈值</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)] shrink-0 w-20">Critic 阈值</span>
         <input
           type="number"
           min={1}
           max={10}
           value={config.criticThreshold}
           onChange={e => update({ criticThreshold: Math.max(1, Math.min(10, parseFloat(e.target.value) || 7)) })}
-          className="w-16 bg-gray-800/80 border border-gray-600/50 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+          className="w-16 bg-[var(--nw-surface-2)]/80 border border-white/15/50 rounded px-2 py-1 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
         />
-        <span className="text-[10px] text-gray-600">分 (0-10)</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)]">分 (0-10)</span>
       </div>
 
       <ToggleRow
@@ -81,12 +81,12 @@ function ToggleRow({ label, desc, value, onChange }: {
   return (
     <div className="flex items-center justify-between">
       <div>
-        <p className="text-xs text-gray-300">{label}</p>
-        <p className="text-[10px] text-gray-600">{desc}</p>
+        <p className="text-xs text-[var(--nw-text-secondary)]">{label}</p>
+        <p className="text-[10px] text-[var(--nw-text-muted)]">{desc}</p>
       </div>
       <div
         onClick={() => onChange(!value)}
-        className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${value ? 'bg-blue-600' : 'bg-gray-600'}`}
+        className={`w-10 h-5 rounded-full relative cursor-pointer transition-colors ${value ? 'bg-blue-600' : 'bg-white/10'}`}
       >
         <div
           className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`}

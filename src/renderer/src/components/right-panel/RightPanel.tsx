@@ -69,8 +69,8 @@ function SummaryContent() {
             <ThinkingIndicator text={aiThinkingText} onCancel={cancelAIFeature} />
           ) : (
             <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-[--nw-text-muted]">
-                <div className="animate-spin w-6 h-6 border-2 border-[--nw-accent] border-t-transparent rounded-full mx-auto mb-2.5" />
+              <div className="text-center text-[var(--nw-text-muted)]">
+                <div className="animate-spin w-6 h-6 border-2 border-[var(--nw-accent)] border-t-transparent rounded-full mx-auto mb-2.5" />
                 <p className="text-[13px]">正在生成摘要...</p>
               </div>
             </div>
@@ -104,7 +104,7 @@ function SummaryContent() {
     <div className="flex-1 flex flex-col overflow-hidden">
       <div className="flex-1 flex overflow-hidden">
         {/* 竖向子标签栏 */}
-        <div className="w-8.5 bg-[--nw-surface-2] border-r border-[#2a3347] flex flex-col items-center py-2.5 gap-1.5 shrink-0">
+        <div className="w-8.5 bg-[var(--nw-surface-2)] border-r border-[var(--nw-panel-border)] flex flex-col items-center py-2.5 gap-1.5 shrink-0">
           {sections.map(s => (
             <button
               key={s.key}
@@ -112,8 +112,8 @@ function SummaryContent() {
               title={s.label}
               className={`w-6.5 h-6.5 rounded-lg text-[12px] flex items-center justify-center transition-all ${
                 currentSection?.key === s.key
-                  ? 'bg-[--nw-accent-glow] text-[--nw-accent] shadow-sm'
-                  : 'text-[--nw-text-muted] hover:text-[--nw-text-primary] hover:bg-[--nw-surface-1]'
+                  ? 'bg-[var(--nw-accent-glow)] text-[var(--nw-accent)] shadow-sm'
+                  : 'text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] hover:bg-[var(--nw-surface-1)]'
               }`}
             >
               {s.icon}
@@ -125,20 +125,20 @@ function SummaryContent() {
           {currentSection && currentSection.items.length > 0 ? (
             <ul className="space-y-2.5">
               {currentSection.items.map((item, i) => (
-                <li key={i} className="flex gap-3 text-[13px] text-[--nw-text-primary] leading-relaxed">
-                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[--nw-accent] mt-2" />
+                <li key={i} className="flex gap-3 text-[13px] text-[var(--nw-text-primary)] leading-relaxed">
+                  <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-[var(--nw-accent)] mt-2" />
                   <span>{item}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-[11px] text-[--nw-text-muted]">暂无内容</p>
+            <p className="text-[11px] text-[var(--nw-text-muted)]">暂无内容</p>
           )}
         </div>
       </div>
       {/* 重新生成 */}
-      <div className="p-2.5 border-t border-[#2a3347] shrink-0">
-        <button onClick={regenerateSummary} className="w-full text-[12px] text-[--nw-accent] hover:text-[--nw-accent-hover] py-2 rounded-lg hover:bg-[--nw-accent-glow] transition-colors">
+      <div className="p-2.5 border-t border-[var(--nw-panel-border)] shrink-0">
+        <button onClick={regenerateSummary} className="w-full text-[12px] text-[var(--nw-accent)] hover:text-[var(--nw-accent-hover)] py-2 rounded-lg hover:bg-[var(--nw-accent-glow)] transition-colors">
           ↻ 重新生成
         </button>
       </div>
@@ -153,24 +153,30 @@ function SuggestionCard({ suggestion }: { suggestion: PolishResult }) {
   const isActive = activeSuggestionId === suggestion.id
 
   return (
-    <div className={`border rounded-xl transition-all duration-200 ${isActive ? 'border-blue-500/50 bg-blue-500/8' : 'border-[#2a3347] hover:border-[#3a4255]'}`}>
-      <div className="p-3.5 cursor-pointer" onClick={() => setActiveSuggestion(isActive ? null : suggestion.id)}>
+    <div className={`border rounded-xl transition-all duration-200 ${isActive ? 'border-blue-500/50 bg-blue-500/8' : 'border-[var(--nw-panel-border)] hover:border-white/12'}`}>
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setActiveSuggestion(isActive ? null : suggestion.id)}
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setActiveSuggestion(isActive ? null : suggestion.id) } }}
+        className="p-3.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--nw-accent)]/40"
+      >
         <div className="flex items-start gap-2.5 mb-2">
           <span className="shrink-0 w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 text-xs flex items-center justify-center mt-0.5">i</span>
-          <p className="text-[12px] text-[--nw-text-secondary] leading-relaxed flex-1">{suggestion.reason}</p>
+          <p className="text-[12px] text-[var(--nw-text-secondary)] leading-relaxed flex-1">{suggestion.reason}</p>
         </div>
         <div className="ml-7.5 mt-2.5">
-          <p className="text-[11px] text-[--nw-text-muted] mb-1.5">原文</p>
-          <p className="text-[12px] text-[--nw-text-secondary] leading-relaxed bg-[--nw-surface-2] rounded-lg p-2.5">{suggestion.original}</p>
+          <p className="text-[11px] text-[var(--nw-text-muted)] mb-1.5">原文</p>
+          <p className="text-[12px] text-[var(--nw-text-secondary)] leading-relaxed bg-[var(--nw-surface-2)] rounded-lg p-2.5">{suggestion.original}</p>
         </div>
-        {!isActive && <p className="text-[11px] text-[--nw-text-muted] ml-7.5 mt-2">点击预览润色效果</p>}
+        {!isActive && <p className="text-[11px] text-[var(--nw-text-muted)] ml-7.5 mt-2">点击预览润色效果</p>}
       </div>
       {isActive && (
-        <div className="px-3.5 pb-3.5 border-t border-[#2a3347] pt-3">
+        <div className="px-3.5 pb-3.5 border-t border-[var(--nw-panel-border)] pt-3">
           <p className="text-[11px] text-emerald-400 mb-3">编辑器中已显示润色后的效果，确认后将替换原文</p>
           <div className="flex gap-2">
             <button onClick={e => { e.stopPropagation(); acceptSuggestion(suggestion.id) }} className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2 rounded-lg text-[12px] font-medium transition-colors">采纳</button>
-            <button onClick={e => { e.stopPropagation(); dismissSuggestion(suggestion.id) }} className="flex-1 bg-[#2a3347] hover:bg-[#3a4255] py-2 rounded-lg text-[12px] transition-colors">忽略</button>
+            <button onClick={e => { e.stopPropagation(); dismissSuggestion(suggestion.id) }} className="flex-1 bg-[var(--nw-surface-2)] hover:bg-white/10 py-2 rounded-lg text-[12px] transition-colors">忽略</button>
           </div>
         </div>
       )}
@@ -193,10 +199,10 @@ function PolishContent() {
           <ThinkingIndicator text={aiThinkingText} onCancel={cancelAIFeature} />
         ) : (
           <div className="flex-1 flex items-center justify-center">
-            <div className="text-center text-[--nw-text-muted]">
+            <div className="text-center text-[var(--nw-text-muted)]">
               <div className="animate-spin w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
-              <p className="text-sm text-[--nw-text-secondary]">正在分析全文...</p>
-              <p className="text-xs text-[--nw-text-muted] mt-1">寻找需要优化的片段</p>
+              <p className="text-sm text-[var(--nw-text-secondary)]">正在分析全文...</p>
+              <p className="text-xs text-[var(--nw-text-muted)] mt-1">寻找需要优化的片段</p>
             </div>
           </div>
         )}
@@ -209,20 +215,20 @@ function PolishContent() {
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Thinking history */}
         {thinkingHistory && (
-          <div className="border-b border-[#2a3347] shrink-0">
+          <div className="border-b border-[var(--nw-panel-border)] shrink-0">
             <button
               onClick={() => setShowThinking(!showThinking)}
-              className="w-full flex items-center justify-between px-3.5 py-2.5 text-[12px] text-[--nw-text-muted] hover:text-[--nw-text-primary] transition-colors"
+              className="w-full flex items-center justify-between px-3.5 py-2.5 text-[12px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] transition-colors"
             >
               <span className="flex items-center gap-2">
                 <span className="text-purple-400">◎</span>
                 AI 思考过程
               </span>
-              <span className="text-[--nw-text-muted]">{showThinking ? '收起' : '展开'}</span>
+              <span className="text-[var(--nw-text-muted)]">{showThinking ? '收起' : '展开'}</span>
             </button>
             {showThinking && (
               <div className="px-3.5 pb-3 max-h-48 overflow-y-auto">
-                <div className="bg-[--nw-surface-2] border border-[#2a3347] rounded-lg p-3 text-[11px] leading-relaxed text-[--nw-text-muted] font-mono whitespace-pre-wrap break-all">
+                <div className="bg-[var(--nw-surface-2)] border border-[var(--nw-panel-border)] rounded-lg p-3 text-[11px] leading-relaxed text-[var(--nw-text-muted)] font-mono whitespace-pre-wrap break-all">
                   {thinkingHistory}
                 </div>
               </div>
@@ -240,8 +246,8 @@ function PolishContent() {
               </div>
             </div>
             {analyzeErrorDetail && (
-              <div className="bg-[--nw-surface-2] border border-[#2a3347] rounded-lg p-3 mt-3">
-                <p className="text-[11px] text-[--nw-text-secondary] leading-relaxed">{analyzeErrorDetail}</p>
+              <div className="bg-[var(--nw-surface-2)] border border-[var(--nw-panel-border)] rounded-lg p-3 mt-3">
+                <p className="text-[11px] text-[var(--nw-text-secondary)] leading-relaxed">{analyzeErrorDetail}</p>
               </div>
             )}
             <div className="mt-4 flex items-center gap-2">
@@ -254,7 +260,7 @@ function PolishContent() {
               {thinkingHistory && (
                 <button
                   onClick={clearThinkingHistory}
-                  className="text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] px-3 py-1.5 rounded-lg hover:bg-[--nw-surface-1] transition-colors"
+                  className="text-[11px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] px-3 py-1.5 rounded-lg hover:bg-[var(--nw-surface-1)] transition-colors"
                 >
                   清除记录
                 </button>
@@ -270,20 +276,20 @@ function PolishContent() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Thinking history */}
       {thinkingHistory && (
-        <div className="border-b border-[#2a3347] shrink-0">
+        <div className="border-b border-[var(--nw-panel-border)] shrink-0">
           <button
             onClick={() => setShowThinking(!showThinking)}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 text-[12px] text-[--nw-text-muted] hover:text-[--nw-text-primary] transition-colors"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 text-[12px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] transition-colors"
           >
             <span className="flex items-center gap-2">
               <span className="text-purple-400">◎</span>
               AI 思考过程
             </span>
-            <span className="text-[--nw-text-muted]">{showThinking ? '收起' : '展开'}</span>
+            <span className="text-[var(--nw-text-muted)]">{showThinking ? '收起' : '展开'}</span>
           </button>
           {showThinking && (
             <div className="px-3.5 pb-3 max-h-48 overflow-y-auto">
-              <div className="bg-[--nw-surface-2] border border-[#2a3347] rounded-lg p-3 text-[11px] leading-relaxed text-[--nw-text-muted] font-mono whitespace-pre-wrap break-all">
+              <div className="bg-[var(--nw-surface-2)] border border-[var(--nw-panel-border)] rounded-lg p-3 text-[11px] leading-relaxed text-[var(--nw-text-muted)] font-mono whitespace-pre-wrap break-all">
                 {thinkingHistory}
               </div>
             </div>
@@ -293,7 +299,7 @@ function PolishContent() {
 
       {/* Error when no suggestions */}
       {analyzeError && (
-        <div className="px-3.5 py-2 border-b border-[#2a3347] shrink-0">
+        <div className="px-3.5 py-2 border-b border-[var(--nw-panel-border)] shrink-0">
           <div className="bg-yellow-900/10 border border-yellow-800/20 rounded-lg px-3 py-2">
             <p className="text-[11px] text-yellow-400/70">{analyzeError}</p>
           </div>
@@ -303,8 +309,8 @@ function PolishContent() {
       {/* Empty state */}
       {polishSuggestions.length === 0 && !analyzeError && (
         <div className="flex-1 flex items-center justify-center p-5">
-          <div className="text-center text-[--nw-text-muted]">
-            <div className="text-3xl mb-2.5 text-[#3a4255]">~</div>
+          <div className="text-center text-[var(--nw-text-muted)]">
+            <div className="text-3xl mb-2.5 text-[var(--nw-text-muted)]">~</div>
             <p className="text-[13px]">暂无润色建议</p>
           </div>
         </div>
@@ -318,13 +324,13 @@ function PolishContent() {
       )}
 
       {/* Regenerate */}
-      <div className="p-2.5 border-t border-[#2a3347] shrink-0">
+      <div className="p-2.5 border-t border-[var(--nw-panel-border)] shrink-0">
         <div className="flex items-center justify-between">
           <button onClick={regeneratePolish} className="flex-1 text-[12px] text-blue-400 hover:text-blue-300 py-2 rounded-lg hover:bg-blue-500/10 transition-colors">
             ↻ 重新生成
           </button>
           {thinkingHistory && (
-            <button onClick={clearThinkingHistory} className="text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] px-3 py-2 rounded-lg hover:bg-[--nw-surface-1] transition-colors ml-2">
+            <button onClick={clearThinkingHistory} className="text-[11px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] px-3 py-2 rounded-lg hover:bg-[var(--nw-surface-1)] transition-colors ml-2">
               清除记录
             </button>
           )}
@@ -351,10 +357,10 @@ function renderInlineMarkdown(text: string): React.ReactNode {
   let match: RegExpExecArray | null
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) parts.push(text.slice(lastIndex, match.index))
-    if (match[2]) parts.push(<strong key={match.index} className="text-gray-200 font-semibold">{match[2]}</strong>)
-    else if (match[3]) parts.push(<em key={match.index} className="text-gray-300 italic">{match[3]}</em>)
-    else if (match[4]) parts.push(<code key={match.index} className="bg-gray-800 text-amber-300 px-1 py-0.5 rounded text-[11px]">{match[4]}</code>)
-    else if (match[5]) parts.push(<del key={match.index} className="text-gray-500">{match[5]}</del>)
+    if (match[2]) parts.push(<strong key={match.index} className="text-[var(--nw-text-primary)] font-semibold">{match[2]}</strong>)
+    else if (match[3]) parts.push(<em key={match.index} className="text-[var(--nw-text-secondary)] italic">{match[3]}</em>)
+    else if (match[4]) parts.push(<code key={match.index} className="bg-[var(--nw-surface-2)] text-amber-300 px-1 py-0.5 rounded text-[11px]">{match[4]}</code>)
+    else if (match[5]) parts.push(<del key={match.index} className="text-[var(--nw-text-muted)]">{match[5]}</del>)
     lastIndex = match.index + match[0].length
   }
   if (parts.length === 0) return text
@@ -371,24 +377,24 @@ function renderOutlineMarkdown(text: string): React.ReactNode[] {
     if (headerMatch) {
       const level = headerMatch[1].length
       const sizes = ['text-lg', 'text-base', 'text-sm', 'text-xs', 'text-[11px]', 'text-[10px]']
-      elements.push(<div key={i} className={`${sizes[level - 1]} font-semibold text-gray-200 mt-3 mb-1`}>{headerMatch[2]}</div>)
+      elements.push(<div key={i} className={`${sizes[level - 1]} font-semibold text-[var(--nw-text-primary)] mt-3 mb-1`}>{headerMatch[2]}</div>)
       continue
     }
-    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { elements.push(<hr key={i} className="border-gray-700 my-2" />); continue }
-    if (line.startsWith('> ')) { elements.push(<div key={i} className="border-l-2 border-blue-500/50 pl-3 text-xs text-gray-400 italic my-0.5">{renderInlineMarkdown(line.slice(2))}</div>); continue }
+    if (/^(-{3,}|\*{3,}|_{3,})\s*$/.test(line)) { elements.push(<hr key={i} className="border-white/10 my-2" />); continue }
+    if (line.startsWith('> ')) { elements.push(<div key={i} className="border-l-2 border-blue-500/50 pl-3 text-xs text-[var(--nw-text-secondary)] italic my-0.5">{renderInlineMarkdown(line.slice(2))}</div>); continue }
     if (/^[\-\*]\s+\[([ xX])\]\s+/.test(line)) {
       const cm = line.match(/^[\-\*]\s+\[([ xX])\]\s+(.+)/)
       if (cm) {
         const checked = cm[1] !== ' '
-        elements.push(<div key={i} className="flex gap-1.5 text-xs text-gray-300 leading-relaxed ml-2"><span className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded border ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-gray-600'} flex items-center justify-center text-[9px]`}>{checked ? '✓' : ''}</span><span className={checked ? 'line-through text-gray-500' : ''}>{renderInlineMarkdown(cm[2])}</span></div>)
+        elements.push(<div key={i} className="flex gap-1.5 text-xs text-[var(--nw-text-secondary)] leading-relaxed ml-2"><span className={`shrink-0 mt-0.5 w-3.5 h-3.5 rounded border ${checked ? 'bg-blue-600 border-blue-600 text-white' : 'border-white/15'} flex items-center justify-center text-[9px]`}>{checked ? '✓' : ''}</span><span className={checked ? 'line-through text-[var(--nw-text-muted)]' : ''}>{renderInlineMarkdown(cm[2])}</span></div>)
         continue
       }
     }
-    if (/^[\-\*]\s+/.test(line)) { elements.push(<div key={i} className="flex gap-1.5 text-xs text-gray-300 leading-relaxed ml-2"><span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-gray-500" /><span>{renderInlineMarkdown(line.replace(/^[\-\*]\s+/, ''))}</span></div>); continue }
+    if (/^[\-\*]\s+/.test(line)) { elements.push(<div key={i} className="flex gap-1.5 text-xs text-[var(--nw-text-secondary)] leading-relaxed ml-2"><span className="shrink-0 mt-1.5 w-1 h-1 rounded-full bg-[var(--nw-text-muted)]" /><span>{renderInlineMarkdown(line.replace(/^[\-\*]\s+/, ''))}</span></div>); continue }
     const numMatch = line.match(/^(\d+)[\.\)]\s+(.+)/)
-    if (numMatch) { elements.push(<div key={i} className="flex gap-1.5 text-xs text-gray-300 leading-relaxed ml-2"><span className="shrink-0 text-gray-500 w-4">{numMatch[1]}.</span><span>{renderInlineMarkdown(numMatch[2])}</span></div>); continue }
+    if (numMatch) { elements.push(<div key={i} className="flex gap-1.5 text-xs text-[var(--nw-text-secondary)] leading-relaxed ml-2"><span className="shrink-0 text-[var(--nw-text-muted)] w-4">{numMatch[1]}.</span><span>{renderInlineMarkdown(numMatch[2])}</span></div>); continue }
     if (!line.trim()) { elements.push(<div key={i} className="h-1.5" />); continue }
-    elements.push(<p key={i} className="text-xs text-gray-300 leading-relaxed">{renderInlineMarkdown(line)}</p>)
+    elements.push(<p key={i} className="text-xs text-[var(--nw-text-secondary)] leading-relaxed">{renderInlineMarkdown(line)}</p>)
   }
   return elements
 }
@@ -456,13 +462,13 @@ function OutlineContent() {
       {/* Header */}
       <div className="px-4 py-2 border-b border-white/5 shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-xs text-[--nw-text-secondary]">{title}</span>
-          {entityName && <span className="text-[10px] text-[--nw-text-muted] truncate">— {entityName}</span>}
+          <span className="text-xs text-[var(--nw-text-secondary)]">{title}</span>
+          {entityName && <span className="text-[10px] text-[var(--nw-text-muted)] truncate">— {entityName}</span>}
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           <button
             onClick={() => setShowPreview(!showPreview)}
-            className={`text-[11px] px-3 py-1 rounded-lg transition-all ${showPreview ? 'bg-blue-500/15 text-blue-300' : 'text-[--nw-text-muted] hover:text-[--nw-text-secondary] hover:bg-white/5'}`}
+            className={`text-[11px] px-3 py-1 rounded-lg transition-all ${showPreview ? 'bg-blue-500/15 text-blue-300' : 'text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] hover:bg-white/5'}`}
           >
             {showPreview ? '编辑' : '预览'}
           </button>
@@ -484,7 +490,7 @@ function OutlineContent() {
             {content.trim() ? (
               renderOutlineMarkdown(content)
             ) : (
-              <p className="text-xs text-[--nw-text-muted] italic">暂无内容</p>
+              <p className="text-xs text-[var(--nw-text-muted)] italic">暂无内容</p>
             )}
           </div>
         ) : (
@@ -492,7 +498,7 @@ function OutlineContent() {
             value={content}
             onChange={e => setContent(e.target.value)}
             placeholder={`在此输入${title}内容（Markdown 格式）...`}
-            className="flex-1 bg-transparent text-[13px] text-[--nw-text-primary] leading-relaxed p-4 resize-none focus:outline-none font-mono"
+            className="flex-1 bg-transparent text-[13px] text-[var(--nw-text-primary)] leading-relaxed p-4 resize-none focus:outline-none font-mono"
             spellCheck={false}
           />
         )}
@@ -500,8 +506,8 @@ function OutlineContent() {
 
       {/* Footer */}
       <div className="px-4 py-1.5 border-t border-white/5 shrink-0 flex items-center justify-between">
-        <span className="text-[10px] text-[--nw-text-muted]">Ctrl+S 保存</span>
-        <span className="text-[10px] text-[--nw-text-muted]">{content.length} 字符</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)]">Ctrl+S 保存</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)]">{content.length} 字符</span>
       </div>
     </div>
   )
@@ -535,7 +541,7 @@ export default function RightPanel({ width }: { width?: number }) {
   return (
     <div className="border-l glass-panel flex shrink-0" style={{ width: width ?? 320 }}>
       {/* 竖向标签栏 */}
-      <div className="w-8.5 bg-[--nw-surface-2] border-r border-[#2a3347] flex flex-col items-center py-2.5 gap-1.5 shrink-0">
+      <div className="w-8.5 bg-[var(--nw-surface-2)] border-r border-[var(--nw-panel-border)] flex flex-col items-center py-2.5 gap-1.5 shrink-0">
         {visibleTabs.map(tab => (
           <button
             key={tab.key}
@@ -543,8 +549,8 @@ export default function RightPanel({ width }: { width?: number }) {
             title={tab.label}
             className={`w-6.5 h-6.5 rounded-lg text-[11px] flex items-center justify-center transition-all ${
               rightPanel === tab.key
-                ? 'bg-[--nw-accent] text-white shadow-sm shadow-[--nw-accent-glow]'
-                : 'text-[--nw-text-muted] hover:text-[--nw-text-primary] hover:bg-[--nw-surface-1]'
+                ? 'bg-[var(--nw-accent)] text-white shadow-sm shadow-[var(--nw-accent-glow)]'
+                : 'text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] hover:bg-[var(--nw-surface-1)]'
             }`}
           >
             {tab.icon}
@@ -554,7 +560,7 @@ export default function RightPanel({ width }: { width?: number }) {
         <button
           onClick={() => setRightPanel(null)}
           title="关闭面板"
-          className="w-6.5 h-6.5 rounded-lg text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-primary] hover:bg-[--nw-surface-1] flex items-center justify-center transition-colors"
+          className="w-6.5 h-6.5 rounded-lg text-[11px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] hover:bg-[var(--nw-surface-1)] flex items-center justify-center transition-colors"
         >
           ×
         </button>

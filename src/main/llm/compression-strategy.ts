@@ -3,6 +3,7 @@ import { DEFAULT_CONTEXT_CONFIG } from '../../shared/types'
 import { compressHistory as ruleCompressHistory, buildCompressedMessages, compressForStorage } from './context-compressor'
 import { compressHistoryWithSummary } from './history-compressor'
 import { createBudget } from './token-counter'
+import { log } from '../utils/logger'
 
 export interface CompressedResult {
   messages: Array<{ role: 'user' | 'assistant' | 'system' | 'tool'; content: string; tool_call_id?: string }>
@@ -81,7 +82,7 @@ class SemanticStrategy implements CompressionStrategy {
         compressedCount: messages.length - result.messages.length
       }
     } catch (err) {
-      console.error('Semantic compression failed, falling back to rule-based:', err)
+      log.error('Semantic compression failed, falling back to rule-based:', err)
       return ruleBasedStrategy.compressHistory(messages, contextWindow, contextConfig)
     }
   }

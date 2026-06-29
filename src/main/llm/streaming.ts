@@ -53,23 +53,35 @@ export async function streamWithThinking(
   let fullText = ''
   let thinkingDone = false
 
-  for await (const chunk of stream) {
-    if (signal?.aborted) break
-    const delta = chunk.choices[0]?.delta
+  try {
+    for await (const chunk of stream) {
+      if (signal?.aborted) break
+      const delta = chunk.choices[0]?.delta
 
-    // reasoning_content → 发送思考过程
-    if ((delta as any)?.reasoning_content) {
-      mainWindow.webContents.send('ai:thinking-chunk', { chunk: (delta as any).reasoning_content })
-    }
-
-    // content → 累积结果
-    if (delta?.content) {
-      if (!thinkingDone) {
-        thinkingDone = true
-        mainWindow.webContents.send('ai:thinking-done', {})
+      // reasoning_content → 发送思考过程
+      if ((delta as any)?.reasoning_content) {
+        mainWindow.webContents.send('ai:thinking-chunk', { chunk: (delta as any).reasoning_content })
       }
-      fullText += delta.content
+
+      // content → 累积结果
+      if (delta?.content) {
+        if (!thinkingDone) {
+          thinkingDone = true
+          mainWindow.webContents.send('ai:thinking-done', {})
+        }
+        fullText += delta.content
+      }
     }
+  } catch (err) {
+    // 流中断（网络断开 / API 限流 / 用户取消）时，确保前端不卡在"思考中"状态
+    if (!thinkingDone) {
+      mainWindow.webContents.send('ai:thinking-done', {})
+    }
+    // 用户主动取消不视为错误
+    if (signal?.aborted || (err as any)?.name === 'AbortError') {
+      return fullText
+    }
+    throw err
   }
 
   // 流结束时如果还在思考阶段，发送 done

@@ -14,7 +14,7 @@ const EVENT_ICONS: Record<string, string> = {
 
 const EVENT_COLORS: Record<string, string> = {
   phase_change: 'text-blue-400',
-  subtask_start: 'text-[--nw-text-muted]',
+  subtask_start: 'text-[var(--nw-text-muted)]',
   subtask_done: 'text-emerald-400',
   subtask_failed: 'text-red-400',
   critic_score: 'text-yellow-400',
@@ -92,14 +92,14 @@ export default function AgentTrajectoryPanel() {
     return (
       <button
         onClick={() => setExpanded(true)}
-        className="w-full rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out px-3 py-2 flex items-center gap-2"
+        className="w-full rounded-md bg-[var(--nw-surface-2)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out px-3 py-2 flex items-center gap-2"
       >
-        <span className="text-[10px] text-[--nw-text-muted]">写作轨迹</span>
-        <span className="text-[9px] text-[--nw-text-muted]">{trajectory.entries.length} 条</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)]">写作轨迹</span>
+        <span className="text-[9px] text-[var(--nw-text-muted)]">{trajectory.entries.length} 条</span>
         {trajectory.totalDuration && (
-          <span className="text-[9px] text-[--nw-text-muted]">{formatDuration(trajectory.totalDuration)}</span>
+          <span className="text-[9px] text-[var(--nw-text-muted)]">{formatDuration(trajectory.totalDuration)}</span>
         )}
-        <svg className="w-3 h-3 text-[--nw-text-muted] ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg className="w-3 h-3 text-[var(--nw-text-muted)] ml-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M6 9l6 6 6-6" />
         </svg>
       </button>
@@ -108,7 +108,7 @@ export default function AgentTrajectoryPanel() {
 
   // Expanded
   return (
-    <div className="rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out">
+    <div className="rounded-md bg-[var(--nw-surface-2)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out">
       <button
         onClick={() => {
           if (collapsed) {
@@ -118,13 +118,13 @@ export default function AgentTrajectoryPanel() {
             setExpanded(false)
           }
         }}
-        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] transition-colors duration-150"
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] transition-colors duration-150"
       >
         <div className="flex items-center gap-2">
           <span>写作轨迹</span>
-          <span className="text-[9px] text-[--nw-text-muted]">{trajectory.entries.length} 条记录</span>
+          <span className="text-[9px] text-[var(--nw-text-muted)]">{trajectory.entries.length} 条记录</span>
           {trajectory.totalDuration && (
-            <span className="text-[9px] text-[--nw-text-muted]">{formatDuration(trajectory.totalDuration)}</span>
+            <span className="text-[9px] text-[var(--nw-text-muted)]">{formatDuration(trajectory.totalDuration)}</span>
           )}
         </div>
         <svg className="w-3 h-3 transition-transform duration-200 rotate-180" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -135,13 +135,13 @@ export default function AgentTrajectoryPanel() {
       <div className="px-3 pb-2 space-y-0.5 max-h-48 overflow-y-auto">
         {trajectory.entries.map((entry, i) => (
           <div key={i} className="flex items-start gap-2 py-0.5">
-            <span className={`text-[10px] shrink-0 w-3 text-center ${EVENT_COLORS[entry.event] || 'text-[--nw-text-muted]'}`}>
+            <span className={`text-[10px] shrink-0 w-3 text-center ${EVENT_COLORS[entry.event] || 'text-[var(--nw-text-muted)]'}`}>
               {EVENT_ICONS[entry.event] || '·'}
             </span>
-            <span className="text-[9px] text-[--nw-text-muted] shrink-0 w-14 font-mono">
+            <span className="text-[9px] text-[var(--nw-text-muted)] shrink-0 w-14 font-mono">
               {formatTime(entry.timestamp)}
             </span>
-            <span className="text-[10px] text-[--nw-text-secondary] truncate flex-1">
+            <span className="text-[10px] text-[var(--nw-text-secondary)] truncate flex-1">
               {entrySummary(entry)}
             </span>
           </div>

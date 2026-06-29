@@ -7,6 +7,7 @@ import { classifyIntent } from './intent-classifier'
 import { executeAnalysisPipeline } from './analysis-pipeline'
 import type { WriterAgentController } from './wac'
 import { startDialogueStream } from '../llm/dialogue-stream'
+import { log } from '../utils/logger'
 
 export interface RouteContext {
   mainWindow: BrowserWindow
@@ -32,7 +33,7 @@ export async function routeRequest(
   getWAC: () => WriterAgentController
 ): Promise<{ classification: IntentClassifierResult; result: RouteResult }> {
   const classification = await classifyIntent(input, ctx.config, ctx.signal)
-  console.log(`[Router] intent=${classification.intent} confidence=${classification.confidence} method=${classification.method}`)
+  log.debug(`[Router] intent=${classification.intent} confidence=${classification.confidence} method=${classification.method}`)
 
   switch (classification.intent) {
     case 'writing': {
@@ -40,7 +41,7 @@ export async function routeRequest(
       getWAC().processRequest(input, ctx.project, ctx.volume, ctx.chapter, ctx.level, streamId)
         .catch(err => {
           if (err.message !== '任务已取消') {
-            console.error('[Router] Writing pipeline error:', err)
+            log.error('[Router] Writing pipeline error:', err)
             ctx.mainWindow.webContents.send('dialogue:error', { streamId, error: err.message })
           }
         })

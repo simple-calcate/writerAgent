@@ -1,4 +1,5 @@
 import type { DialogueToolApprovalResponse } from '../../../shared/types'
+import { TOOL_APPROVAL_TIMEOUT } from '../constants'
 
 const pendingApprovals = new Map<string, {
   resolve: (response: DialogueToolApprovalResponse) => void
@@ -10,7 +11,7 @@ export function waitForApproval(approvalId: string): Promise<DialogueToolApprova
     const timeout = setTimeout(() => {
       pendingApprovals.delete(approvalId)
       reject(new Error('审批超时'))
-    }, 5 * 60 * 1000)
+    }, TOOL_APPROVAL_TIMEOUT)
 
     pendingApprovals.set(approvalId, {
       resolve: (response) => {

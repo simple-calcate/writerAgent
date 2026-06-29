@@ -40,12 +40,12 @@ export default function UpdateCheckButton() {
   }
 
   const statusUI: Record<string, { text: string; color: string }> = {
-    idle: { text: '尚未检查', color: 'text-gray-500' },
+    idle: { text: '尚未检查', color: 'text-[var(--nw-text-muted)]' },
     checking: { text: '正在检查更新...', color: 'text-blue-400' },
     available: { text: `发现新版本 v${updateStatus.version}`, color: 'text-blue-400' },
     downloading: { text: `正在下载 v${updateStatus.version}...`, color: 'text-amber-400' },
     downloaded: { text: `v${updateStatus.version} 已下载完成`, color: 'text-emerald-400' },
-    'not-available': { text: '当前已是最新版本', color: 'text-gray-400' },
+    'not-available': { text: '当前已是最新版本', color: 'text-[var(--nw-text-secondary)]' },
     error: { text: '检查失败', color: 'text-red-400' }
   }
 
@@ -64,13 +64,13 @@ export default function UpdateCheckButton() {
       {/* Download progress */}
       {updateStatus.status === 'downloading' && updateStatus.progress && (
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-gray-700 rounded-full h-1.5">
+          <div className="flex-1 bg-[var(--nw-surface-2)] rounded-full h-1.5">
             <div
               className="bg-amber-500 h-1.5 rounded-full transition-all duration-300"
               style={{ width: `${updateStatus.progress.percent}%` }}
             />
           </div>
-          <span className="text-[10px] text-gray-500 shrink-0">
+          <span className="text-[10px] text-[var(--nw-text-muted)] shrink-0">
             {updateStatus.progress.percent}% · {(updateStatus.progress.transferred / 1024 / 1024).toFixed(1)}/{(updateStatus.progress.total / 1024 / 1024).toFixed(1)} MB
           </span>
         </div>
@@ -83,7 +83,7 @@ export default function UpdateCheckButton() {
 
       {/* Release notes */}
       {updateStatus.status === 'available' && updateStatus.releaseNotes && (
-        <div className="text-[11px] text-gray-400 bg-gray-900/50 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+        <div className="text-[11px] text-[var(--nw-text-secondary)] bg-[var(--nw-surface-2)]/50 rounded p-2 max-h-32 overflow-y-auto whitespace-pre-wrap leading-relaxed">
           {updateStatus.releaseNotes}
         </div>
       )}
@@ -93,7 +93,7 @@ export default function UpdateCheckButton() {
         {(updateStatus.status === 'idle' || updateStatus.status === 'not-available' || updateStatus.status === 'error') && (
           <button
             onClick={handleCheck}
-            className="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+            className="px-3 py-1.5 text-xs bg-[var(--nw-surface-2)] hover:bg-white/10 text-[var(--nw-text-secondary)] rounded transition-colors"
           >
             {updateStatus.status === 'error' ? '重新检查' : '检查更新'}
           </button>

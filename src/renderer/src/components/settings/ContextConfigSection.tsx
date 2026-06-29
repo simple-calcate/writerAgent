@@ -19,21 +19,21 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
   }
 
   return (
-    <div className="mt-3 border border-gray-600/50 rounded-lg overflow-hidden">
+    <div className="mt-3 border border-white/15/50 rounded-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="w-full px-3 py-2.5 flex items-center justify-between bg-gray-800/50 hover:bg-gray-700/50 transition-colors"
+        className="w-full px-3 py-2.5 flex items-center justify-between bg-[var(--nw-surface-2)]/50 hover:bg-[var(--nw-surface-2)]/50 transition-colors"
       >
         <div className="flex items-center gap-2">
           <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
           </svg>
-          <span className="text-xs font-medium text-gray-300">上下文管理</span>
-          <span className="text-[10px] text-gray-500">Token 预算与压缩策略</span>
+          <span className="text-xs font-medium text-[var(--nw-text-secondary)]">上下文管理</span>
+          <span className="text-[10px] text-[var(--nw-text-muted)]">Token 预算与压缩策略</span>
         </div>
         <svg
-          className={`w-4 h-4 text-gray-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          className={`w-4 h-4 text-[var(--nw-text-muted)] transition-transform ${isExpanded ? 'rotate-180' : ''}`}
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -44,10 +44,10 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
 
       {/* Content */}
       {isExpanded && (
-        <div className="px-3 py-3 space-y-4 bg-gray-800/30">
+        <div className="px-3 py-3 space-y-4 bg-[var(--nw-surface-2)]/30">
           {/* Output Reserve */}
           <div>
-            <label className="block text-xs text-gray-400 mb-1.5">输出预留比例</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1.5">输出预留比例</label>
             <div className="flex items-center gap-2">
               <input
                 type="range"
@@ -58,14 +58,14 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
                 onChange={e => updateConfig({ outputReserveRatio: parseFloat(e.target.value) })}
                 className="flex-1 accent-blue-500"
               />
-              <span className="text-xs text-gray-300 w-12 text-right">{Math.round(config.outputReserveRatio * 100)}%</span>
+              <span className="text-xs text-[var(--nw-text-secondary)] w-12 text-right">{Math.round(config.outputReserveRatio * 100)}%</span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-1">预留用于模型输出的 Token 比例</p>
+            <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">预留用于模型输出的 Token 比例</p>
           </div>
 
           {/* Budget Ratios */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2">系统提示词预算分配</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-2">系统提示词预算分配</label>
             <div className="space-y-2">
               <BudgetSlider
                 label="章节内容"
@@ -86,7 +86,7 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
                 color="bg-purple-500"
               />
             </div>
-            <p className="text-[10px] text-gray-500 mt-2">
+            <p className="text-[10px] text-[var(--nw-text-muted)] mt-2">
               当前分配：{Math.round((config.chapterBudgetRatio + config.outlineBudgetRatio + config.historyBudgetRatio + 0.30) * 100)}%
               （剩余 30% 自动分配给写作技能、推理链等）
             </p>
@@ -94,21 +94,21 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
 
           {/* History Compression */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2">对话历史压缩</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-2">对话历史压缩</label>
             <div className="space-y-3">
               {/* Compression Strategy Selector */}
               <div>
-                <label className="block text-[10px] text-gray-500 mb-1">压缩策略</label>
+                <label className="block text-[10px] text-[var(--nw-text-muted)] mb-1">压缩策略</label>
                 <select
                   value={config.compressionStrategy || 'rule-based'}
                   onChange={e => updateConfig({ compressionStrategy: e.target.value as CompressionStrategyType })}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-2 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                 >
                   <option value="rule-based">规则式（零成本，默认）</option>
                   <option value="semantic">语义压缩（LLM 驱动）</option>
                   <option value="auto">自动选择</option>
                 </select>
-                <p className="text-[10px] text-gray-500 mt-1">
+                <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">
                   {config.compressionStrategy === 'semantic' 
                     ? '使用 LLM 进行智能摘要压缩，保留关键信息，压缩率更高'
                     : config.compressionStrategy === 'auto'
@@ -119,18 +119,18 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
               
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] text-gray-500 mb-1">保留最近轮数</label>
+                  <label className="block text-[10px] text-[var(--nw-text-muted)] mb-1">保留最近轮数</label>
                   <input
                     type="number"
                     min={5}
                     max={50}
                     value={config.keepRecentRounds}
                     onChange={e => updateConfig({ keepRecentRounds: Math.max(5, Math.min(50, parseInt(e.target.value) || 20)) })}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-2 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] text-gray-500 mb-1">摘要 Token 上限</label>
+                  <label className="block text-[10px] text-[var(--nw-text-muted)] mb-1">摘要 Token 上限</label>
                   <input
                     type="number"
                     min={200}
@@ -138,7 +138,7 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
                     step={100}
                     value={config.summaryBudget}
                     onChange={e => updateConfig({ summaryBudget: Math.max(200, Math.min(2000, parseInt(e.target.value) || 800)) })}
-                    className="w-full bg-gray-700 border border-gray-600 rounded px-2 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-2 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                   />
                 </div>
               </div>
@@ -147,10 +147,10 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
 
           {/* Tool Result Limits */}
           <div>
-            <label className="block text-xs text-gray-400 mb-2">工具结果限制</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-2">工具结果限制</label>
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-500 w-24 shrink-0">总预算占比</span>
+                <span className="text-[10px] text-[var(--nw-text-muted)] w-24 shrink-0">总预算占比</span>
                 <input
                   type="range"
                   min={0.05}
@@ -160,7 +160,7 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
                   onChange={e => updateConfig({ toolResultBudgetRatio: parseFloat(e.target.value) })}
                   className="flex-1 accent-blue-500"
                 />
-                <span className="text-xs text-gray-300 w-10 text-right">{Math.round(config.toolResultBudgetRatio * 100)}%</span>
+                <span className="text-xs text-[var(--nw-text-secondary)] w-10 text-right">{Math.round(config.toolResultBudgetRatio * 100)}%</span>
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <ToolLimitInput
@@ -188,10 +188,10 @@ export default function ContextConfigSection({ config, onChange }: ContextConfig
           </div>
 
           {/* Reset Button */}
-          <div className="pt-2 border-t border-gray-700/50">
+          <div className="pt-2 border-t border-white/10/50">
             <button
               onClick={resetToDefaults}
-              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+              className="text-xs text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] transition-colors"
             >
               恢复默认值
             </button>
@@ -210,8 +210,8 @@ function BudgetSlider({ label, value, onChange, color }: {
 }) {
   return (
     <div className="flex items-center gap-2">
-      <span className="text-[10px] text-gray-500 w-16 shrink-0">{label}</span>
-      <div className="flex-1 h-1.5 bg-gray-700 rounded-full overflow-hidden">
+      <span className="text-[10px] text-[var(--nw-text-muted)] w-16 shrink-0">{label}</span>
+      <div className="flex-1 h-1.5 bg-[var(--nw-surface-2)] rounded-full overflow-hidden">
         <div
           className={`h-full ${color} rounded-full transition-all`}
           style={{ width: `${Math.round(value * 100)}%` }}
@@ -224,9 +224,9 @@ function BudgetSlider({ label, value, onChange, color }: {
         step={0.05}
         value={value}
         onChange={e => onChange(Math.max(0.05, Math.min(0.50, parseFloat(e.target.value) || 0.15)))}
-        className="w-14 bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-xs text-gray-300 text-center focus:outline-none focus:border-blue-500"
+        className="w-14 bg-[var(--nw-surface-2)] border border-white/15 rounded px-1.5 py-1 text-xs text-[var(--nw-text-secondary)] text-center focus:outline-none focus:border-blue-500"
       />
-      <span className="text-[10px] text-gray-500 w-8">{Math.round(value * 100)}%</span>
+      <span className="text-[10px] text-[var(--nw-text-muted)] w-8">{Math.round(value * 100)}%</span>
     </div>
   )
 }
@@ -238,7 +238,7 @@ function ToolLimitInput({ label, value, onChange }: {
 }) {
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[10px] text-gray-500 truncate flex-1">{label}</span>
+      <span className="text-[10px] text-[var(--nw-text-muted)] truncate flex-1">{label}</span>
       <input
         type="number"
         min={100}
@@ -246,9 +246,9 @@ function ToolLimitInput({ label, value, onChange }: {
         step={100}
         value={value}
         onChange={e => onChange(Math.max(100, Math.min(10000, parseInt(e.target.value) || 2000)))}
-        className="w-20 bg-gray-700 border border-gray-600 rounded px-1.5 py-1 text-xs text-gray-300 text-right focus:outline-none focus:border-blue-500"
+        className="w-20 bg-[var(--nw-surface-2)] border border-white/15 rounded px-1.5 py-1 text-xs text-[var(--nw-text-secondary)] text-right focus:outline-none focus:border-blue-500"
       />
-      <span className="text-[10px] text-gray-500">T</span>
+      <span className="text-[10px] text-[var(--nw-text-muted)]">T</span>
     </div>
   )
 }

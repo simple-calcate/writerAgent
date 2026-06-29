@@ -16,9 +16,9 @@ export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; it
     return () => document.removeEventListener('mousedown', handler)
   }, [onClose])
   return (
-    <div ref={ref} className="fixed z-50 bg-[#1a2233] border border-[#3a4255] rounded-lg shadow-xl py-1.5 min-w-[120px]" style={{ left: x, top: y }}>
+    <div ref={ref} className="fixed z-50 bg-[var(--nw-surface-2)] border border-white/12 rounded-lg shadow-xl py-1.5 min-w-[120px]" style={{ left: x, top: y }}>
       {items.map((item, i) => (
-        <button key={i} onClick={() => { item.action(); onClose() }} className={`w-full text-left px-3.5 py-2 text-[12px] transition-colors ${item.danger ? 'text-red-400 hover:bg-red-600/15' : 'text-[--nw-text-secondary] hover:bg-[--nw-surface-1] hover:text-[--nw-text-primary]'}`}>
+        <button key={i} onClick={() => { item.action(); onClose() }} className={`w-full text-left px-3.5 py-2 text-[12px] transition-colors ${item.danger ? 'text-red-400 hover:bg-red-600/15' : 'text-[var(--nw-text-secondary)] hover:bg-[var(--nw-surface-1)] hover:text-[var(--nw-text-primary)]'}`}>
           {item.label}
         </button>
       ))}
@@ -29,13 +29,13 @@ export function ContextMenu({ x, y, items, onClose }: { x: number; y: number; it
 export function RenameInput({ value, onConfirm, onCancel }: { value: string; onConfirm: (v: string) => void; onCancel: () => void }) {
   const [text, setText] = useState(value)
   return (
-    <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') onConfirm(text.trim()); if (e.key === 'Escape') onCancel() }} onBlur={() => onConfirm(text.trim())} className="flex-1 bg-[--nw-surface-1] border border-[--nw-accent] rounded-md px-2.5 py-1.5 text-[12px] text-[--nw-text-primary] focus:outline-none focus:ring-1 focus:ring-[--nw-accent-glow]" autoFocus onClick={e => e.stopPropagation()} />
+    <input value={text} onChange={e => setText(e.target.value)} onKeyDown={e => { if (e.key === 'Enter') onConfirm(text.trim()); if (e.key === 'Escape') onCancel() }} onBlur={() => onConfirm(text.trim())} className="flex-1 bg-[var(--nw-surface-1)] border border-[var(--nw-accent)] rounded-md px-2.5 py-1.5 text-[12px] text-[var(--nw-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--nw-accent-glow)]" autoFocus onClick={e => e.stopPropagation()} />
   )
 }
 
 export function BackButton({ label, onClick }: { label: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex items-center gap-1.5 px-3.5 py-2.5 text-[12px] text-[--nw-text-muted] hover:text-[--nw-text-primary] hover:bg-[--nw-surface-1] transition-colors w-full text-left border-b border-[#2a3347]">
+    <button onClick={onClick} className="flex items-center gap-1.5 px-3.5 py-2.5 text-[12px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] hover:bg-[var(--nw-surface-1)] transition-colors w-full text-left border-b border-[var(--nw-panel-border)]">
       <span className="text-[11px]">◀</span>
       <span className="truncate">{label}</span>
     </button>

@@ -29,6 +29,16 @@ export default defineConfig({
         '@': resolve('src/renderer/src')
       }
     },
-    plugins: [react()]
+    plugins: [react()],
+    build: {
+      rollupOptions: {
+        output: {
+          // 拆分 vendor，提升缓存命中率与首屏加载
+          manualChunks: {
+            'react-vendor': ['react', 'react-dom']
+          }
+        }
+      }
+    }
   }
 })

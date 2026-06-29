@@ -11,13 +11,13 @@ export function PendingApprovalCard({ approval, onApprove }: { approval: Dialogu
         <span className="text-yellow-300">{approval.displayName}</span>
         <span className="ml-auto text-[10px] text-yellow-600">等待确认</span>
       </div>
-      <div className="px-3 pb-2.5 border-t border-[--nw-border] pt-2.5 space-y-2.5">
-        <p className="text-[11px] text-[--nw-text-secondary]">{approval.description}</p>
+      <div className="px-3 pb-2.5 border-t border-[var(--nw-border)] pt-2.5 space-y-2.5">
+        <p className="text-[11px] text-[var(--nw-text-secondary)]">{approval.description}</p>
 
         {approval.cachedResult ? (
           <>
-            <div className="text-[11px] text-[--nw-text-muted] bg-[--nw-surface-2] rounded-md p-2.5 max-h-32 overflow-y-auto">
-              <p className="text-[10px] text-[--nw-text-muted] mb-1">缓存结果：</p>
+            <div className="text-[11px] text-[var(--nw-text-muted)] bg-[var(--nw-surface-2)] rounded-md p-2.5 max-h-32 overflow-y-auto">
+              <p className="text-[10px] text-[var(--nw-text-muted)] mb-1">缓存结果：</p>
               {renderMarkdown(approval.cachedResult.substring(0, 200) + (approval.cachedResult.length > 200 ? '...' : ''))}
             </div>
             <div className="flex gap-1.5">
@@ -29,13 +29,13 @@ export function PendingApprovalCard({ approval, onApprove }: { approval: Dialogu
               </button>
               <button
                 onClick={() => onApprove(approval.approvalId, true, true)}
-                className="flex-1 bg-[--nw-accent]/80 hover:bg-[--nw-accent] text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
+                className="flex-1 bg-[var(--nw-accent)]/80 hover:bg-[var(--nw-accent)] text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
               >
                 刷新
               </button>
               <button
                 onClick={() => onApprove(approval.approvalId, false)}
-                className="flex-1 bg-[--nw-surface-1] hover:bg-[--nw-surface-2] text-[--nw-text-secondary] px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
+                className="flex-1 bg-[var(--nw-surface-1)] hover:bg-[var(--nw-surface-2)] text-[var(--nw-text-secondary)] px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
               >
                 拒绝
               </button>

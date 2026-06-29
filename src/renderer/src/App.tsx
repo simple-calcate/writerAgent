@@ -138,7 +138,7 @@ export default function App() {
           >
             {showSidebar ? '◀' : '▶'}
           </button>
-          <h1 className="text-sm font-medium text-[--nw-text-secondary] tracking-wide">网文写作助手</h1>
+          <h1 className="text-sm font-medium text-[var(--nw-text-secondary)] tracking-wide">网文写作助手</h1>
         </div>
         <div className="flex items-center gap-2">
           <UpdateBanner />
@@ -162,17 +162,17 @@ export default function App() {
 
         {/* Center area - Editor or Reasoning Panel */}
         {showReasoningPanel && reasoningStatus !== 'idle' ? (
-          <div className="flex-1 flex flex-col min-w-0 bg-[--nw-bg-color]">
+          <div className="flex-1 flex flex-col min-w-0 bg-[var(--nw-bg-color)]">
             {/* Tab bar */}
-            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[#2a3347] bg-[--nw-surface-1]">
+            <div className="flex items-center gap-1 px-3 py-1.5 border-b border-[#2a3347] bg-[var(--nw-surface-1)]">
               <button
                 onClick={toggleReasoningPanel}
-                className="px-3 py-1 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-primary] hover:bg-[--nw-surface-2] rounded-md transition-colors"
+                className="px-3 py-1 text-[11px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] hover:bg-[var(--nw-surface-2)] rounded-md transition-colors"
               >
                 ← 返回编辑
               </button>
               <div className="flex-1" />
-              <span className="text-[10px] text-[--nw-accent] font-medium tracking-wide">🧠 推理分析</span>
+              <span className="text-[10px] text-[var(--nw-accent)] font-medium tracking-wide">🧠 推理分析</span>
             </div>
             <div className="flex-1 overflow-hidden">
               <ReasoningPanel
@@ -198,7 +198,7 @@ export default function App() {
       {reasoningStatus === 'running' && !showReasoningPanel && (
         <button
           onClick={toggleReasoningPanel}
-          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 bg-[--nw-accent] hover:bg-[--nw-accent-hover] text-white rounded-xl shadow-lg shadow-[--nw-accent-glow] transition-all duration-200 hover:shadow-xl"
+          className="fixed bottom-5 right-5 z-40 flex items-center gap-2 px-4 py-2.5 bg-[var(--nw-accent)] hover:bg-[var(--nw-accent-hover)] text-white rounded-xl shadow-lg shadow-[var(--nw-accent-glow)] transition-all duration-200 hover:shadow-xl"
         >
           <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
           <span className="text-[12px] font-medium">推理进行中...</span>

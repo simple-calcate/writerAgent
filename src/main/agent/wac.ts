@@ -13,6 +13,7 @@ import {
   emitPhaseChange, emitTaskComplete
 } from './wac-helpers'
 import { executeWithCriticLoop, executeSingleTask } from './wac-critic-loop'
+import { log } from '../utils/logger'
 import { TrajectoryRecorder, emitTrajectory } from './visualization'
 
 export class WriterAgentController {
@@ -86,24 +87,24 @@ export class WriterAgentController {
     this.trajectory.record('phase_change', { phase: 'planning' })
     this.stateMachine.transition('planning')
     emitPhaseChange(this.mainWindow, task.id, 'planning')
-    console.log(`[WAC] 任务开始: ${task.id}`)
-    console.log(`[WAC] 用户请求: ${userRequest.substring(0, 100)}`)
+    log.debug(`[WAC] 任务开始: ${task.id}`)
+    log.debug(`[WAC] 用户请求: ${userRequest.substring(0, 100)}`)
 
     try {
       task.phase = 'planning'
-      console.log(`[WAC] → Planning Agent 启动...`)
+      log.debug(`[WAC] → Planning Agent 启动...`)
       const plan = await executePlanner(userRequest, execContext)
       task.intent = plan.intent
       task.description = plan.description
       task.subTasks = plan.subTasks
-      console.log(`[WAC] ← Planning 完成: intent=${plan.intent}, 子任务数=${plan.subTasks.length}`)
+      log.debug(`[WAC] ← Planning 完成: intent=${plan.intent}, 子任务数=${plan.subTasks.length}`)
       for (const st of plan.subTasks) {
-        console.log(`[WAC]   子任务: [${st.agentRole}] ${st.description.substring(0, 60)}`)
+        log.debug(`[WAC]   子任务: [${st.agentRole}] ${st.description.substring(0, 60)}`)
       }
       this.trajectory.record('phase_change', { phase: 'writing', intent: plan.intent, subTaskCount: plan.subTasks.length })
 
       if (isSimpleTask(plan)) {
-        console.log(`[WAC] 简单任务，跳过 Critic Loop`)
+        log.debug(`[WAC] 简单任务，跳过 Critic Loop`)
         this.stateMachine.transition('writing')
         task.phase = 'writing'
         emitPhaseChange(this.mainWindow, task.id, 'writing')
@@ -123,11 +124,11 @@ export class WriterAgentController {
         emitTrajectory(this.mainWindow, this.trajectory.getTrajectory(result.content))
         finalizeTask(task, this.state, this.stateMachine)
         emitTaskComplete(this.mainWindow, task.id, result.content, 'finalizing', streamId)
-        console.log(`[WAC] 任务完成 (简单路径)`)
+        log.debug(`[WAC] 任务完成 (简单路径)`)
         return result.content
       }
 
-      console.log(`[WAC] 复杂任务，进入 Critic Loop`)
+      log.debug(`[WAC] 复杂任务，进入 Critic Loop`)
       const finalContent = await executeWithCriticLoop(
         task, execContext, this.mainWindow, this.stateMachine,
         this.memoryContext, this.abortController, streamId, this.trajectory
@@ -145,12 +146,12 @@ export class WriterAgentController {
         emitTrajectory(this.mainWindow, this.trajectory.getTrajectory(finalContent))
         finalizeTask(task, this.state, this.stateMachine)
         emitTaskComplete(this.mainWindow, task.id, finalContent, 'finalizing', streamId)
-        console.log(`[WAC] 任务完成 (Critic Loop 路径)`)
+        log.debug(`[WAC] 任务完成 (Critic Loop 路径)`)
       return finalContent
 
     } catch (err: any) {
       const errorMsg = err.message || 'Agent 执行失败'
-      console.error(`[WAC] 任务失败: ${errorMsg}`)
+      log.error(`[WAC] 任务失败: ${errorMsg}`)
       // 桥接回前端对话系统：使用前端传来的 streamId
       this.mainWindow.webContents.send('dialogue:error', { streamId: streamId || task.id, error: errorMsg })
       if (this.abortController?.signal.aborted) {
@@ -168,6 +169,6 @@ export class WriterAgentController {
 
   private commitMemoryAsync(projectId: string, chapterId: string, chapterTitle: string, content: string, config: import('../../shared/types').LLMConfigSingle): void {
     commitMemory(projectId, chapterId, chapterTitle, content, config)
-      .catch(err => console.error('[Memory] 记忆提交失败:', err))
+      .catch(err => log.error('[Memory] 记忆提交失败:', err))
   }
 }

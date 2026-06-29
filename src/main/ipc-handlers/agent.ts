@@ -2,6 +2,7 @@ import { BrowserWindow, ipcMain } from 'electron'
 import { getProjects, getVolumes, getChapters, resolveFeatureConfig } from '../store/db'
 import { getAgentRuntime } from '../agent/runtime'
 import { handleRewriteApprovalResponse } from '../agent/wac-helpers'
+import { log } from '../utils/logger'
 import type { DialogueLevel, Volume, Chapter } from '../../shared/types'
 
 export function registerAgentHandlers(mainWindow: BrowserWindow): void {
@@ -41,7 +42,7 @@ export function registerAgentHandlers(mainWindow: BrowserWindow): void {
     runtime.processRequest(userRequest, project, volume, chapter, level, streamId)
       .catch(err => {
         if (err.message !== '任务已取消') {
-          console.error('[Agent] 执行失败:', err)
+          log.error('[Agent] 执行失败:', err)
           mainWindow.webContents.send('agent:error', { streamId, error: err.message })
         }
       })

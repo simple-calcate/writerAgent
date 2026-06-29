@@ -11,6 +11,7 @@ import { formatCriticFeedback, emitPhaseChange, emitSubTaskUpdate, emitCriticRes
 import type { WritingStateMachine } from './state-machine'
 import type { TrajectoryRecorder } from './visualization'
 import { randomUUID } from 'crypto'
+import { log } from '../utils/logger'
 
 const MAX_REWRITE_ROUNDS = 2
 
@@ -38,7 +39,7 @@ export async function executeWithCriticLoop(
     streamId
   )
 
-  console.log(`[WAC] TaskGraph 执行完成: 成功=${graphResult.completedTasks.size}, 失败=${graphResult.failedTasks.size}`)
+  log.debug(`[WAC] TaskGraph 执行完成: 成功=${graphResult.completedTasks.size}, 失败=${graphResult.failedTasks.size}`)
 
   let lastWriterContent = ''
   for (const [, result] of graphResult.completedTasks) {
@@ -57,7 +58,7 @@ export async function executeWithCriticLoop(
   }
 
   if (lastWriterContent && task.intent !== 'chat') {
-    console.log(`[WAC] → Critic Agent 启动...`)
+    log.debug(`[WAC] → Critic Agent 启动...`)
     stateMachine.transition('critic_check', { hasContent: true })
     task.phase = 'critic_check'
     emitPhaseChange(mainWindow, task.id, 'critic_check')
@@ -70,24 +71,24 @@ export async function executeWithCriticLoop(
     while (rewriteRound < MAX_REWRITE_ROUNDS) {
       if (abortController?.signal.aborted) break
 
-      console.log(`[WAC] Critic 评审第 ${rewriteRound + 1} 轮...`)
+      log.debug(`[WAC] Critic 评审第 ${rewriteRound + 1} 轮...`)
       const score = await executeCritic(currentContent, context)
       scoreHistory.push(score.overall)
       emitCriticResult(mainWindow, task.id, score)
       trajectory?.record('critic_score', { round: rewriteRound, overall: score.overall, issues: score.issues })
-      console.log(`[WAC] Critic 评分: ${score.overall}/10 (结构:${score.structure} 节奏:${score.pacing} 冲突:${score.conflict})`)
+      log.debug(`[WAC] Critic 评分: ${score.overall}/10 (结构:${score.structure} 节奏:${score.pacing} 冲突:${score.conflict})`)
 
       const trend = trackScoreTrend(scoreHistory)
       const stopDecision = shouldStopRewrite(score, trend, rewriteRound, MAX_REWRITE_ROUNDS)
       if (stopDecision.stop) {
-        console.log(`[WAC] Critic 停止: ${stopDecision.reason}`)
+        log.debug(`[WAC] Critic 停止: ${stopDecision.reason}`)
         trajectory?.record('phase_change', { phase: 'finalizing', reason: stopDecision.reason })
         break
       }
 
       const rewritePlan = selectRewriteStrategy(score, rewriteRound + 1)
       if (rewritePlan.strategy === 'skip') {
-        console.log(`[WAC] 重写策略: skip`)
+        log.debug(`[WAC] 重写策略: skip`)
         trajectory?.record('phase_change', { phase: 'finalizing', reason: 'skip' })
         break
       }
@@ -105,13 +106,13 @@ export async function executeWithCriticLoop(
 
       const approved = await waitForRewriteApproval(approvalId)
       if (!approved) {
-        console.log(`[WAC] 用户拒绝重写，跳过`)
+        log.debug(`[WAC] 用户拒绝重写，跳过`)
         trajectory?.record('phase_change', { phase: 'finalizing', reason: 'user_rejected_rewrite' })
         break
       }
 
       rewriteRound++
-      console.log(`[WAC] → Writer 重写第 ${rewriteRound} 轮 (策略: ${rewritePlan.strategy})`)
+      log.debug(`[WAC] → Writer 重写第 ${rewriteRound} 轮 (策略: ${rewritePlan.strategy})`)
       stateMachine.transition('revision', { hasIssues: true })
       task.phase = 'revision'
       emitPhaseChange(mainWindow, task.id, 'revision')

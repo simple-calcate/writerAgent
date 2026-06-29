@@ -23,7 +23,7 @@ export function ChapterLevel() {
           >
             <span className="text-[12px]">◎</span>
             <span>润色标记</span>
-            <span className="ml-auto text-[--nw-text-muted]">{marksCount}</span>
+            <span className="ml-auto text-[var(--nw-text-muted)]">{marksCount}</span>
           </button>
         )}
         {hasSummary && (
@@ -37,7 +37,7 @@ export function ChapterLevel() {
         )}
 
         {/* AI actions */}
-        <div className="border-t border-[#2a3347] mt-1 pt-1">
+        <div className="border-t border-[var(--nw-panel-border)] mt-1 pt-1">
           {features.polish.enabled && (
             <button
               onClick={autoAnalyze}

@@ -82,16 +82,16 @@ export default function WhatsNewDialog({ version, onClose }: WhatsNewDialogProps
       onClick={handleClose}
     >
       <div
-        className={`bg-gray-800 rounded-lg w-full max-w-md shadow-xl transition-transform duration-300 ${visible ? 'scale-100' : 'scale-95'}`}
+        className={`bg-[var(--nw-surface-2)] rounded-lg w-full max-w-md shadow-xl transition-transform duration-300 ${visible ? 'scale-100' : 'scale-95'}`}
         onClick={e => e.stopPropagation()}
       >
         <div className="p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-medium text-gray-200">🎉 更新成功</h2>
-            <button onClick={handleClose} className="text-gray-500 hover:text-gray-300 text-sm">✕</button>
+            <h2 className="text-base font-medium text-[var(--nw-text-primary)]">🎉 更新成功</h2>
+            <button onClick={handleClose} className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] text-sm">✕</button>
           </div>
-          <p className="text-xs text-gray-500 mb-3">已更新至 v{version}</p>
-          <div className="text-xs text-gray-400 bg-gray-900/50 rounded p-3 max-h-64 overflow-y-auto whitespace-pre-wrap leading-relaxed">
+          <p className="text-xs text-[var(--nw-text-muted)] mb-3">已更新至 v{version}</p>
+          <div className="text-xs text-[var(--nw-text-secondary)] bg-[var(--nw-surface-2)]/50 rounded p-3 max-h-64 overflow-y-auto whitespace-pre-wrap leading-relaxed">
             {formatNotes(notes)}
           </div>
           <button

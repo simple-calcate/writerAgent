@@ -8,6 +8,7 @@ import { getOutline, getSkills } from '../store/db'
 import { getReasoningChainById, extractUserMessage } from './reasoning-chains'
 import { executeReasoningChain, buildReasoningContext } from './dialogue-reasoning'
 import { waitForApproval, handleApprovalResponse, trimOldToolResults, compressDialogueHistory } from './stream'
+import { log } from '../utils/logger'
 
 const activeStreams = new Map<string, AbortController>()
 const MAX_TOOL_ROUNDS = 50
@@ -98,7 +99,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             reasoningContext += result
           }
         } catch (err) {
-          console.error(`推理链 ${chain.name} 执行失败:`, err)
+          log.error(`推理链 ${chain.name} 执行失败:`, err)
         }
       }
     }

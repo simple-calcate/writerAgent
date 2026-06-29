@@ -8,7 +8,7 @@ const ROLE_LABELS: Record<string, { label: string; icon: string }> = {
 }
 
 const STATUS_DOT: Record<AgentStatus, string> = {
-  idle: 'bg-[--nw-text-muted]',
+  idle: 'bg-[var(--nw-text-muted)]',
   active: 'bg-amber-500 animate-pulse',
   blocked: 'bg-red-500'
 }
@@ -31,8 +31,8 @@ export default function AgentSidebar({
   if (agents.length === 0) return null
 
   return (
-    <div className="rounded-md bg-[--surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] p-2 space-y-1">
-      <p className="text-[10px] text-[--text-muted] px-1 mb-1">Agents</p>
+    <div className="rounded-md bg-[var(--surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] p-2 space-y-1">
+      <p className="text-[10px] text-[var(--text-muted)] px-1 mb-1">Agents</p>
       {agents.map(agent => {
         const role = ROLE_LABELS[agent.role] || { label: agent.role, icon: '•' }
         const isSelected = selectedId === agent.id
@@ -48,8 +48,8 @@ export default function AgentSidebar({
           >
             <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${STATUS_DOT[agent.status]}`} />
             <span className="text-[11px]">{role.icon}</span>
-            <span className="text-[11px] text-[--text-secondary] flex-1 truncate">{role.label}</span>
-            <span className="text-[9px] text-[--text-muted]">{doneCount}/{agent.graph.nodes.length}</span>
+            <span className="text-[11px] text-[var(--text-secondary)] flex-1 truncate">{role.label}</span>
+            <span className="text-[9px] text-[var(--text-muted)]">{doneCount}/{agent.graph.nodes.length}</span>
           </button>
         )
       })}

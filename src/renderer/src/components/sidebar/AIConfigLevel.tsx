@@ -144,7 +144,7 @@ export function AIConfigLevel() {
       <BackButton label="书籍 AI 配置" onClick={navBack} />
 
       <div className="flex-1 overflow-y-auto p-4 space-y-5">
-        <p className="text-[11px] text-[--nw-text-muted]">
+        <p className="text-[11px] text-[var(--nw-text-muted)]">
           配置技能搭载和推理链绑定，影响所有卷和章节
         </p>
 
@@ -153,7 +153,7 @@ export function AIConfigLevel() {
           <div className="space-y-3">
             <div className="flex items-center gap-2 mb-2">
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-              <span className="text-[10px] text-[--nw-text-muted] font-medium tracking-wider uppercase">技能搭载</span>
+              <span className="text-[10px] text-[var(--nw-text-muted)] font-medium tracking-wider uppercase">技能搭载</span>
               <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
             </div>
 
@@ -168,25 +168,25 @@ export function AIConfigLevel() {
                   >
                     <span className="text-base">{feat.icon}</span>
                     <div className="flex-1 text-left">
-                      <p className="text-[12px] text-[--nw-text-primary] font-medium">{feat.label}</p>
-                      <p className="text-[10px] text-[--nw-text-muted]">{feat.desc}</p>
+                      <p className="text-[12px] text-[var(--nw-text-primary)] font-medium">{feat.label}</p>
+                      <p className="text-[10px] text-[var(--nw-text-muted)]">{feat.desc}</p>
                     </div>
                     <div className="flex items-center gap-2">
                       {assigned.length > 0 ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-[--nw-text-secondary]">
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-[var(--nw-text-secondary)]">
                           {assigned.length} 技能
                         </span>
                       ) : (
-                        <span className="text-[10px] text-[--nw-text-muted]">未配置</span>
+                        <span className="text-[10px] text-[var(--nw-text-muted)]">未配置</span>
                       )}
-                      <span className="text-[10px] text-[--nw-text-muted]">{isExpanded ? '▲' : '▼'}</span>
+                      <span className="text-[10px] text-[var(--nw-text-muted)]">{isExpanded ? '▲' : '▼'}</span>
                     </div>
                   </button>
 
                   {isExpanded && (
                     <div className="px-3.5 pb-3.5 border-t border-white/10">
                       <div className="flex items-center justify-between pt-2.5 pb-1.5">
-                        <span className="text-[10px] text-[--nw-text-muted]">选择此功能使用的技能</span>
+                        <span className="text-[10px] text-[var(--nw-text-muted)]">选择此功能使用的技能</span>
                         <button
                           onClick={() => setAllForFeature(feat.key, assigned.length < skills.length)}
                           className="text-[10px] text-blue-400 hover:text-blue-300 transition-colors"
@@ -207,7 +207,7 @@ export function AIConfigLevel() {
                                 className="accent-blue-500 w-3.5 h-3.5"
                               />
                               <span className="text-[11px]">{meta.icon}</span>
-                              <span className="text-[12px] text-[--nw-text-secondary] truncate flex-1">{skill.name}</span>
+                              <span className="text-[12px] text-[var(--nw-text-secondary)] truncate flex-1">{skill.name}</span>
                               {skill.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1.5 py-0.5 rounded">内置</span>}
                             </label>
                           )
@@ -218,7 +218,7 @@ export function AIConfigLevel() {
                       <div className="mt-3 pt-2.5 border-t border-white/5">
                         <button
                           onClick={() => setExpandedAdvanced(expandedAdvanced === feat.advancedKey ? null : feat.advancedKey)}
-                          className="flex items-center gap-1.5 text-[11px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] transition-colors"
+                          className="flex items-center gap-1.5 text-[11px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] transition-colors"
                         >
                           <span>{expandedAdvanced === feat.advancedKey ? '▼' : '▶'}</span>
                           <span>高级选项</span>
@@ -232,8 +232,8 @@ export function AIConfigLevel() {
                             {/* 温度滑块 */}
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <label className="text-[11px] text-[--nw-text-muted]">温度 (Temperature)</label>
-                                <span className="text-[11px] text-[--nw-text-secondary] font-mono">
+                                <label className="text-[11px] text-[var(--nw-text-muted)]">温度 (Temperature)</label>
+                                <span className="text-[11px] text-[var(--nw-text-secondary)] font-mono">
                                   {advancedConfigs[feat.advancedKey]?.temperature?.toFixed(1) ?? `${feat.defaultTemp} (默认)`}
                                 </span>
                               </div>
@@ -244,9 +244,9 @@ export function AIConfigLevel() {
                                 step="0.1"
                                 value={advancedConfigs[feat.advancedKey]?.temperature ?? feat.defaultTemp}
                                 onChange={e => updateAdvancedConfig(feat.advancedKey, { temperature: parseFloat(e.target.value) })}
-                                className="w-full h-1 bg-gray-700 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                                className="w-full h-1 bg-white/15 rounded-lg appearance-none cursor-pointer accent-blue-500"
                               />
-                              <div className="flex justify-between text-[9px] text-[--nw-text-muted] mt-1">
+                              <div className="flex justify-between text-[9px] text-[var(--nw-text-muted)] mt-1">
                                 <span>精确 (0)</span>
                                 <span>默认 ({feat.defaultTemp})</span>
                                 <span>随机 (2)</span>
@@ -254,7 +254,7 @@ export function AIConfigLevel() {
                               {advancedConfigs[feat.advancedKey]?.temperature !== undefined && (
                                 <button
                                   onClick={() => updateAdvancedConfig(feat.advancedKey, { temperature: undefined })}
-                                  className="text-[10px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] mt-1.5 transition-colors"
+                                  className="text-[10px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] mt-1.5 transition-colors"
                                 >
                                   恢复默认
                                 </button>
@@ -264,12 +264,12 @@ export function AIConfigLevel() {
                             {/* 自定义系统提示词 */}
                             <div>
                               <div className="flex items-center justify-between mb-1.5">
-                                <label className="text-[11px] text-[--nw-text-muted]">自定义系统提示词</label>
+                                <label className="text-[11px] text-[var(--nw-text-muted)]">自定义系统提示词</label>
                                 {advancedConfigs[feat.advancedKey]?.systemPrompt !== undefined &&
                                   advancedConfigs[feat.advancedKey]?.systemPrompt !== getDefaultSystemPrompt(feat.advancedKey) && (
                                   <button
                                     onClick={() => updateAdvancedConfig(feat.advancedKey, { systemPrompt: undefined })}
-                                    className="text-[10px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] transition-colors"
+                                    className="text-[10px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] transition-colors"
                                   >
                                     恢复默认
                                   </button>
@@ -279,9 +279,9 @@ export function AIConfigLevel() {
                                 value={advancedConfigs[feat.advancedKey]?.systemPrompt ?? getDefaultSystemPrompt(feat.advancedKey)}
                                 onChange={e => updateAdvancedConfig(feat.advancedKey, { systemPrompt: e.target.value })}
                                 rows={3}
-                                className="w-full bg-gray-900/50 border border-white/10 rounded-xl px-3 py-2 text-[11px] text-[--nw-text-secondary] focus:outline-none focus:border-blue-500/50 resize-none"
+                                className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded-xl px-3 py-2 text-[11px] text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500/50 resize-none"
                               />
-                              <p className="text-[9px] text-[--nw-text-muted] mt-1.5">
+                              <p className="text-[9px] text-[var(--nw-text-muted)] mt-1.5">
                                 修改后将覆盖内置技能的提示词
                               </p>
                             </div>
@@ -300,10 +300,10 @@ export function AIConfigLevel() {
         <div className="space-y-3">
           <div className="flex items-center gap-2 mb-2">
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-            <span className="text-[10px] text-[--nw-text-muted] font-medium tracking-wider uppercase">推理链绑定</span>
+            <span className="text-[10px] text-[var(--nw-text-muted)] font-medium tracking-wider uppercase">推理链绑定</span>
             <div className="h-px flex-1 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           </div>
-          <p className="text-[10px] text-[--nw-text-muted]">绑定推理链后，执行工具前会自动执行推理分析</p>
+          <p className="text-[10px] text-[var(--nw-text-muted)]">绑定推理链后，执行工具前会自动执行推理分析</p>
 
           {TOOL_OPTIONS.map(tool => {
             const boundChainId = reasoningConfig.toolChainBindings?.[tool.value]
@@ -311,12 +311,12 @@ export function AIConfigLevel() {
             return (
               <div key={tool.value} className="bg-white/[0.02] border border-white/5 rounded-xl p-3.5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[12px] text-[--nw-text-secondary]">{tool.label}</span>
+                  <span className="text-[12px] text-[var(--nw-text-secondary)]">{tool.label}</span>
                 </div>
                 <select
                   value={boundChainId || ''}
                   onChange={e => bindToolChain(tool.value, e.target.value)}
-                  className="w-full bg-[--nw-surface-2] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-[--nw-text-primary] focus:outline-none focus:border-blue-500/50 transition-all"
+                  className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded-xl px-3 py-2 text-[12px] text-[var(--nw-text-primary)] focus:outline-none focus:border-blue-500/50 transition-all"
                 >
                   <option value="">不绑定</option>
                   {chains.map(chain => (
@@ -324,7 +324,7 @@ export function AIConfigLevel() {
                   ))}
                 </select>
                 {boundChain && (
-                  <p className="text-[11px] text-[--nw-text-muted] mt-2">
+                  <p className="text-[11px] text-[var(--nw-text-muted)] mt-2">
                     已绑定：{boundChain.name}（{boundChain.steps.length} 步）
                   </p>
                 )}
@@ -334,7 +334,7 @@ export function AIConfigLevel() {
         </div>
       </div>
 
-      <div className="p-3.5 border-t border-white/5 shrink-0 bg-white/[0.01]">
+      <div className="p-3.5 border-t border-white/5 shrink-0 bg-white/[0.03]">
         <button onClick={handleSave} className="w-full bg-amber-600/90 hover:bg-amber-500 text-white py-2.5 rounded-xl text-[12px] font-medium transition-all shadow-sm shadow-amber-500/20">
           保存
         </button>

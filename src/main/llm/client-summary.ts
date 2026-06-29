@@ -3,6 +3,17 @@ import type { LLMConfigSingle, BookAIConfig, APIProvider, AIFeatureAdvancedConfi
 import { streamWithThinking } from './streaming'
 import { getFeatureSkillContent } from './feature-skills'
 import { createClient, detectProvider } from './client'
+import { TIMEOUT } from './constants'
+
+/** 将底层 LLM/网络错误包装为用户可读的中文提示 */
+function friendlyLLMError(action: string, err: unknown): Error {
+  const e = err as { name?: string; status?: number; message?: string }
+  if (e?.name === 'AbortError') return new Error(`${action}已取消`)
+  if (e?.status === 401 || e?.status === 403) return new Error(`${action}失败：API Key 无效或权限不足（${e.status}）`)
+  if (e?.status === 429) return new Error(`${action}失败：请求过于频繁，请稍后重试（429 限流）`)
+  if (e?.status && e.status >= 500) return new Error(`${action}失败：模型服务暂时不可用（${e.status}）`)
+  return new Error(`${action}失败：${e?.message || String(err)}`)
+}
 
 // 本地模型诊断
 export async function diagnoseLocalModel(config: LLMConfigSingle): Promise<string[]> {
@@ -22,7 +33,7 @@ export async function diagnoseLocalModel(config: LLMConfigSingle): Promise<strin
   // Stage 2: Test connection
   try {
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 5000)
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT.LOCAL_CONNECT)
     const res = await fetch(baseUrl.replace('/v1', '/api/tags'), { signal: controller.signal })
     clearTimeout(timeout)
 
@@ -58,7 +69,7 @@ export async function diagnoseLocalModel(config: LLMConfigSingle): Promise<strin
   try {
     const client = createClient(config)
     const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), 10000)
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT.LOCAL_CHAT)
     const res = await client.chat.completions.create({
       model: config.model || 'llama3',
       messages: [{ role: 'user', content: 'Hi' }],
@@ -124,21 +135,26 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
 
   const temperature = advancedConfig?.temperature ?? 0.3
 
-  if (mainWindow) {
-    return streamWithThinking(mainWindow, client, config, {
+  try {
+    if (mainWindow) {
+      return await streamWithThinking(mainWindow, client, config, {
+        model: config.model || 'gpt-4o-mini',
+        messages,
+        temperature,
+        ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
+      }, signal) || '无法生成总结'
+    }
+
+    const response = await client.chat.completions.create({
       model: config.model || 'gpt-4o-mini',
       messages,
       temperature,
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
-    }, signal) || '无法生成总结'
+    })
+
+    return response.choices[0]?.message?.content?.trim() || '无法生成总结'
+  } catch (err) {
+    if ((err as any)?.name === 'AbortError') throw err
+    throw friendlyLLMError('章节摘要', err)
   }
-
-  const response = await client.chat.completions.create({
-    model: config.model || 'gpt-4o-mini',
-    messages,
-    temperature,
-    ...(config.maxTokens ? { max_tokens: config.maxTokens } : {})
-  })
-
-  return response.choices[0]?.message?.content?.trim() || '无法生成总结'
 }

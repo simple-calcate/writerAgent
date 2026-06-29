@@ -37,11 +37,11 @@ export default function SkillImportPreview() {
 
   return (
     <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center">
-      <div className="bg-gray-800 rounded-lg shadow-2xl w-[480px] max-h-[80vh] flex flex-col">
+      <div className="bg-[var(--nw-surface-2)] rounded-lg shadow-2xl w-[480px] max-h-[80vh] flex flex-col">
         {/* Header */}
-        <div className="px-4 py-3 border-b border-gray-700 flex items-center justify-between">
-          <h3 className="text-sm text-gray-200">导入技能库</h3>
-          <button onClick={closeSkillImportPreview} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+        <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
+          <h3 className="text-sm text-[var(--nw-text-primary)]">导入技能库</h3>
+          <button onClick={closeSkillImportPreview} className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] text-xs">✕</button>
         </div>
 
         {/* Skill list */}
@@ -50,7 +50,7 @@ export default function SkillImportPreview() {
             <button onClick={toggleAll} className="text-[11px] text-blue-400 hover:text-blue-300">
               {selected.size === skillImportPreview.length ? '取消全选' : '全选'}
             </button>
-            <span className="text-[10px] text-gray-600">{selected.size} / {skillImportPreview.length} 已选</span>
+            <span className="text-[10px] text-[var(--nw-text-muted)]">{selected.size} / {skillImportPreview.length} 已选</span>
           </div>
 
           {skillImportPreview.map((skill, i) => {
@@ -63,7 +63,7 @@ export default function SkillImportPreview() {
                 className={`border rounded-lg p-3 cursor-pointer transition-colors ${
                   selected.has(i)
                     ? 'border-blue-500/50 bg-blue-900/20'
-                    : 'border-gray-700 bg-gray-700/30 hover:border-gray-600'
+                    : 'border-white/10 bg-[var(--nw-surface-2)]/30 hover:border-white/15'
                 }`}
               >
                 <div className="flex items-center gap-2 mb-1">
@@ -74,21 +74,21 @@ export default function SkillImportPreview() {
                     className="accent-blue-500"
                   />
                   <span className="text-[10px]">{meta.icon}</span>
-                  <span className="text-xs text-gray-300 flex-1">{skill.name}</span>
+                  <span className="text-xs text-[var(--nw-text-secondary)] flex-1">{skill.name}</span>
                   {isDuplicate && (
                     <span className="text-[10px] text-yellow-500 bg-yellow-900/30 px-1.5 py-0.5 rounded">重复</span>
                   )}
                 </div>
-                <p className="text-[10px] text-gray-500 line-clamp-2 ml-6">{skill.content.substring(0, 120)}{skill.content.length > 120 ? '...' : ''}</p>
-                {skill.source && <p className="text-[10px] text-gray-600 ml-6 mt-0.5">{skill.source}</p>}
+                <p className="text-[10px] text-[var(--nw-text-muted)] line-clamp-2 ml-6">{skill.content.substring(0, 120)}{skill.content.length > 120 ? '...' : ''}</p>
+                {skill.source && <p className="text-[10px] text-[var(--nw-text-muted)] ml-6 mt-0.5">{skill.source}</p>}
               </div>
             )
           })}
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-3 border-t border-gray-700 flex items-center justify-between">
-          <button onClick={closeSkillImportPreview} className="text-xs text-gray-400 hover:text-gray-200">取消</button>
+        <div className="px-4 py-3 border-t border-white/10 flex items-center justify-between">
+          <button onClick={closeSkillImportPreview} className="text-xs text-[var(--nw-text-secondary)] hover:text-[var(--nw-text-primary)]">取消</button>
           <button
             onClick={handleConfirm}
             disabled={selected.size === 0}

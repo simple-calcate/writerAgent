@@ -62,25 +62,25 @@ export default function SkillsTab() {
     return (
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <button onClick={() => setViewMode('list')} className="text-gray-400 hover:text-gray-200 text-xs">← 返回</button>
-          <span className="text-xs text-gray-300">{viewMode === 'add' ? '添加技能' : '编辑技能'}</span>
+          <button onClick={() => setViewMode('list')} className="text-[var(--nw-text-secondary)] hover:text-[var(--nw-text-primary)] text-xs">← 返回</button>
+          <span className="text-xs text-[var(--nw-text-secondary)]">{viewMode === 'add' ? '添加技能' : '编辑技能'}</span>
         </div>
         <div className="space-y-3">
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">技能名称</label>
+            <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">技能名称</label>
             <input
               value={form.name}
               onChange={e => setForm(f => ({ ...f, name: e.target.value }))}
               placeholder="如：都市打斗场景写法"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">分类</label>
+            <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">分类</label>
             <select
               value={form.category}
               onChange={e => setForm(f => ({ ...f, category: e.target.value as SkillCategory }))}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
             >
               {Object.entries(SKILL_CATEGORIES).map(([key, meta]) => (
                 <option key={key} value={key}>{meta.icon} {meta.label}</option>
@@ -88,22 +88,22 @@ export default function SkillsTab() {
             </select>
           </div>
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">来源（可选）</label>
+            <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">来源（可选）</label>
             <input
               value={form.source}
               onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
               placeholder="如：提取自《xxx》第三章"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="text-[10px] text-gray-500 block mb-1">技能内容</label>
+            <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">技能内容</label>
             <textarea
               value={form.content}
               onChange={e => setForm(f => ({ ...f, content: e.target.value }))}
               placeholder="详细的写作指导，包含具体规则和示例..."
               rows={8}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500 resize-none"
             />
           </div>
         </div>
@@ -125,7 +125,7 @@ export default function SkillsTab() {
           )}
           <button
             onClick={() => setViewMode('list')}
-            className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-3 py-1.5 rounded text-xs transition-colors"
+            className="bg-[var(--nw-surface-2)] hover:bg-white/10 text-[var(--nw-text-secondary)] px-3 py-1.5 rounded text-xs transition-colors"
           >
             取消
           </button>
@@ -138,25 +138,25 @@ export default function SkillsTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-300">🎭 {skills.length} 个技能</span>
+        <span className="text-xs text-[var(--nw-text-secondary)]">🎭 {skills.length} 个技能</span>
         <div className="flex gap-1.5">
           <button onClick={handleAdd} className="bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] transition-colors">
             + 添加
           </button>
-          <button onClick={() => importSkills()} className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded text-[11px] transition-colors">
+          <button onClick={() => importSkills()} className="bg-[var(--nw-surface-2)] hover:bg-white/10 text-[var(--nw-text-secondary)] px-2 py-1 rounded text-[11px] transition-colors">
             导入
           </button>
-          <button onClick={() => exportSkills()} disabled={skills.length === 0} className="bg-gray-700 hover:bg-gray-600 text-gray-300 px-2 py-1 rounded text-[11px] transition-colors disabled:opacity-40">
+          <button onClick={() => exportSkills()} disabled={skills.length === 0} className="bg-[var(--nw-surface-2)] hover:bg-white/10 text-[var(--nw-text-secondary)] px-2 py-1 rounded text-[11px] transition-colors disabled:opacity-40">
             导出
           </button>
         </div>
       </div>
 
       {skills.length === 0 && (
-        <div className="text-center text-gray-600 py-8">
+        <div className="text-center text-[var(--nw-text-muted)] py-8">
           <p className="text-sm mb-2">🎭</p>
           <p className="text-xs mb-2">还没有写作技能</p>
-          <p className="text-[10px] text-gray-700">手动添加，或在 AI 对话中让 AI 从章节中提取</p>
+          <p className="text-[10px] text-[var(--nw-text-muted)]">手动添加，或在 AI 对话中让 AI 从章节中提取</p>
         </div>
       )}
 
@@ -164,23 +164,23 @@ export default function SkillsTab() {
         const meta = SKILL_CATEGORIES[category] || { icon: '📌', label: category }
         return (
           <div key={category}>
-            <div className="px-2 py-1 bg-gray-700/50 rounded flex items-center gap-1.5 mb-1">
+            <div className="px-2 py-1 bg-[var(--nw-surface-2)]/50 rounded flex items-center gap-1.5 mb-1">
               <span className="text-[10px]">{meta.icon}</span>
-              <span className="text-[10px] text-gray-400 font-medium">{meta.label}</span>
-              <span className="text-[10px] text-gray-600 ml-auto">{categorySkills.length}</span>
+              <span className="text-[10px] text-[var(--nw-text-secondary)] font-medium">{meta.label}</span>
+              <span className="text-[10px] text-[var(--nw-text-muted)] ml-auto">{categorySkills.length}</span>
             </div>
             <div className="space-y-0.5 mb-2">
               {categorySkills.map(skill => (
                 <button
                   key={skill.id}
                   onClick={() => handleEdit(skill)}
-                  className="w-full px-2 py-1.5 flex items-center justify-between hover:bg-gray-700/30 rounded transition-colors group text-left"
+                  className="w-full px-2 py-1.5 flex items-center justify-between hover:bg-[var(--nw-surface-2)]/30 rounded transition-colors group text-left"
                 >
                   <div className="min-w-0 flex-1 flex items-center gap-1.5">
-                    <p className="text-xs text-gray-300 truncate">{skill.name}</p>
+                    <p className="text-xs text-[var(--nw-text-secondary)] truncate">{skill.name}</p>
                     {skill.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1 rounded shrink-0">内置</span>}
                   </div>
-                  <span className="text-[10px] text-gray-600 opacity-0 group-hover:opacity-100 ml-2 shrink-0">编辑</span>
+                  <span className="text-[10px] text-[var(--nw-text-muted)] opacity-0 group-hover:opacity-100 ml-2 shrink-0">编辑</span>
                 </button>
               ))}
             </div>

@@ -3,6 +3,7 @@ import { callWithTools } from '../llm/call-with-tools'
 import { buildDialogueSystemPrompt } from '../llm/dialogue-prompts'
 import { getOutline, getSkills, getChapters, getVolumes } from '../store/db'
 import { resolveAIConfig, getContextConfig } from '../store/db'
+import { log } from '../utils/logger'
 
 export interface WriterParams {
   instruction: string
@@ -80,6 +81,6 @@ export async function executeWriter(params: WriterParams): Promise<string> {
     streamId
   })
 
-  console.log(`[Writer] 完成: ${result.toolCallsMade} 次工具调用`)
+  log.debug(`[Writer] 完成: ${result.toolCallsMade} 次工具调用`)
   return result.content
 }

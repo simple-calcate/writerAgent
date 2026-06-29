@@ -9,11 +9,11 @@ function renderMarkdown(text: string): string {
   return paragraphs.map(p => {
     // Process each paragraph
     let html = p
-      .replace(/^### (.+)$/gm, '<div class="text-xs font-semibold text-[--nw-text-primary] mt-2 mb-1">$1</div>')
-      .replace(/^## (.+)$/gm, '<div class="text-sm font-semibold text-[--nw-text-primary] mt-3 mb-1">$1</div>')
-      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[--nw-text-primary]">$1</strong>')
-      .replace(/\*(.+?)\*/g, '<em class="text-[--nw-text-secondary] italic">$1</em>')
-      .replace(/`(.+?)`/g, '<code class="bg-gray-800/80 px-1.5 py-0.5 rounded text-emerald-300 text-[11px]">$1</code>')
+      .replace(/^### (.+)$/gm, '<div class="text-xs font-semibold text-[var(--nw-text-primary)] mt-2 mb-1">$1</div>')
+      .replace(/^## (.+)$/gm, '<div class="text-sm font-semibold text-[var(--nw-text-primary)] mt-3 mb-1">$1</div>')
+      .replace(/\*\*(.+?)\*\*/g, '<strong class="text-[var(--nw-text-primary)]">$1</strong>')
+      .replace(/\*(.+?)\*/g, '<em class="text-[var(--nw-text-secondary)] italic">$1</em>')
+      .replace(/`(.+?)`/g, '<code class="bg-[var(--nw-surface-2)]/80 px-1.5 py-0.5 rounded text-emerald-300 text-[11px]">$1</code>')
 
     // Handle list items
     const lines = html.split('\n')
@@ -29,13 +29,13 @@ function renderMarkdown(text: string): string {
           processedLines.push('<div class="space-y-1 mt-1">')
           inList = true
         }
-        processedLines.push(`<div class="flex gap-2"><span class="text-[--nw-text-muted] shrink-0">•</span><span class="text-[--nw-text-secondary]">${bulletMatch[1]}</span></div>`)
+        processedLines.push(`<div class="flex gap-2"><span class="text-[var(--nw-text-muted)] shrink-0">•</span><span class="text-[var(--nw-text-secondary)]">${bulletMatch[1]}</span></div>`)
       } else if (numberMatch) {
         if (!inList) {
           processedLines.push('<div class="space-y-1 mt-1">')
           inList = true
         }
-        processedLines.push(`<div class="flex gap-2"><span class="text-[--nw-text-muted] shrink-0 w-4">${numberMatch[1]}.</span><span class="text-[--nw-text-secondary]">${numberMatch[2]}</span></div>`)
+        processedLines.push(`<div class="flex gap-2"><span class="text-[var(--nw-text-muted)] shrink-0 w-4">${numberMatch[1]}.</span><span class="text-[var(--nw-text-secondary)]">${numberMatch[2]}</span></div>`)
       } else {
         if (inList) {
           processedLines.push('</div>')
@@ -116,10 +116,10 @@ export default function ReasoningPanel({
 
   if (!sessionId || status === 'idle') {
     return (
-      <div className="h-full flex flex-col items-center justify-center text-[--nw-text-muted] text-[12px] gap-2">
+      <div className="h-full flex flex-col items-center justify-center text-[var(--nw-text-muted)] text-[12px] gap-2">
         <span className="text-3xl">🧠</span>
-        <p className="text-[--nw-text-secondary]">等待推理触发...</p>
-        <p className="text-[11px] text-[--nw-text-muted]">选择推理链后发送消息，AI 执行工具时会自动推理</p>
+        <p className="text-[var(--nw-text-secondary)]">等待推理触发...</p>
+        <p className="text-[11px] text-[var(--nw-text-muted)]">选择推理链后发送消息，AI 执行工具时会自动推理</p>
       </div>
     )
   }
@@ -134,7 +134,7 @@ export default function ReasoningPanel({
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <span className="text-base">🧠</span>
-            <h3 className="text-[12px] font-medium text-[--nw-text-primary] truncate">{chainName}</h3>
+            <h3 className="text-[12px] font-medium text-[var(--nw-text-primary)] truncate">{chainName}</h3>
           </div>
           <div className="flex items-center gap-2">
             {status === 'running' && (
@@ -156,14 +156,14 @@ export default function ReasoningPanel({
               </span>
             )}
             {onClose && (
-              <button onClick={onClose} className="text-[--nw-text-muted] hover:text-[--nw-text-primary] text-xs ml-1 p-1 rounded-md hover:bg-white/5 transition-colors">✕</button>
+              <button onClick={onClose} className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-primary)] text-xs ml-1 p-1 rounded-md hover:bg-white/5 transition-colors">✕</button>
             )}
           </div>
         </div>
 
         {/* Progress bar */}
         <div className="flex items-center gap-2">
-          <div className="flex-1 bg-gray-700/50 rounded-full h-1.5 overflow-hidden">
+          <div className="flex-1 bg-[var(--nw-surface-2)]/50 rounded-full h-1.5 overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-500 ${
                 status === 'error' ? 'bg-red-500' : status === 'completed' ? 'bg-emerald-500' : 'bg-blue-500'
@@ -171,20 +171,20 @@ export default function ReasoningPanel({
               style={{ width: `${progress}%` }}
             />
           </div>
-          <span className="text-[10px] text-[--nw-text-muted] shrink-0 font-mono">{completedCount}/{steps.length}</span>
+          <span className="text-[10px] text-[var(--nw-text-muted)] shrink-0 font-mono">{completedCount}/{steps.length}</span>
         </div>
 
         {/* Actions */}
         <div className="flex items-center gap-2 mt-2.5">
           <button
             onClick={expandAll}
-            className="text-[10px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
+            className="text-[10px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
           >
             全部展开
           </button>
           <button
             onClick={collapseAll}
-            className="text-[10px] text-[--nw-text-muted] hover:text-[--nw-text-secondary] px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
+            className="text-[10px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] px-2 py-1 rounded-md hover:bg-white/5 transition-colors"
           >
             全部折叠
           </button>
@@ -194,7 +194,7 @@ export default function ReasoningPanel({
               className={`text-[10px] px-2 py-1 rounded-lg transition-all ml-auto ${
                 includeInContext
                   ? 'bg-blue-500/15 text-blue-300 border border-blue-500/25'
-                  : 'bg-white/5 text-[--nw-text-muted] hover:text-[--nw-text-secondary] border border-white/5'
+                  : 'bg-white/5 text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] border border-white/5'
               }`}
             >
               {includeInContext ? '✓ 已纳入上下文' : '未纳入上下文'}
@@ -227,7 +227,7 @@ export default function ReasoningPanel({
                   isDone ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25' :
                   isRunning ? 'bg-blue-500/15 text-blue-400 border border-blue-500/25' :
                   isError ? 'bg-red-500/15 text-red-400 border border-red-500/25' :
-                  'bg-white/5 text-[--nw-text-muted] border border-white/10'
+                  'bg-white/5 text-[var(--nw-text-muted)] border border-white/10'
                 }`}>
                   {isDone ? '✓' : isRunning ? (
                     <span className="w-2 h-2 rounded-full bg-blue-400 animate-pulse" />
@@ -236,7 +236,7 @@ export default function ReasoningPanel({
 
                 {/* Step name */}
                 <span className={`text-[12px] flex-1 ${
-                  isDone ? 'text-[--nw-text-secondary]' : isRunning ? 'text-blue-300 font-medium' : isError ? 'text-red-300' : 'text-[--nw-text-muted]'
+                  isDone ? 'text-[var(--nw-text-secondary)]' : isRunning ? 'text-blue-300 font-medium' : isError ? 'text-red-300' : 'text-[var(--nw-text-muted)]'
                 }`}>
                   {step.name}
                 </span>
@@ -252,7 +252,7 @@ export default function ReasoningPanel({
                 {isDone && (
                   <span className="text-[10px] text-emerald-500/70">完成</span>
                 )}
-                <span className="text-[10px] text-[--nw-text-muted] ml-1">
+                <span className="text-[10px] text-[var(--nw-text-muted)] ml-1">
                   {isExpanded ? '▾' : '▸'}
                 </span>
               </button>
@@ -273,7 +273,7 @@ export default function ReasoningPanel({
                   )}
                   {isDone && result.result && (
                     <div
-                      className="text-[12px] text-[--nw-text-secondary] leading-relaxed py-1 reasoning-content"
+                      className="text-[12px] text-[var(--nw-text-secondary)] leading-relaxed py-1 reasoning-content"
                       dangerouslySetInnerHTML={{ __html: renderMarkdown(result.result) }}
                     />
                   )}
@@ -283,7 +283,7 @@ export default function ReasoningPanel({
                     </div>
                   )}
                   {isPending && (
-                    <div className="text-[11px] text-[--nw-text-muted] py-1">
+                    <div className="text-[11px] text-[var(--nw-text-muted)] py-1">
                       等待中...
                     </div>
                   )}
@@ -296,8 +296,8 @@ export default function ReasoningPanel({
 
       {/* Footer */}
       {status === 'completed' && (
-        <div className="px-4 py-2.5 border-t border-white/5 bg-white/[0.01]">
-          <p className="text-[11px] text-[--nw-text-muted] text-center">
+        <div className="px-4 py-2.5 border-t border-white/5 bg-white/[0.03]">
+          <p className="text-[11px] text-[var(--nw-text-muted)] text-center">
             ✅ 推理完成 · {includeInContext ? '结果已纳入上下文' : '结果未纳入上下文'}
           </p>
         </div>

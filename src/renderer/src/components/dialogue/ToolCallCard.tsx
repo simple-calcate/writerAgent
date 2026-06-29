@@ -11,11 +11,11 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
   const showResult = toolCall.status === 'done' && toolCall.result && expanded
 
   return (
-    <div className="rounded-md bg-[--nw-surface-2] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out overflow-hidden">
+    <div className="rounded-md bg-[var(--nw-surface-2)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px] transition-all duration-150 ease-out overflow-hidden">
       <button
         onClick={() => toolCall.status === 'done' && setExpanded(!expanded)}
         className={`w-full flex items-center gap-2 px-3 py-2 text-[11px] transition-colors duration-150 ${
-          toolCall.status === 'done' ? 'cursor-pointer hover:bg-[--nw-surface-1]' : 'cursor-default'
+          toolCall.status === 'done' ? 'cursor-pointer hover:bg-[var(--nw-surface-1)]' : 'cursor-default'
         }`}
       >
         {toolCall.status === 'running' ? (
@@ -28,24 +28,24 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
         <span className={
           toolCall.status === 'running' ? 'text-amber-300' :
           toolCall.status === 'pending_approval' ? 'text-yellow-300' :
-          'text-[--nw-text-primary]'
+          'text-[var(--nw-text-primary)]'
         }>
           {toolCall.displayName}
         </span>
         {toolCall.status === 'done' && (
-          <span className="ml-auto text-[--nw-text-muted] text-[10px]">{expanded ? '收起' : '展开'}</span>
+          <span className="ml-auto text-[var(--nw-text-muted)] text-[10px]">{expanded ? '收起' : '展开'}</span>
         )}
       </button>
 
       {/* Approval UI */}
       {toolCall.status === 'pending_approval' && approval && (
-        <div className="px-3 pb-3 border-t border-[--nw-border] pt-2.5 space-y-2.5">
-          <p className="text-[11px] text-[--nw-text-secondary]">{approval.description}</p>
+        <div className="px-3 pb-3 border-t border-[var(--nw-border)] pt-2.5 space-y-2.5">
+          <p className="text-[11px] text-[var(--nw-text-secondary)]">{approval.description}</p>
 
           {approval.cachedResult && CACHEABLE_TOOLS.has(toolCall.toolName) ? (
             <>
-              <div className="text-[11px] text-[--nw-text-muted] bg-[--nw-surface-1] rounded-md p-2.5 max-h-32 overflow-y-auto">
-                <p className="text-[10px] text-[--nw-text-muted] mb-1">缓存结果：</p>
+              <div className="text-[11px] text-[var(--nw-text-muted)] bg-[var(--nw-surface-1)] rounded-md p-2.5 max-h-32 overflow-y-auto">
+                <p className="text-[10px] text-[var(--nw-text-muted)] mb-1">缓存结果：</p>
                 {renderMarkdown(approval.cachedResult.substring(0, 200) + (approval.cachedResult.length > 200 ? '...' : ''))}
               </div>
               <div className="flex gap-1.5">
@@ -57,13 +57,13 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
                 </button>
                 <button
                   onClick={() => onApprove(approval.approvalId, true, true)}
-                  className="flex-1 bg-[--nw-accent]/80 hover:bg-[--nw-accent] text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
+                  className="flex-1 bg-[var(--nw-accent)]/80 hover:bg-[var(--nw-accent)] text-white px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
                 >
                   刷新
                 </button>
                 <button
                   onClick={() => onApprove(approval.approvalId, false)}
-                  className="flex-1 bg-[--nw-surface-1] hover:bg-[--nw-surface-2] text-[--nw-text-secondary] px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
+                  className="flex-1 bg-[var(--nw-surface-1)] hover:bg-[var(--nw-surface-2)] text-[var(--nw-text-secondary)] px-2.5 py-2 rounded-md text-[11px] transition-all duration-150 hover:translate-y-[-1px]"
                 >
                   拒绝
                 </button>
@@ -90,8 +90,8 @@ export function ToolCallCard({ toolCall, approval, onApprove }: { toolCall: Tool
 
       {/* Done: show result */}
       {showResult && toolCall.result && (
-        <div className="px-3 pb-3 border-t border-[--nw-border] pt-2.5">
-          <div className="text-[11px] text-[--nw-text-secondary] leading-relaxed max-h-64 overflow-y-auto">
+        <div className="px-3 pb-3 border-t border-[var(--nw-border)] pt-2.5">
+          <div className="text-[11px] text-[var(--nw-text-secondary)] leading-relaxed max-h-64 overflow-y-auto">
             {renderMarkdown(toolCall.result)}
           </div>
         </div>

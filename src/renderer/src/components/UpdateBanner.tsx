@@ -99,18 +99,18 @@ export default function UpdateBanner() {
 
       {/* Expanded panel */}
       {expanded && (
-        <div className="absolute right-0 top-full mt-1 z-50 w-80 bg-gray-800 border border-gray-700 rounded-lg shadow-2xl overflow-hidden">
+        <div className="absolute right-0 top-full mt-1 z-50 w-80 bg-[var(--nw-surface-2)] border border-white/10 rounded-lg shadow-2xl overflow-hidden">
           <div className="p-4">
             {/* Available */}
             {status.status === 'available' && (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-200">发现新版本 v{status.version}</h3>
-                  <button onClick={() => setExpanded(false)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+                  <h3 className="text-sm font-medium text-[var(--nw-text-primary)]">发现新版本 v{status.version}</h3>
+                  <button onClick={() => setExpanded(false)} className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] text-xs">✕</button>
                 </div>
                 {status.releaseNotes && (
                   <div
-                    className="text-xs text-gray-400 bg-gray-900/50 rounded p-3 mb-3 max-h-40 overflow-y-auto leading-relaxed [&_h2]:text-sm [&_h2]:text-gray-200 [&_h2]:font-medium [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:text-gray-300 [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_h4]:text-xs [&_h4]:text-gray-300 [&_h4]:mt-1 [&_h4]:mb-0.5 [&_strong]:text-gray-200 [&_code]:bg-gray-800 [&_code]:px-1 [&_code]:rounded [&_a]:text-blue-400 [&_a]:underline"
+                    className="text-xs text-[var(--nw-text-secondary)] bg-[var(--nw-surface-2)]/50 rounded p-3 mb-3 max-h-40 overflow-y-auto leading-relaxed [&_h2]:text-sm [&_h2]:text-[var(--nw-text-primary)] [&_h2]:font-medium [&_h2]:mt-2 [&_h2]:mb-1 [&_h3]:text-xs [&_h3]:text-[var(--nw-text-secondary)] [&_h3]:font-medium [&_h3]:mt-2 [&_h3]:mb-1 [&_h4]:text-xs [&_h4]:text-[var(--nw-text-secondary)] [&_h4]:mt-1 [&_h4]:mb-0.5 [&_strong]:text-[var(--nw-text-primary)] [&_code]:bg-[var(--nw-surface-2)] [&_code]:px-1 [&_code]:rounded [&_a]:text-blue-400 [&_a]:underline"
                     dangerouslySetInnerHTML={{ __html: status.releaseNotes }}
                   />
                 )}
@@ -123,7 +123,7 @@ export default function UpdateBanner() {
                 <button
                   onClick={handleDownloadGitee}
                   disabled={giteeLoading}
-                  className="w-full py-1.5 text-xs font-medium text-gray-400 bg-gray-700 hover:bg-gray-600 rounded transition-colors mt-1 disabled:opacity-50"
+                  className="w-full py-1.5 text-xs font-medium text-[var(--nw-text-secondary)] bg-[var(--nw-surface-2)] hover:bg-white/10 rounded transition-colors mt-1 disabled:opacity-50"
                 >
                   {giteeLoading ? '正在连接 Gitee...' : '从 Gitee 下载（国内更快）'}
                 </button>
@@ -134,15 +134,15 @@ export default function UpdateBanner() {
             {status.status === 'downloading' && (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-200">正在下载 v{status.version}</h3>
+                  <h3 className="text-sm font-medium text-[var(--nw-text-primary)]">正在下载 v{status.version}</h3>
                 </div>
-                <div className="w-full bg-gray-700 rounded-full h-2 mb-1">
+                <div className="w-full bg-[var(--nw-surface-2)] rounded-full h-2 mb-1">
                   <div
                     className="bg-blue-500 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${status.progress?.percent ?? 0}%` }}
                   />
                 </div>
-                <div className="text-[10px] text-gray-500 text-right">
+                <div className="text-[10px] text-[var(--nw-text-muted)] text-right">
                   {status.progress ? `${(status.progress.transferred / 1024 / 1024).toFixed(1)} MB / ${(status.progress.total / 1024 / 1024).toFixed(1)} MB` : ''}
                 </div>
               </>
@@ -152,10 +152,10 @@ export default function UpdateBanner() {
             {status.status === 'downloaded' && (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-200">更新已下载</h3>
-                  <button onClick={() => setExpanded(false)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+                  <h3 className="text-sm font-medium text-[var(--nw-text-primary)]">更新已下载</h3>
+                  <button onClick={() => setExpanded(false)} className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] text-xs">✕</button>
                 </div>
-                <p className="text-xs text-gray-400 mb-3">v{status.version} 已准备好安装，重启后生效。</p>
+                <p className="text-xs text-[var(--nw-text-secondary)] mb-3">v{status.version} 已准备好安装，重启后生效。</p>
                 <button
                   onClick={status.giteeInstallerPath ? handleInstallGitee : handleInstall}
                   className="w-full py-1.5 text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded transition-colors"
@@ -169,14 +169,14 @@ export default function UpdateBanner() {
             {status.status === 'error' && (
               <>
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-sm font-medium text-gray-200">更新检查失败</h3>
-                  <button onClick={() => setExpanded(false)} className="text-gray-500 hover:text-gray-300 text-xs">✕</button>
+                  <h3 className="text-sm font-medium text-[var(--nw-text-primary)]">更新检查失败</h3>
+                  <button onClick={() => setExpanded(false)} className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] text-xs">✕</button>
                 </div>
-                <p className="text-xs text-gray-400 mb-3">{status.error || '网络连接失败，请稍后重试。'}</p>
+                <p className="text-xs text-[var(--nw-text-secondary)] mb-3">{status.error || '网络连接失败，请稍后重试。'}</p>
                 <div className="flex gap-2">
                   <button
                     onClick={handleCheck}
-                    className="flex-1 py-1.5 text-xs font-medium text-gray-300 bg-gray-700 hover:bg-gray-600 rounded transition-colors"
+                    className="flex-1 py-1.5 text-xs font-medium text-[var(--nw-text-secondary)] bg-[var(--nw-surface-2)] hover:bg-white/10 rounded transition-colors"
                   >
                     重试
                   </button>

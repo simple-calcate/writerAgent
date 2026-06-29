@@ -167,11 +167,11 @@ export default function Settings() {
 
   return (
     <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50" onClick={toggleSettings}>
-      <div className="bg-[--nw-surface-1] backdrop-blur-xl rounded-2xl w-full max-w-2xl shadow-2xl flex overflow-hidden border border-white/10" onClick={e => e.stopPropagation()} style={{ height: 520 }}>
+      <div className="bg-[var(--nw-surface-1)] backdrop-blur-xl rounded-2xl w-full max-w-2xl shadow-2xl flex overflow-hidden border border-white/10" onClick={e => e.stopPropagation()} style={{ height: 520 }}>
         {/* Left sidebar */}
-        <div className="w-40 bg-[--nw-surface-2] border-r border-white/5 flex flex-col py-4 shrink-0">
+        <div className="w-40 bg-[var(--nw-surface-2)] border-r border-white/5 flex flex-col py-4 shrink-0">
           <div className="px-4 mb-4">
-            <h2 className="text-sm font-semibold text-[--nw-text-primary]">设置</h2>
+            <h2 className="text-sm font-semibold text-[var(--nw-text-primary)]">设置</h2>
           </div>
           <nav className="flex-1 space-y-1 px-2">
             {TABS.map(tab => {
@@ -183,12 +183,12 @@ export default function Settings() {
                   className={`w-full text-left px-3 py-2.5 rounded-xl text-[12px] transition-all border ${
                     activeTab === tab.key
                       ? 'bg-blue-500/15 text-blue-300 border-blue-500/20'
-                      : 'border-transparent text-[--nw-text-muted] hover:text-[--nw-text-secondary] hover:bg-white/5'
+                      : 'border-transparent text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] hover:bg-white/5'
                   }`}
                 >
                   <span className="flex items-center gap-2">
                     {tab.label}
-                    {needsAttention && <span className="w-2 h-2 rounded-full bg-[--color-user] animate-pulse shrink-0" />}
+                    {needsAttention && <span className="w-2 h-2 rounded-full bg-[var(--color-user)] animate-pulse shrink-0" />}
                   </span>
                 </button>
               )
@@ -226,7 +226,7 @@ export default function Settings() {
 
             {activeTab === 'keys' && (
               <div className="space-y-4">
-                <p className="text-[12px] text-[--nw-text-muted]">配置编辑器中的快捷键。点击"录制"后按下新的快捷键组合。</p>
+                <p className="text-[12px] text-[var(--nw-text-muted)]">配置编辑器中的快捷键。点击"录制"后按下新的快捷键组合。</p>
                 {(form.keyBindings || DEFAULT_KEY_BINDINGS) && KEY_BINDING_ITEMS.map(item => {
                   const bindings = form.keyBindings || DEFAULT_KEY_BINDINGS
                   const value = bindings[item.key]
@@ -235,15 +235,15 @@ export default function Settings() {
                   return (
                     <div key={item.key} className="flex items-center gap-3 py-1">
                       <div className="flex-1">
-                        <p className="text-[12px] text-[--nw-text-secondary]">{item.label}</p>
-                        <p className="text-[11px] text-[--nw-text-muted]">{item.desc}</p>
+                        <p className="text-[12px] text-[var(--nw-text-secondary)]">{item.label}</p>
+                        <p className="text-[11px] text-[var(--nw-text-muted)]">{item.desc}</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <input
                           readOnly
                           value={isRecording ? '按下快捷键...' : value || '未设置'}
-                          className={`w-36 bg-[--nw-surface-2] border border-white/10 rounded-lg px-3 py-2 text-[12px] text-center focus:outline-none transition-all ${
-                            isRecording ? 'border-blue-500 text-blue-400' : 'text-[--nw-text-secondary]'
+                          className={`w-36 bg-[var(--nw-surface-2)] border border-white/10 rounded-lg px-3 py-2 text-[12px] text-center focus:outline-none transition-all ${
+                            isRecording ? 'border-blue-500 text-blue-400' : 'text-[var(--nw-text-secondary)]'
                           }`}
                           onKeyDown={e => {
                             if (!isRecording) return
@@ -285,7 +285,7 @@ export default function Settings() {
                           className={`px-3 py-2 text-[12px] rounded-lg transition-all ${
                             isRecording
                               ? 'bg-red-600/80 hover:bg-red-600 text-white'
-                              : 'bg-white/5 hover:bg-white/10 text-[--nw-text-secondary] border border-white/10'
+                              : 'bg-white/5 hover:bg-white/10 text-[var(--nw-text-secondary)] border border-white/10'
                           }`}
                         >
                           {isRecording ? '取消' : '录制'}
@@ -296,7 +296,7 @@ export default function Settings() {
                               ...prev,
                               keyBindings: { ...(prev.keyBindings || DEFAULT_KEY_BINDINGS), [item.key]: '' }
                             }))}
-                            className="px-3 py-2 text-[12px] bg-white/5 hover:bg-white/10 text-[--nw-text-muted] rounded-lg transition-all border border-white/5"
+                            className="px-3 py-2 text-[12px] bg-white/5 hover:bg-white/10 text-[var(--nw-text-muted)] rounded-lg transition-all border border-white/5"
                           >
                             清除
                           </button>
@@ -317,7 +317,7 @@ export default function Settings() {
 
           {/* Footer - only show for config tabs */}
           {(activeTab === 'api' || activeTab === 'ai' || activeTab === 'keys') && (
-            <div className="flex gap-3 px-5 py-4 border-t border-white/5 bg-white/[0.01]">
+            <div className="flex gap-3 px-5 py-4 border-t border-white/5 bg-white/[0.03]">
               <button
                 onClick={handleSave}
                 className="flex-1 bg-blue-600 hover:bg-blue-500 text-white py-2.5 rounded-xl text-[13px] font-medium transition-all shadow-sm shadow-blue-500/20"
@@ -326,7 +326,7 @@ export default function Settings() {
               </button>
               <button
                 onClick={toggleSettings}
-                className="flex-1 bg-white/5 hover:bg-white/10 text-[--nw-text-secondary] py-2.5 rounded-xl text-[13px] transition-all border border-white/5"
+                className="flex-1 bg-white/5 hover:bg-white/10 text-[var(--nw-text-secondary)] py-2.5 rounded-xl text-[13px] transition-all border border-white/5"
               >
                 取消
               </button>

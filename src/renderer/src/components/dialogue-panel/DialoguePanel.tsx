@@ -26,7 +26,7 @@ function MessageCard({ msg, onDelete }: { msg: any; onDelete: (id: string) => vo
 
   return (
     <div className="group space-y-1">
-      <div className="flex items-center gap-2 text-[11px] text-[--nw-text-muted] opacity-60 group-hover:opacity-100 transition-opacity duration-150">
+      <div className="flex items-center gap-2 text-[11px] text-[var(--nw-text-muted)] opacity-60 group-hover:opacity-100 transition-opacity duration-150">
         <span className="font-mono">{formatTime(msg.timestamp)}</span>
         <span className={isUser ? 'text-blue-400' : 'text-emerald-400'}>
           {isUser ? '你' : 'AI'}
@@ -42,7 +42,7 @@ function MessageCard({ msg, onDelete }: { msg: any; onDelete: (id: string) => vo
         )}
         <button
           onClick={() => onDelete(msg.id)}
-          className="ml-auto text-[--nw-text-muted] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-150 p-0.5"
+          className="ml-auto text-[var(--nw-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all duration-150 p-0.5"
           title="删除消息"
         >
           <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -51,9 +51,9 @@ function MessageCard({ msg, onDelete }: { msg: any; onDelete: (id: string) => vo
         </button>
       </div>
 
-      <div className="rounded-md bg-[--nw-surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] group-hover:translate-y-[-1px] transition-all duration-150 ease-out px-3 py-2">
+      <div className="rounded-md bg-[var(--nw-surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] group-hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] group-hover:translate-y-[-1px] transition-all duration-150 ease-out px-3 py-2">
         {isUser ? (
-          <p className="text-[12px] text-[--nw-text-secondary] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
+          <p className="text-[12px] text-[var(--nw-text-secondary)] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
         ) : (
           <div className="text-[12px] leading-relaxed">{renderMarkdown(msg.content)}</div>
         )}
@@ -77,7 +77,7 @@ function StatusDot({ status }: { status: string }) {
   }
   if (status === 'pending_approval') return <span className="w-2 h-2 rounded-full bg-yellow-500" />
   if (status === 'done') return <span className="w-2 h-2 rounded-full bg-emerald-500" />
-  return <span className="w-2 h-2 rounded-full bg-[--nw-text-muted]" />
+  return <span className="w-2 h-2 rounded-full bg-[var(--nw-text-muted)]" />
 }
 
 // ═══════════════════════════════════════════════════════
@@ -95,11 +95,11 @@ function ContextUsageBar({ messages, contextWindow }: { messages: Array<{ conten
   if (usage.percent < 50) return null
 
   const barColor = usage.percent > 90 ? 'bg-red-500' : usage.percent > 70 ? 'bg-yellow-500' : 'bg-blue-500'
-  const textColor = usage.percent > 90 ? 'text-red-400' : usage.percent > 70 ? 'text-yellow-400' : 'text-[--nw-text-muted]'
+  const textColor = usage.percent > 90 ? 'text-red-400' : usage.percent > 70 ? 'text-yellow-400' : 'text-[var(--nw-text-muted)]'
 
   return (
     <div className="flex items-center gap-2">
-      <div className="flex-1 h-1 bg-[--nw-surface-2] rounded-full overflow-hidden">
+      <div className="flex-1 h-1 bg-[var(--nw-surface-2)] rounded-full overflow-hidden">
         <div className={`h-full ${barColor} rounded-full transition-all duration-300`} style={{ width: `${usage.percent}%` }} />
       </div>
       <span className={`text-[10px] ${textColor} whitespace-nowrap`}>
@@ -156,18 +156,24 @@ export default function DialoguePanel() {
   }, [dialogueMessages, streamingText, thinkingText])
 
   useEffect(() => {
-    window.api.getReasoningChains().then(setReasoningChains)
+    window.api.getReasoningChains().then(setReasoningChains).catch(err => {
+      console.error('[DialoguePanel] 加载推理链失败:', err)
+    })
   }, [])
 
   useEffect(() => {
     window.api.getLLMConfig().then(cfg => {
       setShowMemoryPanel(cfg.agentConfig?.showMemoryPanel !== false)
-    }).catch(() => {})
+    }).catch(err => {
+      console.error('[DialoguePanel] 加载 LLM 配置失败:', err)
+    })
   }, [])
 
   useEffect(() => {
     window.api.resolveDialogueContextWindow().then(cw => {
       if (cw) setContextWindow(cw)
+    }).catch(err => {
+      console.error('[DialoguePanel] 解析上下文窗口失败:', err)
     })
   }, [dialogueLevel])
 
@@ -239,17 +245,17 @@ export default function DialoguePanel() {
   const activeMessages = dialogueMessages.filter(msg => !msg.deleted)
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-[--nw-bg-color]">
+    <div className="flex-1 flex flex-col overflow-hidden bg-[var(--nw-bg-color)]">
 
       {/* ── HEADER ── */}
-      <div className="px-4 py-2 border-b border-[--nw-border] shrink-0 flex items-center justify-between">
+      <div className="px-4 py-2 border-b border-[var(--nw-border)] shrink-0 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[11px]">{meta.icon}</span>
-          <span className="text-[12px] text-[--nw-text-primary] font-medium">{meta.label}</span>
+          <span className="text-[12px] text-[var(--nw-text-primary)] font-medium">{meta.label}</span>
         </div>
         <button
           onClick={clearDialogue}
-          className="text-[10px] text-[--nw-text-muted] hover:text-red-400 transition-colors duration-150 px-1.5 py-0.5 rounded hover:bg-red-500/10"
+          className="text-[10px] text-[var(--nw-text-muted)] hover:text-red-400 transition-colors duration-150 px-1.5 py-0.5 rounded hover:bg-red-500/10"
           title="清空对话"
         >
           清空
@@ -262,7 +268,7 @@ export default function DialoguePanel() {
         {/* MESSAGE LAYER */}
         <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {activeMessages.length === 0 && !isStreaming && (
-            <div className="text-center text-[--nw-text-muted] mt-10">
+            <div className="text-center text-[var(--nw-text-muted)] mt-10">
               <p className="text-xl mb-2 opacity-40">{meta.icon}</p>
               <p className="text-[13px]">输入你的想法，AI 将引导你探索创作方向</p>
             </div>
@@ -275,15 +281,15 @@ export default function DialoguePanel() {
           {/* Streaming message */}
           {isStreaming && (
             <div className="space-y-1.5">
-              <div className="flex items-center gap-2 text-[11px] text-[--nw-text-muted]">
+              <div className="flex items-center gap-2 text-[11px] text-[var(--nw-text-muted)]">
                 <span className="font-mono">{formatTime(new Date().toISOString())}</span>
                 <span className="text-emerald-400">AI</span>
                 {isThinking && <ThinkingIndicator text={thinkingText} compact onCancel={cancelDialogueStream} />}
                 {!isThinking && !streamingText && (
                   <div className="flex gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[--nw-text-muted] animate-bounce" style={{ animationDelay: '0ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[--nw-text-muted] animate-bounce" style={{ animationDelay: '150ms' }} />
-                    <span className="w-1.5 h-1.5 rounded-full bg-[--nw-text-muted] animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nw-text-muted)] animate-bounce [animation-delay:0ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nw-text-muted)] animate-bounce [animation-delay:150ms]" />
+                    <span className="w-1.5 h-1.5 rounded-full bg-[var(--nw-text-muted)] animate-bounce [animation-delay:300ms]" />
                   </div>
                 )}
               </div>
@@ -295,7 +301,7 @@ export default function DialoguePanel() {
               )}
 
               {streamingText && (
-                <div className="rounded-md bg-[--nw-surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] px-3 py-2">
+                <div className="rounded-md bg-[var(--nw-surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] px-3 py-2">
                   <div className="text-[12px] leading-relaxed">{renderMarkdown(streamingText)}</div>
                 </div>
               )}
@@ -313,7 +319,7 @@ export default function DialoguePanel() {
 
         {/* EXECUTION LAYER — v4 Multi-Agent Canvas (fallback to v3) */}
         {maRun && maRun.agents.length > 0 ? (
-          <div className="border-t border-[--nw-border] px-4 py-2">
+          <div className="border-t border-[var(--nw-border)] px-4 py-2">
             <MultiAgentCanvas agents={maRun.agents} />
             {pendingApprovals
               .filter(a => !streamingToolCalls.some(tc => tc.id === a.toolCallId))
@@ -322,7 +328,7 @@ export default function DialoguePanel() {
               ))}
           </div>
         ) : (streamingToolCalls.length > 0 || pendingApprovals.length > 0 || (currentRun && currentRun.nodes.length > 0)) && (
-          <div className="border-t border-[--nw-border] px-4 py-2">
+          <div className="border-t border-[var(--nw-border)] px-4 py-2">
             <ExecutionGraphView
               nodes={currentRun?.nodes ?? []}
               edges={currentRun?.edges ?? []}
@@ -337,7 +343,7 @@ export default function DialoguePanel() {
 
         {/* SYSTEM INSPECTOR — v4 (fallback to v3) */}
         {maRun ? (
-          <div className="border-t border-[--nw-border] px-4 py-2 space-y-2">
+          <div className="border-t border-[var(--nw-border)] px-4 py-2 space-y-2">
             <ExecutionInspector run={maRun} />
             <MemoryGraphView memory={maRun.sharedMemory} />
             <ConflictResolver conflicts={maRun.sharedMemory.conflictLog} />
@@ -346,7 +352,7 @@ export default function DialoguePanel() {
             <RewriteApprovalCard />
           </div>
         ) : currentRun && (
-          <div className="border-t border-[--nw-border] px-4 py-2 space-y-2">
+          <div className="border-t border-[var(--nw-border)] px-4 py-2 space-y-2">
             <InspectorPanel run={currentRun} />
             <AgentFlowPanel />
             <AgentTrajectoryPanel />
@@ -356,7 +362,7 @@ export default function DialoguePanel() {
 
         {/* MEMORY — 始终可见（持久记忆 + 运行时记忆） */}
         {currentProject && showMemoryPanel && (
-          <div className="border-t border-[--nw-border] px-4 py-2">
+          <div className="border-t border-[var(--nw-border)] px-4 py-2">
             <MemoryPanel
               memory={currentRun?.memory ?? { shortTerm: [], longTerm: [] }}
               projectId={currentProject.id}

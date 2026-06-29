@@ -29,7 +29,7 @@ export function ProjectLevel() {
         {/* Book-level AI config */}
         <button
           onClick={() => setEditingAIConfig('book')}
-          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-amber-400 hover:bg-amber-500/10 transition-colors border-b border-[#2a3347]"
+          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-amber-400 hover:bg-amber-500/10 transition-colors border-b border-[var(--nw-panel-border)]"
         >
           <span className="text-[12px]">⚙</span>
           <span>书籍 AI 配置</span>
@@ -38,7 +38,7 @@ export function ProjectLevel() {
         {/* Book-level dialogue */}
         <button
           onClick={() => openDialogue('book')}
-          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-blue-400 hover:bg-blue-500/10 transition-colors border-b border-[#2a3347]"
+          className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-blue-400 hover:bg-blue-500/10 transition-colors border-b border-[var(--nw-panel-border)]"
         >
           <span className="text-[12px]">💬</span>
           <span>AI 对话</span>
@@ -48,7 +48,7 @@ export function ProjectLevel() {
         {currentProject && (
           <button
             onClick={() => openOutline('book', currentProject.id)}
-            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10 transition-colors border-b border-[#2a3347]"
+            className="w-full flex items-center gap-2.5 px-3.5 py-2.5 text-[12px] text-emerald-400 hover:bg-emerald-500/10 transition-colors border-b border-[var(--nw-panel-border)]"
           >
             <span className="text-[12px]">📋</span>
             <span>书籍大纲</span>
@@ -60,7 +60,7 @@ export function ProjectLevel() {
           {volumes.map(vol => (
             <div
               key={vol.id}
-              className="flex items-center justify-between px-3.5 py-2.5 text-[13px] cursor-pointer group hover:bg-[--nw-surface-1] text-[--nw-text-secondary] hover:text-[--nw-text-primary] transition-colors"
+              className="flex items-center justify-between px-3.5 py-2.5 text-[13px] cursor-pointer group hover:bg-[var(--nw-surface-1)] text-[var(--nw-text-secondary)] hover:text-[var(--nw-text-primary)] transition-colors"
               onContextMenu={e => {
                 e.preventDefault()
                 setContextMenu({
@@ -103,15 +103,15 @@ export function ProjectLevel() {
         {unassignedChapters.length > 0 && (
           <button
             onClick={() => navTo('volume', '__unassigned__')}
-            className="w-full flex items-center justify-between px-3.5 py-2.5 text-[12px] text-[--nw-text-muted] hover:bg-[--nw-surface-1] transition-colors border-t border-[#2a3347]"
+            className="w-full flex items-center justify-between px-3.5 py-2.5 text-[12px] text-[var(--nw-text-muted)] hover:bg-[var(--nw-surface-1)] transition-colors border-t border-[var(--nw-panel-border)]"
           >
             <span>未分卷章节</span>
-            <span className="text-[--nw-text-muted]">{unassignedChapters.length}</span>
+            <span className="text-[var(--nw-text-muted)]">{unassignedChapters.length}</span>
           </button>
         )}
 
         {/* New volume */}
-        <div className="border-t border-[#2a3347]">
+        <div className="border-t border-[var(--nw-panel-border)]">
           {showNewVolume ? (
             <div className="flex gap-1.5 px-3.5 py-2">
               <input
@@ -119,15 +119,15 @@ export function ProjectLevel() {
                 onChange={e => setNewVolumeName(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleCreateVolume()}
                 placeholder="卷名称"
-                className="flex-1 bg-[--nw-surface-1] border border-[#3a4255] rounded-md px-2.5 py-1.5 text-[12px] text-[--nw-text-primary] focus:outline-none focus:border-[--nw-accent]"
+                className="flex-1 bg-[var(--nw-surface-1)] border border-white/12 rounded-md px-2.5 py-1.5 text-[12px] text-[var(--nw-text-primary)] focus:outline-none focus:border-[var(--nw-accent)]"
                 autoFocus
               />
-              <button onClick={handleCreateVolume} className="text-[11px] bg-[--nw-accent] hover:bg-[--nw-accent-hover] text-white px-3 py-1.5 rounded-md transition-colors">OK</button>
+              <button onClick={handleCreateVolume} className="text-[11px] bg-[var(--nw-accent)] hover:bg-[var(--nw-accent-hover)] text-white px-3 py-1.5 rounded-md transition-colors">OK</button>
             </div>
           ) : (
             <button
               onClick={() => setShowNewVolume(true)}
-              className="w-full text-left px-3.5 py-2.5 text-[12px] text-[--nw-text-muted] hover:text-[--nw-accent] hover:bg-[--nw-accent-glow] transition-colors"
+              className="w-full text-left px-3.5 py-2.5 text-[12px] text-[var(--nw-text-muted)] hover:text-[var(--nw-accent)] hover:bg-[var(--nw-accent-glow)] transition-colors"
             >
               + 新建卷
             </button>

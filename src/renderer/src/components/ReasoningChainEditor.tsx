@@ -166,15 +166,15 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
 
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[60]" onClick={onCancel}>
-      <div className="bg-gray-800 rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl p-5" onClick={e => e.stopPropagation()}>
+      <div className="bg-[var(--nw-surface-2)] rounded-lg w-full max-w-lg max-h-[80vh] overflow-y-auto shadow-2xl p-5" onClick={e => e.stopPropagation()}>
       <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm text-gray-300">{chain ? '编辑推理链' : '新建推理链'}</h3>
+        <h3 className="text-sm text-[var(--nw-text-secondary)]">{chain ? '编辑推理链' : '新建推理链'}</h3>
         <div className="flex gap-2">
           {onDelete && (
             <button onClick={onDelete} className="text-xs text-red-400 hover:text-red-300">删除</button>
           )}
-          <button onClick={onCancel} className="text-xs text-gray-500 hover:text-gray-300">取消</button>
+          <button onClick={onCancel} className="text-xs text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)]">取消</button>
         </div>
       </div>
 
@@ -187,28 +187,28 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
       {/* Basic Info */}
       <div className="space-y-3">
         <div>
-          <label className="text-[10px] text-gray-500 block mb-1">名称</label>
+          <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">名称</label>
           <input
             value={form.name}
             onChange={e => updateForm({ name: e.target.value })}
             placeholder="如：章节创作推理"
-            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+            className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
           />
         </div>
 
         <div>
-          <label className="text-[10px] text-gray-500 block mb-1">描述</label>
+          <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">描述</label>
           <input
             value={form.description}
             onChange={e => updateForm({ description: e.target.value })}
             onMouseDown={e => e.currentTarget.focus()}
             placeholder="简要说明推理链的用途"
-            className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-1.5 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+            className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-1.5 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
           />
         </div>
 
         <div>
-          <label className="text-[10px] text-gray-500 block mb-1">触发方式</label>
+          <label className="text-[10px] text-[var(--nw-text-muted)] block mb-1">触发方式</label>
           <div className="flex gap-2">
             {(['auto', 'manual'] as const).map(t => (
               <button
@@ -217,7 +217,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
                 className={`px-3 py-1 text-[11px] rounded transition-colors ${
                   form.trigger === t
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-700 text-gray-400 hover:text-gray-300'
+                    : 'bg-[var(--nw-surface-2)] text-[var(--nw-text-secondary)] hover:text-[var(--nw-text-secondary)]'
                 }`}
               >
                 {t === 'auto' ? '自动' : '手动'}
@@ -227,11 +227,11 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         </div>
 
         <div className="flex items-center gap-2">
-          <label className="text-[10px] text-gray-500">推理结果纳入上下文</label>
+          <label className="text-[10px] text-[var(--nw-text-muted)]">推理结果纳入上下文</label>
           <div
             onClick={() => updateForm({ includeInContext: !form.includeInContext })}
             className={`w-8 h-4 rounded-full relative cursor-pointer transition-colors ${
-              form.includeInContext ? 'bg-blue-600' : 'bg-gray-600'
+              form.includeInContext ? 'bg-blue-600' : 'bg-white/10'
             }`}
           >
             <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-transform ${
@@ -243,8 +243,8 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
 
       {/* Context Configuration */}
       <div className="space-y-2">
-        <label className="text-xs text-gray-400 block">推理上下文</label>
-        <p className="text-[10px] text-gray-600">选择推理时需要参考的信息</p>
+        <label className="text-xs text-[var(--nw-text-secondary)] block">推理上下文</label>
+        <p className="text-[10px] text-[var(--nw-text-muted)]">选择推理时需要参考的信息</p>
         <div className="space-y-1.5">
           {[
             { key: 'bookOutline' as keyof ReasoningContextConfig, label: '书籍大纲', icon: '📚' },
@@ -266,7 +266,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
                 className="accent-blue-500"
               />
               <span className="text-[10px]">{item.icon}</span>
-              <span className="text-xs text-gray-300">{item.label}</span>
+              <span className="text-xs text-[var(--nw-text-secondary)]">{item.label}</span>
             </label>
           ))}
         </div>
@@ -275,7 +275,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
       {/* Steps */}
       <div>
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs text-gray-400">推理步骤</label>
+          <label className="text-xs text-[var(--nw-text-secondary)]">推理步骤</label>
           <button
             onClick={addStep}
             className="text-[11px] text-blue-400 hover:text-blue-300"
@@ -286,21 +286,21 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
 
         {/* DAG 可视化 */}
         {form.steps.length > 1 && (
-          <div className="mb-3 bg-gray-900/50 rounded p-2.5 overflow-x-auto">
-            <p className="text-[9px] text-gray-500 mb-2">依赖关系 · L{maxLevel + 1} 层 · 无依赖的步骤并发执行</p>
+          <div className="mb-3 bg-[var(--nw-surface-2)]/50 rounded p-2.5 overflow-x-auto">
+            <p className="text-[9px] text-[var(--nw-text-muted)] mb-2">依赖关系 · L{maxLevel + 1} 层 · 无依赖的步骤并发执行</p>
             <div className="flex items-start gap-1">
               {Array.from({ length: maxLevel + 1 }, (_, li) => {
                 const levelSteps = form.steps.filter((_, i) => levels[i] === li)
                 return (
                   <div key={li} className="flex flex-col items-center gap-1 min-w-0">
-                    <span className="text-[8px] text-gray-600">L{li}</span>
+                    <span className="text-[8px] text-[var(--nw-text-muted)]">L{li}</span>
                     {levelSteps.map(s => (
                       <div key={s.id} className="px-1.5 py-0.5 bg-blue-600/20 border border-blue-500/30 rounded text-[9px] text-blue-300 truncate max-w-[80px]" title={s.name}>
                         {s.name || s.outputKey}
                       </div>
                     ))}
                     {li < maxLevel && (
-                      <div className="text-gray-600 text-[10px] mt-1">→</div>
+                      <div className="text-[var(--nw-text-muted)] text-[10px] mt-1">→</div>
                     )}
                   </div>
                 )
@@ -315,34 +315,34 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
             const isIndependent = !step.dependsOn || step.dependsOn.length === 0
 
             return (
-              <div key={step.id} className={`rounded p-3 space-y-2 ${isIndependent ? 'bg-green-900/10 border border-green-800/20' : 'bg-gray-700/30'}`}>
+              <div key={step.id} className={`rounded p-3 space-y-2 ${isIndependent ? 'bg-green-900/10 border border-green-800/20' : 'bg-[var(--nw-surface-2)]/30'}`}>
                 <div className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-500 w-4">{index + 1}</span>
+                  <span className="text-[10px] text-[var(--nw-text-muted)] w-4">{index + 1}</span>
                   <input
                     value={step.name}
                     onChange={e => updateStep(index, { name: e.target.value })}
                     onMouseDown={e => e.currentTarget.focus()}
                     placeholder="步骤名称"
-                    className="flex-1 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                    className="flex-1 bg-[var(--nw-surface-2)] border border-white/15 rounded px-2 py-1 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                   />
                   <input
                     value={step.outputKey}
                     onChange={e => updateStep(index, { outputKey: e.target.value })}
                     onMouseDown={e => e.currentTarget.focus()}
                     placeholder="输出key"
-                    className="w-20 bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                    className="w-20 bg-[var(--nw-surface-2)] border border-white/15 rounded px-2 py-1 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                   />
                   <button
                     onClick={() => moveStep(index, 'up')}
                     disabled={index === 0}
-                    className="text-gray-500 hover:text-gray-300 disabled:opacity-30 text-xs"
+                    className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] disabled:opacity-30 text-xs"
                   >
                     ↑
                   </button>
                   <button
                     onClick={() => moveStep(index, 'down')}
                     disabled={index === form.steps.length - 1}
-                    className="text-gray-500 hover:text-gray-300 disabled:opacity-30 text-xs"
+                    className="text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] disabled:opacity-30 text-xs"
                   >
                     ↓
                   </button>
@@ -359,12 +359,12 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
                   onMouseDown={e => e.currentTarget.focus()}
                   placeholder="该步骤的提示词..."
                   rows={2}
-                  className="w-full bg-gray-800 border border-gray-600 rounded px-2 py-1 text-xs text-gray-300 focus:outline-none focus:border-blue-500 resize-none"
+                  className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-2 py-1 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500 resize-none"
                 />
                 {/* 依赖选择 */}
                 {availableDeps.length > 0 && (
                   <div className="flex items-start gap-2">
-                    <span className="text-[10px] text-gray-500 mt-0.5 shrink-0">依赖：</span>
+                    <span className="text-[10px] text-[var(--nw-text-muted)] mt-0.5 shrink-0">依赖：</span>
                     <div className="flex flex-wrap gap-1">
                       {availableDeps.map(dep => {
                         const isSelected = step.dependsOn?.includes(dep.outputKey)
@@ -375,7 +375,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
                             className={`px-1.5 py-0.5 text-[9px] rounded border transition-colors ${
                               isSelected
                                 ? 'bg-orange-600/20 border-orange-500/40 text-orange-300'
-                                : 'bg-gray-800 border-gray-700 text-gray-500 hover:text-gray-400'
+                                : 'bg-[var(--nw-surface-2)] border-white/10 text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)]'
                             }`}
                           >
                             {dep.name || dep.outputKey}
@@ -391,7 +391,7 @@ export default function ReasoningChainEditor({ chain, onSave, onCancel, onDelete
         </div>
 
         {form.steps.length === 0 && (
-          <p className="text-[11px] text-gray-600 text-center py-4">暂无步骤，点击上方按钮添加</p>
+          <p className="text-[11px] text-[var(--nw-text-muted)] text-center py-4">暂无步骤，点击上方按钮添加</p>
         )}
       </div>
 

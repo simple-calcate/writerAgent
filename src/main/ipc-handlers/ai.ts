@@ -8,6 +8,7 @@ import { compressConversationForStorage, compressConversationMessages } from '..
 import { compressHistoryWithSummary } from '../llm/history-compressor'
 import { getAgentRuntime } from '../agent/runtime'
 import { recordMemory, getMemoryContext, getMemorySummary, clearMemory } from '../memory/manager'
+import { log } from '../utils/logger'
 import type { BookAIConfig, DialogueLevel, DialogueToolApprovalResponse, Conversation, ConversationMessage, Volume, Chapter, AnalysisResult } from '../../shared/types'
 
 function formatAnalysisForDialogue(result: AnalysisResult): string {
@@ -60,15 +61,20 @@ export function registerAIHandlers(
   // AI
   ipcMain.handle('auto-polish', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
     const config = resolveFeatureConfig('polish')
-    console.log('[auto-polish] config:', config ? { model: config.model, baseUrl: config.baseUrl } : null)
+    log.debug('[auto-polish] config:', config ? { model: config.model, baseUrl: config.baseUrl } : null)
     if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
-    console.log('[auto-polish] content length:', content.length)
+    log.debug('[auto-polish] content length:', content.length)
     setCurrentAIAbort(new AbortController())
     try {
       const result = await autoPolish(config, content, aiConfig, mainWindow, currentAIAbort.controller!.signal)
-      console.log('[auto-polish] result suggestions:', result.suggestions.length)
+      log.debug('[auto-polish] result suggestions:', result.suggestions.length)
       return result
+    } catch (err) {
+      // 确保前端不卡在"思考中"状态
+      mainWindow.webContents.send('ai:thinking-done', {})
+      log.error('[auto-polish] failed:', err)
+      throw err
     } finally {
       setCurrentAIAbort(null)
     }
@@ -78,7 +84,13 @@ export function registerAIHandlers(
     const config = resolveFeatureConfig('polish')
     if (!config) throw new Error('润色功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
-    return polishText(config, original, context, mainWindow)
+    try {
+      return await polishText(config, original, context, mainWindow)
+    } catch (err) {
+      mainWindow.webContents.send('ai:thinking-done', {})
+      log.error('[polish-text] failed:', err)
+      throw err
+    }
   })
 
   ipcMain.handle('summarize-chapter', async (_e, content: string, aiConfig?: Partial<BookAIConfig>) => {
@@ -88,6 +100,10 @@ export function registerAIHandlers(
     setCurrentAIAbort(new AbortController())
     try {
       return await summarizeChapter(config, content, aiConfig, mainWindow, currentAIAbort.controller!.signal)
+    } catch (err) {
+      mainWindow.webContents.send('ai:thinking-done', {})
+      log.error('[summarize-chapter] failed:', err)
+      throw err
     } finally {
       setCurrentAIAbort(null)
     }
@@ -100,6 +116,10 @@ export function registerAIHandlers(
     setCurrentAIAbort(new AbortController())
     try {
       return await refineSummary(config, content, aiConfig, mainWindow, currentAIAbort.controller!.signal)
+    } catch (err) {
+      mainWindow.webContents.send('ai:thinking-done', {})
+      log.error('[refine-summary] failed:', err)
+      throw err
     } finally {
       setCurrentAIAbort(null)
     }
@@ -204,7 +224,7 @@ export function registerAIHandlers(
       // writing or chat pipeline — streamId passed to router, matches frontend's activeStreamId
       return { streamId: result.streamId }
     } catch (err: any) {
-      console.error('[Dialogue] Router error, falling back to dialogue stream:', err)
+      log.error('[Dialogue] Router error, falling back to dialogue stream:', err)
       return startDialogueStream({
         config,
         mainWindow,

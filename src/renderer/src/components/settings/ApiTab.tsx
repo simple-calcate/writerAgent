@@ -33,18 +33,18 @@ export default function ApiTab({
       {!form.profiles.some(p => p.apiKey.trim()) && !editingProfile && (
         <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-4 space-y-3">
           <h3 className="text-sm font-medium text-blue-300">欢迎使用网文写作助手</h3>
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-[var(--nw-text-secondary)]">
             本软件需要接入 AI 才能使用。你只需要一个 <span className="text-blue-300">API Key</span> 就能开始。
           </p>
           <div className="space-y-2">
-            <p className="text-xs text-gray-300 font-medium">什么是 API Key？</p>
-            <p className="text-xs text-gray-500">
+            <p className="text-xs text-[var(--nw-text-secondary)] font-medium">什么是 API Key？</p>
+            <p className="text-xs text-[var(--nw-text-muted)]">
               API Key 相当于 AI 服务的"通行证"。你去 AI 平台注册账号，获取一个 Key，填到这里，软件就能调用 AI 帮你写作了。
             </p>
           </div>
           <div className="space-y-2">
-            <p className="text-xs text-gray-300 font-medium">推荐：DeepSeek（便宜好用）</p>
-            <ol className="text-xs text-gray-500 space-y-1 list-decimal list-inside">
+            <p className="text-xs text-[var(--nw-text-secondary)] font-medium">推荐：DeepSeek（便宜好用）</p>
+            <ol className="text-xs text-[var(--nw-text-muted)] space-y-1 list-decimal list-inside">
               <li>打开 <button onClick={() => window.api.openExternal('https://platform.deepseek.com')} className="text-blue-400 hover:underline">platform.deepseek.com</button> 注册账号</li>
               <li>充值几块钱（大概 1 块钱能用很久）</li>
               <li>在"API Keys"页面创建一个 Key</li>
@@ -74,21 +74,21 @@ export default function ApiTab({
         /* Profile edit form */
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm text-gray-300">{isAdding ? '添加 API 配置' : '编辑 API 配置'}</h3>
-            <button onClick={() => { setEditingProfile(null); setIsAdding(false) }} className="text-xs text-gray-500 hover:text-gray-300">取消</button>
+            <h3 className="text-sm text-[var(--nw-text-secondary)]">{isAdding ? '添加 API 配置' : '编辑 API 配置'}</h3>
+            <button onClick={() => { setEditingProfile(null); setIsAdding(false) }} className="text-xs text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)]">取消</button>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">配置名称</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">配置名称</label>
             <input
               type="text"
               value={editingProfile.name}
               onChange={e => setEditingProfile({ ...editingProfile, name: e.target.value })}
               placeholder="如 OpenAI、本地 Ollama..."
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">提供商</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">提供商</label>
             <select
               value={detectPreset(editingProfile.baseUrl)}
               onChange={e => {
@@ -102,7 +102,7 @@ export default function ApiTab({
                 if (preset.model) updates.model = preset.model
                 setEditingProfile({ ...editingProfile, ...updates })
               }}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             >
               {PROVIDER_PRESETS.map(p => (
                 <option key={p.value || '__custom__'} value={p.value}>{p.label}</option>
@@ -110,13 +110,13 @@ export default function ApiTab({
             </select>
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">API Key</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">API Key</label>
             <input
               type="password"
               value={editingProfile.apiKey}
               onChange={e => setEditingProfile({ ...editingProfile, apiKey: e.target.value })}
               placeholder="sk-..."
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
             {(() => {
               const preset = PROVIDER_PRESETS.find(p => p.value === detectPreset(editingProfile.baseUrl))
@@ -135,27 +135,27 @@ export default function ApiTab({
             })()}
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Base URL</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">Base URL</label>
             <input
               type="text"
               value={editingProfile.baseUrl}
               onChange={e => setEditingProfile({ ...editingProfile, baseUrl: e.target.value })}
               placeholder="https://api.openai.com/v1"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">模型</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">模型</label>
             <input
               type="text"
               value={editingProfile.model}
               onChange={e => setEditingProfile({ ...editingProfile, model: e.target.value })}
               placeholder="gpt-4o-mini"
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">思考深度</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">思考深度</label>
             <select
               value={editingProfile.thinkingDepth?.preset || 'off'}
               onChange={e => {
@@ -165,20 +165,20 @@ export default function ApiTab({
                   : { preset }
                 setEditingProfile({ ...editingProfile, thinkingDepth: td })
               }}
-              className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
             >
               {THINKING_PRESETS.map(p => (
                 <option key={p.value} value={p.value}>{p.label} — {p.desc}</option>
               ))}
             </select>
             {(editingProfile.thinkingDepth?.preset || 'off') !== 'off' && (
-              <p className="text-[10px] text-gray-500 mt-1">
+              <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">
                 适用于 DeepSeek / OpenAI o1/o3 / Claude 等支持推理的模型
               </p>
             )}
             {editingProfile.thinkingDepth?.preset === 'custom' && (
               <div className="mt-2">
-                <label className="block text-xs text-gray-400 mb-1">Token 预算</label>
+                <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">Token 预算</label>
                 <input
                   type="number"
                   value={editingProfile.thinkingDepth?.budgetTokens || 8192}
@@ -188,16 +188,16 @@ export default function ApiTab({
                   })}
                   min={1024}
                   step={1024}
-                  className="w-full bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
                 />
-                <p className="text-[10px] text-gray-500 mt-1">
+                <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">
                   建议值：2048（轻量）/ 8192（平衡）/ 32768（深度推理）
                 </p>
               </div>
             )}
           </div>
           <div>
-            <label className="block text-xs text-gray-400 mb-1">上下文窗口大小</label>
+            <label className="block text-xs text-[var(--nw-text-secondary)] mb-1">上下文窗口大小</label>
             <div className="flex items-center gap-2">
               <input
                 type="number"
@@ -209,11 +209,11 @@ export default function ApiTab({
                 placeholder="留空则根据模型自动推测"
                 min={1024}
                 step={1024}
-                className="flex-1 bg-gray-700 border border-gray-600 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                className="flex-1 bg-[var(--nw-surface-2)] border border-white/15 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
               />
-              <span className="text-[10px] text-gray-500 shrink-0">tokens</span>
+              <span className="text-[10px] text-[var(--nw-text-muted)] shrink-0">tokens</span>
             </div>
-            <p className="text-[10px] text-gray-500 mt-1">
+            <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">
               留空自动推测。常见值：DeepSeek 64k / GPT-4o 128k / Claude 200k
             </p>
           </div>
@@ -236,7 +236,7 @@ export default function ApiTab({
         /* Profile list */
         <div className="space-y-2">
           <div className="flex items-center justify-between mb-1">
-            <h3 className="text-sm text-gray-300">API 配置列表</h3>
+            <h3 className="text-sm text-[var(--nw-text-secondary)]">API 配置列表</h3>
             <button onClick={handleAddProfile} className="text-xs text-blue-400 hover:text-blue-300">+ 添加</button>
           </div>
           {form.profiles.map(profile => (
@@ -245,7 +245,7 @@ export default function ApiTab({
               className={`px-3 py-2.5 rounded border transition-colors ${
                 form.defaultProfileId === profile.id
                   ? 'border-blue-500/50 bg-blue-500/10'
-                  : 'border-gray-700 bg-gray-700/30 hover:bg-gray-700/50'
+                  : 'border-white/10 bg-[var(--nw-surface-2)]/30 hover:bg-[var(--nw-surface-2)]/50'
               }`}
             >
               <div className="flex items-center justify-between">
@@ -253,31 +253,31 @@ export default function ApiTab({
                   <button
                     onClick={() => handleSetDefault(profile.id)}
                     title={form.defaultProfileId === profile.id ? '默认配置' : '设为默认'}
-                    className={`shrink-0 text-sm ${form.defaultProfileId === profile.id ? 'text-yellow-400' : 'text-gray-600 hover:text-gray-400'}`}
+                    className={`shrink-0 text-sm ${form.defaultProfileId === profile.id ? 'text-yellow-400' : 'text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)]'}`}
                   >
                     {form.defaultProfileId === profile.id ? '★' : '☆'}
                   </button>
-                  <span className="text-sm text-gray-200 truncate">{profile.name}</span>
-                  <span className="text-[10px] text-gray-500 truncate">{profile.model}</span>
+                  <span className="text-sm text-[var(--nw-text-primary)] truncate">{profile.name}</span>
+                  <span className="text-[10px] text-[var(--nw-text-muted)] truncate">{profile.model}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                   <button
                     onClick={() => setEditingProfile(profile)}
-                    className="text-[10px] text-gray-500 hover:text-blue-400 px-1.5 py-0.5"
+                    className="text-[10px] text-[var(--nw-text-muted)] hover:text-blue-400 px-1.5 py-0.5"
                   >
                     编辑
                   </button>
                   <button
                     onClick={() => handleDeleteProfile(profile.id)}
-                    className="text-[10px] text-gray-500 hover:text-red-400 px-1.5 py-0.5"
+                    className="text-[10px] text-[var(--nw-text-muted)] hover:text-red-400 px-1.5 py-0.5"
                   >
                     删除
                   </button>
                 </div>
               </div>
               <div className="flex items-center gap-3 mt-1 ml-6">
-                <span className="text-[10px] text-gray-500 truncate">{profile.baseUrl}</span>
-                <span className="text-[10px] text-gray-600">{'*'.repeat(Math.min(profile.apiKey.length, 8))}</span>
+                <span className="text-[10px] text-[var(--nw-text-muted)] truncate">{profile.baseUrl}</span>
+                <span className="text-[10px] text-[var(--nw-text-muted)]">{'*'.repeat(Math.min(profile.apiKey.length, 8))}</span>
                 {(profile.thinkingDepth?.preset || 'off') !== 'off' && (
                   <span className="text-[10px] text-purple-400 shrink-0">
                     思考:{profile.thinkingDepth?.preset === 'custom' ? `${profile.thinkingDepth.budgetTokens}tok` : profile.thinkingDepth?.preset}
@@ -295,12 +295,12 @@ export default function ApiTab({
       )}
 
       {/* 联网搜索 */}
-      <div className="mt-6 pt-4 border-t border-gray-700/40">
-        <h3 className="text-sm font-medium text-gray-300 mb-3">联网搜索</h3>
-        <p className="text-[10px] text-gray-500 mb-3">AI 对话时可搜索互联网获取实时信息</p>
+      <div className="mt-6 pt-4 border-t border-white/10/40">
+        <h3 className="text-sm font-medium text-[var(--nw-text-secondary)] mb-3">联网搜索</h3>
+        <p className="text-[10px] text-[var(--nw-text-muted)] mb-3">AI 对话时可搜索互联网获取实时信息</p>
         <div className="space-y-3">
           <div>
-            <label className="text-xs text-gray-400 mb-1 block">搜索引擎</label>
+            <label className="text-xs text-[var(--nw-text-secondary)] mb-1 block">搜索引擎</label>
             <select
               value={form.searchEngineConfig?.engine || 'tavily'}
               onChange={e => setForm({
@@ -310,7 +310,7 @@ export default function ApiTab({
                   engine: e.target.value as SearchEngineType
                 }
               })}
-              className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+              className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded px-3 py-2 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
             >
               <option value="tavily">Tavily（免费 1000次/月）</option>
               <option value="bing">Bing（免费 1000次/月）</option>
@@ -320,7 +320,7 @@ export default function ApiTab({
 
           {(form.searchEngineConfig?.engine || 'tavily') === 'tavily' && (
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Tavily API Key</label>
+              <label className="text-xs text-[var(--nw-text-secondary)] mb-1 block">Tavily API Key</label>
               <input
                 type="password"
                 value={form.searchEngineConfig?.tavilyApiKey || ''}
@@ -329,9 +329,9 @@ export default function ApiTab({
                   searchEngineConfig: { ...form.searchEngineConfig!, tavilyApiKey: e.target.value }
                 })}
                 placeholder="tvly-..."
-                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded px-3 py-2 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
               />
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">
                 免费申请：<button onClick={() => window.api.openExternal('https://tavily.com')} className="text-blue-400 hover:underline">tavily.com</button>
               </p>
             </div>
@@ -339,7 +339,7 @@ export default function ApiTab({
 
           {(form.searchEngineConfig?.engine || 'tavily') === 'bing' && (
             <div>
-              <label className="text-xs text-gray-400 mb-1 block">Bing API Key</label>
+              <label className="text-xs text-[var(--nw-text-secondary)] mb-1 block">Bing API Key</label>
               <input
                 type="password"
                 value={form.searchEngineConfig?.bingApiKey || ''}
@@ -348,9 +348,9 @@ export default function ApiTab({
                   searchEngineConfig: { ...form.searchEngineConfig!, bingApiKey: e.target.value }
                 })}
                 placeholder="输入 Bing Search API Key"
-                className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded px-3 py-2 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
               />
-              <p className="text-[10px] text-gray-600 mt-1">
+              <p className="text-[10px] text-[var(--nw-text-muted)] mt-1">
                 免费申请：<button onClick={() => window.api.openExternal('https://portal.azure.com')} className="text-blue-400 hover:underline">Azure Portal</button>
               </p>
             </div>
@@ -359,7 +359,7 @@ export default function ApiTab({
           {(form.searchEngineConfig?.engine || 'tavily') === 'google' && (
             <div className="space-y-2">
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">Google API Key</label>
+                <label className="text-xs text-[var(--nw-text-secondary)] mb-1 block">Google API Key</label>
                 <input
                   type="password"
                   value={form.searchEngineConfig?.googleApiKey || ''}
@@ -368,11 +368,11 @@ export default function ApiTab({
                     searchEngineConfig: { ...form.searchEngineConfig!, googleApiKey: e.target.value }
                   })}
                   placeholder="AIza..."
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded px-3 py-2 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 mb-1 block">搜索引擎 ID (cx)</label>
+                <label className="text-xs text-[var(--nw-text-secondary)] mb-1 block">搜索引擎 ID (cx)</label>
                 <input
                   type="text"
                   value={form.searchEngineConfig?.googleSearchEngineId || ''}
@@ -381,10 +381,10 @@ export default function ApiTab({
                     searchEngineConfig: { ...form.searchEngineConfig!, googleSearchEngineId: e.target.value }
                   })}
                   placeholder="搜索引擎的 cx 值"
-                  className="w-full bg-gray-800 border border-gray-700 rounded px-3 py-2 text-xs text-gray-300 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-[var(--nw-surface-2)] border border-white/10 rounded px-3 py-2 text-xs text-[var(--nw-text-secondary)] focus:outline-none focus:border-blue-500"
                 />
               </div>
-              <p className="text-[10px] text-gray-600">
+              <p className="text-[10px] text-[var(--nw-text-muted)]">
                 免费申请：<button onClick={() => window.api.openExternal('https://programmablesearchengine.google.com')} className="text-blue-400 hover:underline">Google CSE</button>
               </p>
             </div>

@@ -62,10 +62,10 @@ export default function RewriteApprovalCard() {
 
       <div className="px-3 py-2 space-y-2">
         <div className="flex items-center gap-3">
-          <span className="text-[10px] text-[--nw-text-muted]">综合评分</span>
+          <span className="text-[10px] text-[var(--nw-text-muted)]">综合评分</span>
           <span className={`text-sm font-medium ${scoreColor}`}>{approval.score.overall}/10</span>
-          <span className="text-[10px] text-[--nw-text-muted]">|</span>
-          <span className="text-[10px] text-[--nw-text-muted]">策略</span>
+          <span className="text-[10px] text-[var(--nw-text-muted)]">|</span>
+          <span className="text-[10px] text-[var(--nw-text-muted)]">策略</span>
           <span className="text-[10px] text-blue-400">{STRATEGY_LABELS[approval.strategy] || approval.strategy}</span>
         </div>
 
@@ -87,9 +87,9 @@ export default function RewriteApprovalCard() {
 
         {approval.score.issues.length > 0 && (
           <div>
-            <p className="text-[9px] text-[--nw-text-muted] mb-0.5">问题</p>
+            <p className="text-[9px] text-[var(--nw-text-muted)] mb-0.5">问题</p>
             {approval.score.issues.slice(0, 3).map((issue, i) => (
-              <p key={i} className="text-[10px] text-[--nw-text-secondary]">· {issue}</p>
+              <p key={i} className="text-[10px] text-[var(--nw-text-secondary)]">· {issue}</p>
             ))}
           </div>
         )}
@@ -103,7 +103,7 @@ export default function RewriteApprovalCard() {
           </button>
           <button
             onClick={handleReject}
-            className="flex-1 bg-[--nw-surface-2] hover:bg-[--nw-surface-1] text-[--nw-text-secondary] text-[11px] py-1.5 rounded-md transition-all duration-150 hover:translate-y-[-1px]"
+            className="flex-1 bg-[var(--nw-surface-2)] hover:bg-[var(--nw-surface-1)] text-[var(--nw-text-secondary)] text-[11px] py-1.5 rounded-md transition-all duration-150 hover:translate-y-[-1px]"
           >
             跳过，使用当前版本
           </button>

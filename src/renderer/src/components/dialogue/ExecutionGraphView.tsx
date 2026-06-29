@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { ExecutionNode, ExecutionEdge, ExecutionNodeStatus } from '../../../../shared/types'
 
 const STATUS_COLORS: Record<ExecutionNodeStatus, string> = {
-  pending: 'bg-[--nw-text-muted]',
+  pending: 'bg-[var(--nw-text-muted)]',
   running: 'bg-amber-500 animate-pulse',
   done: 'bg-emerald-500',
   error: 'bg-red-500'
@@ -35,7 +35,7 @@ function ExecutionNodeView({ node }: { node: ExecutionNode }) {
     <div
       className={`
         px-3 py-2 rounded-md
-        bg-[--surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]
+        bg-[var(--surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]
         hover:shadow-[0_0_0_1px_rgba(255,255,255,0.08)] hover:translate-y-[-1px]
         transition-all duration-150 ease-out cursor-pointer
         ${isRunning ? 'scale-[1.02]' : ''}
@@ -45,20 +45,20 @@ function ExecutionNodeView({ node }: { node: ExecutionNode }) {
       <div className="flex items-center gap-2">
         <StatusDot status={node.status} />
         <span className="text-[10px]">{TYPE_LABELS[node.type] || '•'}</span>
-        <span className="text-[12px] text-[--text-primary] flex-1 truncate">{node.label}</span>
+        <span className="text-[12px] text-[var(--text-primary)] flex-1 truncate">{node.label}</span>
         {node.startTime && node.endTime && (
-          <span className="text-[10px] text-[--text-muted]">
+          <span className="text-[10px] text-[var(--text-muted)]">
             {((node.endTime - node.startTime) / 1000).toFixed(1)}s
           </span>
         )}
         {node.metadata?.tokens && (
-          <span className="text-[10px] text-[--text-muted]">
+          <span className="text-[10px] text-[var(--text-muted)]">
             {node.metadata.tokens} tok
           </span>
         )}
       </div>
       {expanded && node.output && (
-        <div className="text-[11px] text-[--text-muted] mt-1.5 pl-6 max-h-24 overflow-y-auto">
+        <div className="text-[11px] text-[var(--text-muted)] mt-1.5 pl-6 max-h-24 overflow-y-auto">
           {typeof node.output === 'string'
             ? node.output.slice(0, 200) + (node.output.length > 200 ? '...' : '')
             : JSON.stringify(node.output).slice(0, 200)}
@@ -86,10 +86,10 @@ export default function ExecutionGraphView({ nodes, edges }: { nodes: ExecutionN
   const doneCount = nodes.filter(n => n.status === 'done').length
 
   return (
-    <div className="rounded-md bg-[--surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
+    <div className="rounded-md bg-[var(--surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]">
       <button
         onClick={() => setCollapsed(!collapsed)}
-        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[--text-muted] hover:text-[--text-secondary] transition-colors duration-150"
+        className="w-full flex items-center justify-between px-3 py-2 text-[11px] text-[var(--text-muted)] hover:text-[var(--text-secondary)] transition-colors duration-150"
       >
         <div className="flex items-center gap-2">
           {activeCount > 0 ? (
@@ -98,7 +98,7 @@ export default function ExecutionGraphView({ nodes, edges }: { nodes: ExecutionN
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
           )}
           <span>执行图</span>
-          <span className="text-[10px] text-[--text-muted]">
+          <span className="text-[10px] text-[var(--text-muted)]">
             {doneCount}/{nodes.length}
           </span>
         </div>

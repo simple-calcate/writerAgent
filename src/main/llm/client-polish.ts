@@ -5,6 +5,26 @@ import { streamWithThinking } from './streaming'
 import { fixMojibake } from './streaming'
 import { getFeatureSkillContent } from './feature-skills'
 import { createClient, isLocalProvider } from './client'
+import { log } from '../utils/logger'
+
+/** 将底层 LLM/网络错误包装为用户可读的中文提示 */
+function friendlyLLMError(action: string, err: unknown): Error {
+  const e = err as { name?: string; status?: number; message?: string }
+  if (e?.name === 'AbortError') {
+    return new Error(`${action}已取消`)
+  }
+  if (e?.status === 401 || e?.status === 403) {
+    return new Error(`${action}失败：API Key 无效或权限不足（${e.status}）`)
+  }
+  if (e?.status === 429) {
+    return new Error(`${action}失败：请求过于频繁，请稍后重试（429 限流）`)
+  }
+  if (e?.status && e.status >= 500) {
+    return new Error(`${action}失败：模型服务暂时不可用（${e.status}）`)
+  }
+  const msg = e?.message || String(err)
+  return new Error(`${action}失败：${msg}`)
+}
 
 // Single-segment polish with context
 export async function polishText(
@@ -45,23 +65,28 @@ export async function polishText(
   const jsonFormat = isOllama ? {} : { response_format: { type: 'json_object' as const } }
 
   let content: string
-  if (mainWindow) {
-    content = await streamWithThinking(mainWindow, client, config, {
-      model: config.model || 'gpt-4o-mini',
-      messages,
-      temperature,
-      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      ...jsonFormat
-    }, signal)
-  } else {
-    const response = await client.chat.completions.create({
-      model: config.model || 'gpt-4o-mini',
-      messages,
-      temperature,
-      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      ...jsonFormat
-    })
-    content = fixMojibake(response.choices[0]?.message?.content?.trim() || '{}')
+  try {
+    if (mainWindow) {
+      content = await streamWithThinking(mainWindow, client, config, {
+        model: config.model || 'gpt-4o-mini',
+        messages,
+        temperature,
+        ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+        ...jsonFormat
+      }, signal)
+    } else {
+      const response = await client.chat.completions.create({
+        model: config.model || 'gpt-4o-mini',
+        messages,
+        temperature,
+        ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+        ...jsonFormat
+      })
+      content = fixMojibake(response.choices[0]?.message?.content?.trim() || '{}')
+    }
+  } catch (err) {
+    if ((err as any)?.name === 'AbortError') throw err
+    throw friendlyLLMError('润色', err)
   }
   let polished = original
   let reason = '未提供理由'
@@ -130,26 +155,31 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
   const jsonFormat = isOllama ? {} : { response_format: { type: 'json_object' as const } }
 
   let rawContent: string | undefined
-  if (mainWindow) {
-    rawContent = await streamWithThinking(mainWindow, client, config, {
-      model: config.model || 'gpt-4o-mini',
-      messages,
-      temperature,
-      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      ...jsonFormat
-    }, signal)
-  } else {
-    const response = await client.chat.completions.create({
-      model: config.model || 'gpt-4o-mini',
-      messages,
-      temperature,
-      ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
-      ...jsonFormat
-    })
-    rawContent = fixMojibake(response.choices[0]?.message?.content ?? '')
+  try {
+    if (mainWindow) {
+      rawContent = await streamWithThinking(mainWindow, client, config, {
+        model: config.model || 'gpt-4o-mini',
+        messages,
+        temperature,
+        ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+        ...jsonFormat
+      }, signal)
+    } else {
+      const response = await client.chat.completions.create({
+        model: config.model || 'gpt-4o-mini',
+        messages,
+        temperature,
+        ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
+        ...jsonFormat
+      })
+      rawContent = fixMojibake(response.choices[0]?.message?.content ?? '')
+    }
+  } catch (err) {
+    if ((err as any)?.name === 'AbortError') throw err
+    throw friendlyLLMError('自动润色', err)
   }
 
-  console.log('[polish] raw response:', rawContent?.substring(0, 500))
+  log.debug('[polish] raw response:', rawContent?.substring(0, 500))
 
   const parseContent = rawContent?.trim() || '{"results":[]}'
   let results: { index: number; polished: string; reason: string }[] = []
@@ -190,7 +220,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       if (arrayMatch && tryParse(arrayMatch[0])) {
         // extracted array from malformed JSON
       } else {
-        console.log('[polish] all parse attempts failed, raw:', parseContent.substring(0, 200))
+        log.debug('[polish] all parse attempts failed, raw:', parseContent.substring(0, 200))
       }
     }
   }
@@ -215,7 +245,7 @@ ${aiConfig?.customPrompt ? '\n补充要求：' + aiConfig.customPrompt : ''}`
       }
     })
 
-  console.log('[polish] suggestions:', suggestions.length)
+  log.debug('[polish] suggestions:', suggestions.length)
   return { suggestions }
 }
 

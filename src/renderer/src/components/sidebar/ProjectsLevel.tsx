@@ -35,31 +35,31 @@ export function ProjectsLevel() {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[#2a3347]">
-        <span className="text-[13px] font-semibold tracking-wide text-[--nw-text-primary]">项目</span>
+      <div className="flex items-center justify-between px-3.5 py-2.5 border-b border-[var(--nw-panel-border)]">
+        <span className="text-[13px] font-semibold tracking-wide text-[var(--nw-text-primary)]">项目</span>
         <div className="flex gap-2">
           <button onClick={() => importBookPreview()} className="text-[11px] text-emerald-400 hover:text-emerald-300 hover:bg-emerald-500/10 px-1.5 py-0.5 rounded transition-colors">导入</button>
-          <button onClick={() => setShowNew(!showNew)} className="text-[11px] text-[--nw-accent] hover:text-[--nw-accent-hover] hover:bg-[--nw-accent-glow] px-1.5 py-0.5 rounded transition-colors">+ 新建</button>
+          <button onClick={() => setShowNew(!showNew)} className="text-[11px] text-[var(--nw-accent)] hover:text-[var(--nw-accent-hover)] hover:bg-[var(--nw-accent-glow)] px-1.5 py-0.5 rounded transition-colors">+ 新建</button>
         </div>
       </div>
 
         {showNew && (
-        <div className="px-3.5 py-2.5 space-y-2 border-b border-[#2a3347]">
+        <div className="px-3.5 py-2.5 space-y-2 border-b border-[var(--nw-panel-border)]">
           <div className="flex gap-1.5">
             <input
               value={newName}
               onChange={e => setNewName(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCreate()}
               placeholder="项目名称"
-              className="flex-1 bg-[--nw-surface-1] border border-[#3a4255] rounded-md px-2.5 py-1.5 text-[12px] text-[--nw-text-primary] focus:outline-none focus:border-[--nw-accent] focus:ring-1 focus:ring-[--nw-accent-glow]"
+              className="flex-1 bg-[var(--nw-surface-1)] border border-white/12 rounded-md px-2.5 py-1.5 text-[12px] text-[var(--nw-text-primary)] focus:outline-none focus:border-[var(--nw-accent)] focus:ring-1 focus:ring-[var(--nw-accent-glow)]"
               autoFocus
             />
-            <button onClick={handleCreate} className="text-[11px] bg-[--nw-accent] hover:bg-[--nw-accent-hover] text-white px-3 py-1.5 rounded-md transition-colors">OK</button>
+            <button onClick={handleCreate} className="text-[11px] bg-[var(--nw-accent)] hover:bg-[var(--nw-accent-hover)] text-white px-3 py-1.5 rounded-md transition-colors">OK</button>
           </div>
           <select
             value={newGenre || ''}
             onChange={e => setNewGenre(e.target.value || null)}
-            className="w-full bg-[--nw-surface-1] border border-[#3a4255] rounded-md px-2.5 py-1.5 text-[12px] text-[--nw-text-primary] focus:outline-none"
+            className="w-full bg-[var(--nw-surface-1)] border border-white/12 rounded-md px-2.5 py-1.5 text-[12px] text-[var(--nw-text-primary)] focus:outline-none"
           >
             <option value="">选择类型（可选）</option>
             {genreList.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
@@ -72,7 +72,7 @@ export function ProjectsLevel() {
           <div
             key={p.id}
             className={`flex items-center justify-between px-3.5 py-2.5 text-[13px] cursor-pointer group transition-all ${
-              currentProject?.id === p.id ? 'bg-[--nw-accent-glow] text-[--nw-accent] border-l-2 border-[--nw-accent]' : 'hover:bg-[--nw-surface-1] text-[--nw-text-secondary] hover:text-[--nw-text-primary] border-l-2 border-transparent'
+              currentProject?.id === p.id ? 'bg-[var(--nw-accent-glow)] text-[var(--nw-accent)] border-l-2 border-[var(--nw-accent)]' : 'hover:bg-[var(--nw-surface-1)] text-[var(--nw-text-secondary)] hover:text-[var(--nw-text-primary)] border-l-2 border-transparent'
             }`}
             onContextMenu={e => handleContextMenu(e, p)}
           >
@@ -101,7 +101,7 @@ export function ProjectsLevel() {
           </div>
         ))}
         {projects.length === 0 && (
-          <p className="px-3.5 py-5 text-[11px] text-[--nw-text-muted] text-center">暂无项目</p>
+          <p className="px-3.5 py-5 text-[11px] text-[var(--nw-text-muted)] text-center">暂无项目</p>
         )}
       </div>
 

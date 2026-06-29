@@ -9,7 +9,7 @@ const STATE_LABELS: Record<AgentRunState, string> = {
 }
 
 const STATE_COLORS: Record<AgentRunState, string> = {
-  idle: 'text-[--text-muted]',
+  idle: 'text-[var(--text-muted)]',
   running: 'text-amber-400',
   paused: 'text-yellow-400',
   done: 'text-emerald-400',
@@ -23,12 +23,12 @@ function ContextBar({ used, total }: { used: number; total: number }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[--text-muted]">上下文</span>
-        <span className="text-[10px] text-[--text-muted]">
+        <span className="text-[10px] text-[var(--text-muted)]">上下文</span>
+        <span className="text-[10px] text-[var(--text-muted)]">
           {used.toLocaleString()} / {total.toLocaleString()} tok
         </span>
       </div>
-      <div className="h-1 bg-[--surface-2] rounded-full overflow-hidden">
+      <div className="h-1 bg-[var(--surface-2)] rounded-full overflow-hidden">
         <div className={`h-full ${barColor} rounded-full transition-all duration-300`} style={{ width: `${percent}%` }} />
       </div>
     </div>
@@ -41,10 +41,10 @@ export default function InspectorPanel({ run }: { run: AgentRun }) {
   const totalTokens = run.nodes.reduce((sum, n) => sum + (n.metadata?.tokens ?? 0), 0)
 
   return (
-    <div className="rounded-md bg-[--surface-1] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] p-3 space-y-2.5">
+    <div className="rounded-md bg-[var(--surface-1)] shadow-[0_0_0_1px_rgba(255,255,255,0.04)] p-3 space-y-2.5">
       {/* State row */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[--text-muted]">状态</span>
+        <span className="text-[10px] text-[var(--text-muted)]">状态</span>
         <span className={`text-[11px] font-medium ${STATE_COLORS[run.state]}`}>
           {STATE_LABELS[run.state]}
         </span>
@@ -52,8 +52,8 @@ export default function InspectorPanel({ run }: { run: AgentRun }) {
 
       {/* Node stats */}
       <div className="flex items-center justify-between">
-        <span className="text-[10px] text-[--text-muted]">节点</span>
-        <span className="text-[11px] text-[--text-secondary]">
+        <span className="text-[10px] text-[var(--text-muted)]">节点</span>
+        <span className="text-[11px] text-[var(--text-secondary)]">
           {doneNodes}/{run.nodes.length}
           {activeNodes > 0 && <span className="text-amber-400 ml-1">({activeNodes} 运行中)</span>}
         </span>
@@ -62,16 +62,16 @@ export default function InspectorPanel({ run }: { run: AgentRun }) {
       {/* Total tokens */}
       {totalTokens > 0 && (
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-[--text-muted]">Tokens</span>
-          <span className="text-[11px] text-[--text-secondary]">{totalTokens.toLocaleString()}</span>
+          <span className="text-[10px] text-[var(--text-muted)]">Tokens</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">{totalTokens.toLocaleString()}</span>
         </div>
       )}
 
       {/* Compression ratio */}
       {run.context.compressionRatio < 1 && (
         <div className="flex items-center justify-between">
-          <span className="text-[10px] text-[--text-muted]">压缩率</span>
-          <span className="text-[11px] text-[--text-secondary]">
+          <span className="text-[10px] text-[var(--text-muted)]">压缩率</span>
+          <span className="text-[11px] text-[var(--text-secondary)]">
             {(run.context.compressionRatio * 100).toFixed(0)}%
           </span>
         </div>

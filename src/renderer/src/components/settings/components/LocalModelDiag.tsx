@@ -43,21 +43,21 @@ export default function LocalModelDiagnostics({ config }: Props) {
   }
 
   return (
-    <div className="mt-3 border-t border-gray-700 pt-3">
+    <div className="mt-3 border-t border-white/10 pt-3">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs text-gray-400">本地模型诊断</span>
+        <span className="text-xs text-[var(--nw-text-secondary)]">本地模型诊断</span>
         <div className="flex gap-1.5">
           <button
             onClick={handleDiagnose}
             disabled={running}
-            className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors disabled:opacity-50"
+            className="px-2 py-1 text-[11px] bg-[var(--nw-surface-2)] hover:bg-white/10 text-[var(--nw-text-secondary)] rounded transition-colors disabled:opacity-50"
           >
             {running ? '诊断中...' : '开始诊断'}
           </button>
           {results.length > 0 && (
             <button
               onClick={handleCopy}
-              className="px-2 py-1 text-[11px] bg-gray-700 hover:bg-gray-600 text-gray-300 rounded transition-colors"
+              className="px-2 py-1 text-[11px] bg-[var(--nw-surface-2)] hover:bg-white/10 text-[var(--nw-text-secondary)] rounded transition-colors"
             >
               {copied ? '已复制' : '复制报告'}
             </button>
@@ -65,13 +65,13 @@ export default function LocalModelDiagnostics({ config }: Props) {
         </div>
       </div>
       {results.length > 0 && (
-        <div className="bg-gray-900 rounded p-2 space-y-1 max-h-48 overflow-y-auto">
+        <div className="bg-[var(--nw-surface-2)] rounded p-2 space-y-1 max-h-48 overflow-y-auto">
           {results.map((r, i) => (
             <p key={i} className={`text-[11px] ${
               r.startsWith('✅') ? 'text-emerald-400' :
               r.startsWith('❌') ? 'text-red-400' :
               r.startsWith('💡') ? 'text-amber-400' :
-              'text-gray-400'
+              'text-[var(--nw-text-secondary)]'
             }`}>{r}</p>
           ))}
         </div>

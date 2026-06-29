@@ -3,6 +3,7 @@ import { summarizeChapter } from '../../client-summary'
 import { polishText } from '../../client-polish'
 import { refineSummary } from '../../refine-summary'
 import { updateChapter, saveVersion, updateChapterSummary } from '../../../store/db'
+import { TRUNCATE } from '../../constants'
 
 export interface ChapterToolParams {
   config: LLMConfigSingle
@@ -49,8 +50,8 @@ export async function handleChapterTools(
       if (!target) return '错误：找不到指定章节'
       const content = target.content
       if (!content) return `章节「${target.title}」暂无内容`
-      const truncated = content.length > 10000
-        ? content.substring(0, 5000) + '\n\n[...内容过长已截断...]\n\n' + content.substring(content.length - 3000)
+      const truncated = content.length > TRUNCATE.CHAPTER
+        ? content.substring(0, TRUNCATE.VOLUME) + '\n\n[...内容过长已截断...]\n\n' + content.substring(content.length - TRUNCATE.BOOK)
         : content
       return `章节「${target.title}」的内容：\n\n${truncated}`
     }

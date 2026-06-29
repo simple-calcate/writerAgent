@@ -28,7 +28,7 @@ export default function ThinkingIndicator({ text, onCancel }: { text: string; on
           <div className="absolute inset-0 rounded-full border-2 border-purple-400 border-t-transparent animate-spin" />
         </div>
         <span className="text-xs text-purple-400 font-medium tracking-wide">思考中</span>
-        <span className="text-[10px] text-[--nw-text-muted]">{text.length > 0 ? `${text.length} 字` : ''}</span>
+        <span className="text-[10px] text-[var(--nw-text-muted)]">{text.length > 0 ? `${text.length} 字` : ''}</span>
         {onCancel && (
           <button
             onClick={onCancel}
@@ -42,12 +42,12 @@ export default function ThinkingIndicator({ text, onCancel }: { text: string; on
       {text.length > 0 && (
         <div
           ref={scrollRef}
-          className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-gray-900/50 border border-white/5"
+          className="flex-1 min-h-0 overflow-y-auto rounded-xl bg-[var(--nw-surface-2)]/50 border border-white/5"
         >
-          <div className="p-3 text-[13px] leading-[1.7] text-[--nw-text-secondary] font-mono whitespace-pre-wrap break-all">
-            {stablePart && <span className="text-[--nw-text-muted]">{stablePart}</span>}
-            {tailPart && <span className="text-[--nw-text-secondary]">{tailPart}</span>}
-            <span key={text.length} className="thinking-tail text-[--nw-text-primary]">{newPart}</span>
+          <div className="p-3 text-[13px] leading-[1.7] text-[var(--nw-text-secondary)] font-mono whitespace-pre-wrap break-all">
+            {stablePart && <span className="text-[var(--nw-text-muted)]">{stablePart}</span>}
+            {tailPart && <span className="text-[var(--nw-text-secondary)]">{tailPart}</span>}
+            <span key={text.length} className="thinking-tail text-[var(--nw-text-primary)]">{newPart}</span>
           </div>
         </div>
       )}

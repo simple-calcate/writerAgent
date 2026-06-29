@@ -16,7 +16,7 @@ function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); setConfirming(false) }}
-          className="text-[10px] text-gray-500 hover:text-gray-400 px-1"
+          className="text-[10px] text-[var(--nw-text-muted)] hover:text-[var(--nw-text-secondary)] px-1"
         >
           取消
         </button>
@@ -27,7 +27,7 @@ function DeleteConfirmButton({ onDelete }: { onDelete: () => void }) {
   return (
     <button
       onClick={(e) => { e.stopPropagation(); setConfirming(true) }}
-      className="text-[10px] text-gray-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
+      className="text-[10px] text-[var(--nw-text-muted)] hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"
     >
       删除
     </button>
@@ -92,17 +92,17 @@ export default function ReasoningTab() {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-xs text-gray-300">🧠 {chains.length} 个推理链</span>
+        <span className="text-xs text-[var(--nw-text-secondary)]">🧠 {chains.length} 个推理链</span>
         <button onClick={handleAdd} className="bg-blue-600/80 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] transition-colors">
           + 添加
         </button>
       </div>
 
       {chains.length === 0 && (
-        <div className="text-center text-gray-600 py-8">
+        <div className="text-center text-[var(--nw-text-muted)] py-8">
           <p className="text-sm mb-2">🧠</p>
           <p className="text-xs mb-2">还没有推理链</p>
-          <p className="text-[10px] text-gray-700">推理链帮助 AI 在执行任务时进行系统性思考</p>
+          <p className="text-[10px] text-[var(--nw-text-muted)]">推理链帮助 AI 在执行任务时进行系统性思考</p>
         </div>
       )}
 
@@ -110,21 +110,21 @@ export default function ReasoningTab() {
         {chains.map(chain => (
           <div
             key={chain.id}
-            className="bg-gray-700/30 rounded p-3 hover:bg-gray-700/50 transition-colors group"
+            className="bg-[var(--nw-surface-2)]/30 rounded p-3 hover:bg-[var(--nw-surface-2)]/50 transition-colors group"
           >
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2 cursor-pointer flex-1 min-w-0" onClick={() => handleEdit(chain)}>
-                <span className="text-xs text-gray-300">{chain.name}</span>
+                <span className="text-xs text-[var(--nw-text-secondary)]">{chain.name}</span>
                 {chain.builtin && <span className="text-[9px] text-blue-400 bg-blue-900/30 px-1 rounded">内置</span>}
               </div>
               <div className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-600">{chain.steps.length} 步</span>
+                <span className="text-[10px] text-[var(--nw-text-muted)]">{chain.steps.length} 步</span>
                 {!chain.builtin && (
                   <DeleteConfirmButton onDelete={() => handleDelete(chain.id)} />
                 )}
               </div>
             </div>
-            <p className="text-[11px] text-gray-500 truncate cursor-pointer" onClick={() => handleEdit(chain)}>{chain.description}</p>
+            <p className="text-[11px] text-[var(--nw-text-muted)] truncate cursor-pointer" onClick={() => handleEdit(chain)}>{chain.description}</p>
             <div className="flex items-center gap-2 mt-1 cursor-pointer" onClick={() => handleEdit(chain)}>
               <span className={`text-[10px] px-1.5 py-0.5 rounded ${
                 chain.trigger === 'auto' ? 'bg-green-900/30 text-green-400' : 'bg-yellow-900/30 text-yellow-400'

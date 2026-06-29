@@ -37,7 +37,7 @@ export default function ResizeHandle({ onResize }: ResizeHandleProps) {
   return (
     <div
       onMouseDown={handleMouseDown}
-      className="w-0.5 hover:w-1 bg-gray-700 hover:bg-blue-500 active:bg-blue-400 cursor-col-resize shrink-0 transition-all z-10"
+      className="w-0.5 hover:w-1 bg-[var(--nw-surface-2)] hover:bg-blue-500 active:bg-blue-400 cursor-col-resize shrink-0 transition-all z-10"
     />
   )
 }

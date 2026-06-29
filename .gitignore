@@ -21,3 +21,6 @@ CLAUDE.md
 # 备份与临时文件
 .backup/
 query_db.js
+
+# 测试覆盖率报告
+coverage/

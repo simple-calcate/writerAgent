@@ -17,7 +17,7 @@ interface ScoringRule {
   score: (text: string, metadata?: ChunkMetadata) => number
 }
 
-interface ChunkMetadata {
+export interface ChunkMetadata {
   role?: string
   isToolCall?: boolean
   isRecent?: boolean

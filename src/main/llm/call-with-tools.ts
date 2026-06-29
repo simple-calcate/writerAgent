@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto'
+import { errorMessage, hasErrorStatus } from '../utils/errors'
+import type { ReasoningDelta } from './types'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, ContextConfig } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
@@ -66,8 +68,8 @@ export async function callWithTools(params: CallWithToolsParams): Promise<CallWi
         stream: true,
         ...thinkingParams
       }, { signal })
-    } catch (err: any) {
-      if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+    } catch (err) {
+      if (hasThinkingParams(config) && hasErrorStatus(err, 400, 422)) {
         stream = await client.chat.completions.create({
           model: config.model || 'gpt-4o-mini',
           messages: fullMessages as any,
@@ -89,8 +91,8 @@ export async function callWithTools(params: CallWithToolsParams): Promise<CallWi
       if (signal?.aborted) break
       const delta = chunk.choices[0]?.delta
 
-      if ((delta as any)?.reasoning_content) {
-        reasoningContent += (delta as any).reasoning_content
+      if ((delta as ReasoningDelta)?.reasoning_content) {
+        reasoningContent += (delta as ReasoningDelta).reasoning_content
       }
 
       if (delta?.content) {
@@ -189,8 +191,8 @@ export async function callWithTools(params: CallWithToolsParams): Promise<CallWi
           mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result })
         }
         fullMessages.push({ role: 'tool', content: result, tool_call_id: tc.id } as any)
-      } catch (err: any) {
-        const errorMsg = err.message || '工具执行失败'
+      } catch (err) {
+        const errorMsg = errorMessage(err) || '工具执行失败'
         if (streamId) {
           mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result: `错误：${errorMsg}` })
         }

@@ -64,8 +64,8 @@ export const createSummarySlice: StateCreator<
       const result = await window.api.summarizeChapter(currentChapter.content, mergedAI)
       set({ summaryResult: result, isSummarizing: false })
       await window.api.updateChapterSummary(currentChapter.id, result)
-    } catch (e: any) {
-      set({ summaryError: e.message, isSummarizing: false })
+    } catch (e) {
+      set({ summaryError: (e instanceof Error ? e.message : String(e)), isSummarizing: false })
     } finally {
       unsubChunk()
       unsubDone()
@@ -103,7 +103,7 @@ export const createSummarySlice: StateCreator<
         summaryResult: result,
         rightPanel: 'summary'
       } as any))
-    } catch (e: any) {
+    } catch (e) {
       set({ isRefining: false })
     } finally {
       unsubChunk()
@@ -146,7 +146,7 @@ export const createSummarySlice: StateCreator<
         }))
       }
       set({ isRefining: false, refineProgress: null })
-    } catch (e: any) {
+    } catch (e) {
       set({ isRefining: false, refineProgress: null })
     } finally {
       unsubChunk()

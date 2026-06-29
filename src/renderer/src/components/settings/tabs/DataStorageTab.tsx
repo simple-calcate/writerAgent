@@ -25,8 +25,8 @@ export default function DataStorageTab() {
       const newPath = await window.api.getDataPath()
       setDataPath(newPath)
       setCustomPath('')
-    } catch (e: any) {
-      alert('路径无效: ' + e.message)
+    } catch (e) {
+      alert('路径无效: ' + (e instanceof Error ? e.message : String(e)))
     }
   }
 

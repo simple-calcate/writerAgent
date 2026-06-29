@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { errorMessage, hasErrorStatus } from '../utils/errors'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, ReasoningChain, ReasoningStep, ReasoningStepResult, ReasoningSession } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
@@ -66,8 +67,8 @@ async function executeStepLLM(
       ...(config.maxTokens ? { max_tokens: config.maxTokens } : {}),
       ...thinkingParams
     }, { signal })
-  } catch (err: any) {
-    if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+  } catch (err) {
+    if (hasThinkingParams(config) && hasErrorStatus(err, 400, 422)) {
       response = await client.chat.completions.create({
         model: config.model || 'gpt-4o-mini',
         messages: [
@@ -155,17 +156,17 @@ export async function executeReasoningChain(
             stepName: step.name,
             result
           })
-        } catch (err: any) {
+        } catch (err) {
           if (signal?.aborted) return
           const stepResult = stepResultMap.get(step.id)!
           stepResult.status = 'error'
-          stepResult.result = `错误: ${err.message}`
+          stepResult.result = `错误: ${errorMessage(err)}`
 
           mainWindow.webContents.send('dialogue:reasoning-step-error', {
             sessionId,
             stepId: step.id,
             stepName: step.name,
-            error: err.message
+            error: errorMessage(err)
           })
         }
       })
@@ -174,7 +175,7 @@ export async function executeReasoningChain(
     }
 
     session.status = signal?.aborted ? 'error' : 'completed'
-  } catch (err: any) {
+  } catch (err) {
     session.status = 'error'
   }
 

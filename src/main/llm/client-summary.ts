@@ -1,4 +1,5 @@
 import type { BrowserWindow } from 'electron'
+import { errorMessage, isAbortError } from '../utils/errors'
 import type { LLMConfigSingle, BookAIConfig, APIProvider, AIFeatureAdvancedConfig } from '../../shared/types'
 import { streamWithThinking } from './streaming'
 import { getFeatureSkillContent } from './feature-skills'
@@ -55,11 +56,11 @@ export async function diagnoseLocalModel(config: LLMConfigSingle): Promise<strin
     } else {
       results.push(`❌ Ollama 服务返回 ${res.status}`)
     }
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
+  } catch (err) {
+    if (isAbortError(err)) {
       results.push('❌ 连接超时（5秒），Ollama 服务可能未启动')
     } else {
-      results.push(`❌ 无法连接 Ollama：${err.message}`)
+      results.push(`❌ 无法连接 Ollama：${errorMessage(err)}`)
     }
     results.push('💡 请确保 Ollama 已启动：运行 `ollama serve`')
     results.push('💡 如果是 Electron 应用，可能需要设置 OLLAMA_ORIGINS=* 环境变量')
@@ -82,11 +83,11 @@ export async function diagnoseLocalModel(config: LLMConfigSingle): Promise<strin
     } else {
       results.push('⚠️ Chat API 返回了空响应')
     }
-  } catch (err: any) {
-    if (err.name === 'AbortError') {
+  } catch (err) {
+    if (isAbortError(err)) {
       results.push('❌ Chat API 超时（10秒），模型可能正在加载中')
     } else {
-      results.push(`❌ Chat API 测试失败：${err.message}`)
+      results.push(`❌ Chat API 测试失败：${errorMessage(err)}`)
     }
   }
 

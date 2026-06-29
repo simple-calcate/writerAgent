@@ -1,4 +1,5 @@
 import type { BrowserWindow } from 'electron'
+import { errorMessage } from '../utils/errors'
 import type {
   WritingTask, WACState, AgentExecutionContext,
   Project, Volume, Chapter, TaskContext
@@ -149,8 +150,8 @@ export class WriterAgentController {
         log.debug(`[WAC] 任务完成 (Critic Loop 路径)`)
       return finalContent
 
-    } catch (err: any) {
-      const errorMsg = err.message || 'Agent 执行失败'
+    } catch (err) {
+      const errorMsg = errorMessage(err) || 'Agent 执行失败'
       log.error(`[WAC] 任务失败: ${errorMsg}`)
       // 桥接回前端对话系统：使用前端传来的 streamId
       this.mainWindow.webContents.send('dialogue:error', { streamId: streamId || task.id, error: errorMsg })

@@ -21,8 +21,8 @@ export default function LocalModelDiagnostics({ config }: Props) {
     try {
       const res = await window.api.diagnoseLocalModel(config)
       setResults(res)
-    } catch (err: any) {
-      setResults([`❌ 诊断失败: ${err.message}`])
+    } catch (err) {
+      setResults([`❌ 诊断失败: ${(err instanceof Error ? err.message : String(err))}`])
     } finally {
       setRunning(false)
     }

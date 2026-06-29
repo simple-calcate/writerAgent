@@ -219,8 +219,8 @@ export const createDialogueSlice: StateCreator<
       })
       const { streamId } = await window.api.dialogueSend(dialogueLevel, dialogueEntityId, apiMessages)
       set({ activeStreamId: streamId })
-    } catch (err: any) {
-      set({ isStreaming: false, dialogueError: err.message })
+    } catch (err) {
+      set({ isStreaming: false, dialogueError: (err instanceof Error ? err.message : String(err)) })
     }
   },
 

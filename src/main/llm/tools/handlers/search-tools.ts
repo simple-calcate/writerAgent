@@ -1,4 +1,5 @@
 import { getLLMConfig } from '../../../store/db'
+import { errorMessage } from '../../../utils/errors'
 
 export async function handleSearchTools(
   toolName: string,
@@ -19,7 +20,7 @@ export async function handleSearchTools(
     return results.map((r, i) =>
       `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`
     ).join('\n\n')
-  } catch (err: any) {
-    return `错误：搜索请求失败 - ${err.message}`
+  } catch (err) {
+    return `错误：搜索请求失败 - ${errorMessage(err)}`
   }
 }

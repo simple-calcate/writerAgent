@@ -1,4 +1,6 @@
 import type { BrowserWindow } from 'electron'
+import { errorMessage, hasErrorStatus } from '../utils/errors'
+import type { ReasoningDelta } from './types'
 import type OpenAI from 'openai'
 import type { LLMConfigSingle } from '../../shared/types'
 import { buildThinkingParams, hasThinkingParams } from './client'
@@ -37,10 +39,10 @@ export async function streamWithThinking(
       stream: true,
       ...thinkingParams
     } as any, { signal }) as any
-  } catch (err: any) {
+  } catch (err) {
     if (signal?.aborted) throw err
     // thinking params 导致 400/422，降级重试
-    if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+    if (hasThinkingParams(config) && hasErrorStatus(err, 400, 422)) {
       stream = await client.chat.completions.create({
         ...params,
         stream: true
@@ -59,8 +61,8 @@ export async function streamWithThinking(
       const delta = chunk.choices[0]?.delta
 
       // reasoning_content → 发送思考过程
-      if ((delta as any)?.reasoning_content) {
-        mainWindow.webContents.send('ai:thinking-chunk', { chunk: (delta as any).reasoning_content })
+      if ((delta as ReasoningDelta)?.reasoning_content) {
+        mainWindow.webContents.send('ai:thinking-chunk', { chunk: (delta as ReasoningDelta).reasoning_content })
       }
 
       // content → 累积结果

@@ -10,12 +10,14 @@ import type {
   DialogueStreamError, DialogueToolStart, DialogueToolDone,
   DialogueToolApproval, DialogueToolApprovalResponse,
   DialogueThinkingChunk, DialogueThinkingDone,
-  AIThinkingChunk, AIThinkingDone
+  AIThinkingChunk, AIThinkingDone,
+  ReasoningStartEvent, ReasoningStepStartEvent, ReasoningStepDoneEvent,
+  ReasoningStepErrorEvent, ReasoningDoneEvent
 } from './dialogue'
 import type {
   AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete,
   WritingPhase, WACState, AgentFlowSnapshot, WritingTrajectory,
-  IntentClassifierResult
+  IntentClassifierResult, AgentRouteResult, AgentRewriteApprovalEvent
 } from './agent'
 
 export interface IPCAPI {
@@ -107,11 +109,11 @@ export interface IPCAPI {
   dialogueCompress: (level: DialogueLevel, entityId: string) => Promise<{ compressedCount: number; summary: string }>
 
   // Reasoning
-  onReasoningStart: (callback: (data: any) => void) => () => void
-  onReasoningStepStart: (callback: (data: any) => void) => () => void
-  onReasoningStepDone: (callback: (data: any) => void) => () => void
-  onReasoningStepError: (callback: (data: any) => void) => () => void
-  onReasoningDone: (callback: (data: any) => void) => () => void
+  onReasoningStart: (callback: (data: ReasoningStartEvent) => void) => () => void
+  onReasoningStepStart: (callback: (data: ReasoningStepStartEvent) => void) => () => void
+  onReasoningStepDone: (callback: (data: ReasoningStepDoneEvent) => void) => () => void
+  onReasoningStepError: (callback: (data: ReasoningStepErrorEvent) => void) => () => void
+  onReasoningDone: (callback: (data: ReasoningDoneEvent) => void) => () => void
 
   // AI Thinking (通用)
   onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => () => void
@@ -145,9 +147,9 @@ export interface IPCAPI {
   agentProcess: (level: DialogueLevel, entityId: string, userRequest: string) => Promise<{ streamId: string }>
   agentCancel: () => Promise<void>
   agentGetState: () => Promise<WACState>
-  agentRoute: (level: DialogueLevel, entityId: string, input: string) => Promise<{ classification: IntentClassifierResult; result: any }>
+  agentRoute: (level: DialogueLevel, entityId: string, input: string) => Promise<{ classification: IntentClassifierResult; result: AgentRouteResult }>
   agentApproveRewrite: (approvalId: string, approved: boolean) => Promise<void>
-  onAgentRewriteApproval: (callback: (data: { approvalId: string; taskId: string; score: any; strategy: string; instruction: string; round: number }) => void) => () => void
+  onAgentRewriteApproval: (callback: (data: AgentRewriteApprovalEvent) => void) => () => void
   onAgentPhaseChange: (callback: (data: AgentPhaseChange) => void) => () => void
   onAgentSubTaskUpdate: (callback: (data: AgentSubTaskUpdate) => void) => () => void
   onAgentCriticResult: (callback: (data: AgentCriticResult) => void) => () => void

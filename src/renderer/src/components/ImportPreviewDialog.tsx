@@ -13,8 +13,8 @@ export default function ImportPreviewDialog() {
     setImporting(true)
     try {
       await importBookConfirm(bookName.trim(), importPreview.chapters)
-    } catch (e: any) {
-      alert('导入失败：' + e.message)
+    } catch (e) {
+      alert('导入失败：' + (e instanceof Error ? e.message : String(e)))
     } finally {
       setImporting(false)
     }

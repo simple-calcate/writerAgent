@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { errorMessage, hasErrorStatus } from '../utils/errors'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from '../llm/client'
@@ -44,8 +45,8 @@ export async function callLLM(options: AgentCallOptions): Promise<AgentCallResul
       stream: true,
       ...thinkingParams
     }, { signal })
-  } catch (err: any) {
-    if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+  } catch (err) {
+    if (hasThinkingParams(config) && hasErrorStatus(err, 400, 422)) {
       stream = await client.chat.completions.create({
         model: config.model || 'gpt-4o-mini',
         messages: messages as any,
@@ -124,8 +125,8 @@ export async function callLLMSync(options: AgentCallOptions): Promise<AgentCallR
       content: choice?.message?.content || '',
       reasoningContent: (choice?.message as any)?.reasoning_content || undefined
     }
-  } catch (err: any) {
-    if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+  } catch (err) {
+    if (hasThinkingParams(config) && hasErrorStatus(err, 400, 422)) {
       const response = await client.chat.completions.create({
         model: config.model || 'gpt-4o-mini',
         messages: messages as any,

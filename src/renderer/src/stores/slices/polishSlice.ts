@@ -108,8 +108,8 @@ export const createPolishSlice: StateCreator<
       if (result.suggestions.length === 0) {
         set({ analyzeError: '未找到需要润色的段落' })
       }
-    } catch (e: any) {
-      const errorMsg = e.message || '未知错误'
+    } catch (e) {
+      const errorMsg = (e instanceof Error ? e.message : String(e)) || '未知错误'
       let detail = ''
       if (errorMsg.includes('JSON') || errorMsg.includes('parse')) {
         detail = 'AI 返回的内容无法解析为有效的 JSON 格式。这可能是由于模型输出格式不正确或响应被截断导致的。'

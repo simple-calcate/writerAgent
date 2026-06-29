@@ -105,3 +105,38 @@ export interface AIThinkingChunk {
 }
 
 export interface AIThinkingDone {}
+
+// ─── Reasoning 事件载荷 ───
+
+export interface ReasoningStartEvent {
+  sessionId: string
+  chainId: string
+  chainName: string
+  steps: { id: string; name: string }[]
+}
+
+export interface ReasoningStepStartEvent {
+  sessionId: string
+  stepId: string
+  stepName: string
+}
+
+export interface ReasoningStepDoneEvent {
+  sessionId: string
+  stepId: string
+  stepName: string
+  result: string
+}
+
+export interface ReasoningStepErrorEvent {
+  sessionId: string
+  stepId: string
+  stepName: string
+  error: string
+}
+
+export interface ReasoningDoneEvent {
+  sessionId: string
+  status: 'running' | 'completed' | 'error'
+  includeInContext: boolean
+}

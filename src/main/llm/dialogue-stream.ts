@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto'
+import { errorMessage, hasErrorStatus } from '../utils/errors'
+import type { ReasoningDelta } from './types'
 import type { BrowserWindow } from 'electron'
 import type { LLMConfigSingle, DialogueLevel, Project, Volume, Chapter, BookAIConfig, ContextConfig } from '../../shared/types'
 import { createClient, buildThinkingParams, hasThinkingParams } from './client'
@@ -144,7 +146,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       recordMemory({ type: 'dialogue_compressed', projectId: project.id, level, entityId: project.id, summary: compressed.compressedSummary, messageCount: compressed.compressedCount })
     }
 
-    const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string }> = [
+    const fullMessages: Array<{ role: 'system' | 'user' | 'assistant' | 'tool'; content: string; tool_call_id?: string; tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>; reasoning_content?: string }> = [
       { role: 'system', content: systemPrompt },
       ...finalMessages
     ]
@@ -168,8 +170,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
             stream: true,
             ...thinkingParams
           }, { signal: controller.signal })
-        } catch (err: any) {
-          if (hasThinkingParams(config) && (err.status === 400 || err.status === 422)) {
+        } catch (err) {
+          if (hasThinkingParams(config) && hasErrorStatus(err, 400, 422)) {
             stream = await client.chat.completions.create({
               model: config.model || 'gpt-4o-mini',
               messages: fullMessages as any,
@@ -194,8 +196,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
           const delta = chunk.choices[0]?.delta
 
-          if ((delta as any)?.reasoning_content) {
-            const rc = (delta as any).reasoning_content
+          if ((delta as ReasoningDelta)?.reasoning_content) {
+            const rc = (delta as ReasoningDelta).reasoning_content
             reasoningContent += rc
             if (!thinkingStarted) thinkingStarted = true
             mainWindow.webContents.send('dialogue:thinking-chunk', { streamId, chunk: rc })
@@ -235,7 +237,7 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
           return
         }
 
-        const assistantMsg: any = {
+        const assistantMsg: { role: 'assistant'; content: string; tool_calls?: Array<{ id: string; type: 'function'; function: { name: string; arguments: string } }>; reasoning_content?: string } = {
           role: 'assistant',
           content: fullText || '',
           tool_calls: toolCalls.filter(tc => tc.functionName).map(tc => ({
@@ -342,8 +344,8 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
 
             mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result })
             fullMessages.push({ role: 'tool', content: result, tool_call_id: tc.id } as any)
-          } catch (err: any) {
-            const errorMsg = err.message || '工具执行失败'
+          } catch (err) {
+            const errorMsg = errorMessage(err) || '工具执行失败'
             mainWindow.webContents.send('dialogue:tool-done', { streamId, toolCallId: tc.id, toolName: tc.functionName, result: `错误：${errorMsg}` })
             fullMessages.push({ role: 'tool', content: `错误：${errorMsg}`, tool_call_id: tc.id } as any)
           }
@@ -353,9 +355,9 @@ export async function startDialogueStream(params: StartStreamParams): Promise<{ 
       if (!controller.signal.aborted) {
         mainWindow.webContents.send('dialogue:done', { streamId, fullText: '', reasoningContext: reasoningContext || undefined })
       }
-    } catch (err: any) {
+    } catch (err) {
       if (controller.signal.aborted) return
-      const errorMsg = err.message || '对话生成失败'
+      const errorMsg = errorMessage(err) || '对话生成失败'
       mainWindow.webContents.send('dialogue:error', { streamId, error: errorMsg })
     } finally {
       activeStreams.delete(streamId)

@@ -1,4 +1,5 @@
 import { autoUpdater } from 'electron-updater'
+import { errorMessage, isAbortError } from './utils/errors'
 import { BrowserWindow, app } from 'electron'
 import { createWriteStream, existsSync, mkdirSync, unlinkSync } from 'fs'
 import { join } from 'path'
@@ -80,7 +81,7 @@ export function initUpdater(win: BrowserWindow): void {
     clearCheckTimeout()
     currentStatus = {
       status: 'error',
-      error: err.message
+      error: errorMessage(err)
     }
     sendStatus()
   })
@@ -155,9 +156,9 @@ export async function checkForUpdates(): Promise<UpdateStatus> {
 
   try {
     await autoUpdater.checkForUpdates()
-  } catch (err: any) {
+  } catch (err) {
     clearCheckTimeout()
-    currentStatus = { status: 'error', error: err.message }
+    currentStatus = { status: 'error', error: errorMessage(err) }
     sendStatus()
   }
   return getUpdateStatus()
@@ -243,9 +244,9 @@ export async function downloadFromGitee(): Promise<void> {
 
     currentStatus = { status: 'downloaded', version, giteeInstallerPath: filePath }
     sendStatus()
-  } catch (err: any) {
-    if (err.name === 'AbortError') return
-    currentStatus = { status: 'error', error: `Gitee 下载失败: ${err.message}` }
+  } catch (err) {
+    if (isAbortError(err)) return
+    currentStatus = { status: 'error', error: `Gitee 下载失败: ${errorMessage(err)}` }
     sendStatus()
   }
 }

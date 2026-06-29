@@ -1,4 +1,5 @@
 import { BrowserWindow, ipcMain } from 'electron'
+import { errorMessage } from '../utils/errors'
 import { resolveFeatureConfig, resolveAIConfig, getProjects, getVolumes, getChapters, getConversation, saveConversation, deleteConversation, getOutline, getSkills, getContextConfig } from '../store/db'
 import { autoPolish, polishText, summarizeChapter } from '../llm/client'
 import { refineSummary } from '../llm/refine-summary'
@@ -223,7 +224,7 @@ export function registerAIHandlers(
 
       // writing or chat pipeline — streamId passed to router, matches frontend's activeStreamId
       return { streamId: result.streamId }
-    } catch (err: any) {
+    } catch (err) {
       log.error('[Dialogue] Router error, falling back to dialogue stream:', err)
       return startDialogueStream({
         config,

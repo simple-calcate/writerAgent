@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain, AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete, WACState, AgentFlowSnapshot, WritingTrajectory } from '../shared/types'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain, AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete, WACState, AgentFlowSnapshot, WritingTrajectory, FeatureSkillIds, ProjectReasoningConfig, ReasoningStartEvent, ReasoningStepStartEvent, ReasoningStepDoneEvent, ReasoningStepErrorEvent, ReasoningDoneEvent, AgentRewriteApprovalEvent } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -125,10 +125,10 @@ const api: IPCAPI = {
   updateProjectEnabledSkills: (projectId: string, skillIds: string[]) =>
     ipcRenderer.invoke('update-project-enabled-skills', projectId, skillIds),
 
-  updateProjectFeatureSkillIds: (projectId: string, featureSkillIds: any) =>
+  updateProjectFeatureSkillIds: (projectId: string, featureSkillIds: FeatureSkillIds) =>
     ipcRenderer.invoke('update-project-feature-skill-ids', projectId, featureSkillIds),
 
-  updateProjectReasoningConfig: (projectId: string, config: any) =>
+  updateProjectReasoningConfig: (projectId: string, config: ProjectReasoningConfig) =>
     ipcRenderer.invoke('update-project-reasoning-config', projectId, config),
 
   exportSkills: (skillIds?: string[]) =>
@@ -171,49 +171,49 @@ const api: IPCAPI = {
     ipcRenderer.invoke('delete-conversation', level, entityId),
 
   onDialogueChunk: (callback: (data: DialogueStreamChunk) => void) => {
-    const handler = (_event: any, data: DialogueStreamChunk) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueStreamChunk) => callback(data)
     ipcRenderer.on('dialogue:chunk', handler)
     return () => { ipcRenderer.removeListener('dialogue:chunk', handler) }
   },
 
   onDialogueDone: (callback: (data: DialogueStreamDone) => void) => {
-    const handler = (_event: any, data: DialogueStreamDone) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueStreamDone) => callback(data)
     ipcRenderer.on('dialogue:done', handler)
     return () => { ipcRenderer.removeListener('dialogue:done', handler) }
   },
 
   onDialogueError: (callback: (data: DialogueStreamError) => void) => {
-    const handler = (_event: any, data: DialogueStreamError) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueStreamError) => callback(data)
     ipcRenderer.on('dialogue:error', handler)
     return () => { ipcRenderer.removeListener('dialogue:error', handler) }
   },
 
   onDialogueToolStart: (callback: (data: DialogueToolStart) => void) => {
-    const handler = (_event: any, data: DialogueToolStart) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueToolStart) => callback(data)
     ipcRenderer.on('dialogue:tool-start', handler)
     return () => { ipcRenderer.removeListener('dialogue:tool-start', handler) }
   },
 
   onDialogueToolDone: (callback: (data: DialogueToolDone) => void) => {
-    const handler = (_event: any, data: DialogueToolDone) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueToolDone) => callback(data)
     ipcRenderer.on('dialogue:tool-done', handler)
     return () => { ipcRenderer.removeListener('dialogue:tool-done', handler) }
   },
 
   onDialogueToolApproval: (callback: (data: DialogueToolApproval) => void) => {
-    const handler = (_event: any, data: DialogueToolApproval) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueToolApproval) => callback(data)
     ipcRenderer.on('dialogue:tool-approval', handler)
     return () => { ipcRenderer.removeListener('dialogue:tool-approval', handler) }
   },
 
   onDialogueThinkingChunk: (callback: (data: DialogueThinkingChunk) => void) => {
-    const handler = (_event: any, data: DialogueThinkingChunk) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueThinkingChunk) => callback(data)
     ipcRenderer.on('dialogue:thinking-chunk', handler)
     return () => { ipcRenderer.removeListener('dialogue:thinking-chunk', handler) }
   },
 
   onDialogueThinkingDone: (callback: (data: DialogueThinkingDone) => void) => {
-    const handler = (_event: any, data: DialogueThinkingDone) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: DialogueThinkingDone) => callback(data)
     ipcRenderer.on('dialogue:thinking-done', handler)
     return () => { ipcRenderer.removeListener('dialogue:thinking-done', handler) }
   },
@@ -228,45 +228,45 @@ const api: IPCAPI = {
     ipcRenderer.invoke('dialogue:compress', level, entityId),
 
   // Reasoning
-  onReasoningStart: (callback: (data: any) => void) => {
-    const handler = (_event: any, data: any) => callback(data)
+  onReasoningStart: (callback: (data: ReasoningStartEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: ReasoningStartEvent) => callback(data)
     ipcRenderer.on('dialogue:reasoning-start', handler)
     return () => { ipcRenderer.removeListener('dialogue:reasoning-start', handler) }
   },
 
-  onReasoningStepStart: (callback: (data: any) => void) => {
-    const handler = (_event: any, data: any) => callback(data)
+  onReasoningStepStart: (callback: (data: ReasoningStepStartEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: ReasoningStepStartEvent) => callback(data)
     ipcRenderer.on('dialogue:reasoning-step-start', handler)
     return () => { ipcRenderer.removeListener('dialogue:reasoning-step-start', handler) }
   },
 
-  onReasoningStepDone: (callback: (data: any) => void) => {
-    const handler = (_event: any, data: any) => callback(data)
+  onReasoningStepDone: (callback: (data: ReasoningStepDoneEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: ReasoningStepDoneEvent) => callback(data)
     ipcRenderer.on('dialogue:reasoning-step-done', handler)
     return () => { ipcRenderer.removeListener('dialogue:reasoning-step-done', handler) }
   },
 
-  onReasoningStepError: (callback: (data: any) => void) => {
-    const handler = (_event: any, data: any) => callback(data)
+  onReasoningStepError: (callback: (data: ReasoningStepErrorEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: ReasoningStepErrorEvent) => callback(data)
     ipcRenderer.on('dialogue:reasoning-step-error', handler)
     return () => { ipcRenderer.removeListener('dialogue:reasoning-step-error', handler) }
   },
 
-  onReasoningDone: (callback: (data: any) => void) => {
-    const handler = (_event: any, data: any) => callback(data)
+  onReasoningDone: (callback: (data: ReasoningDoneEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: ReasoningDoneEvent) => callback(data)
     ipcRenderer.on('dialogue:reasoning-done', handler)
     return () => { ipcRenderer.removeListener('dialogue:reasoning-done', handler) }
   },
 
   // AI Thinking (通用)
   onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => {
-    const handler = (_event: any, data: AIThinkingChunk) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AIThinkingChunk) => callback(data)
     ipcRenderer.on('ai:thinking-chunk', handler)
     return () => { ipcRenderer.removeListener('ai:thinking-chunk', handler) }
   },
 
   onAIThinkingDone: (callback: (data: AIThinkingDone) => void) => {
-    const handler = (_event: any, data: AIThinkingDone) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AIThinkingDone) => callback(data)
     ipcRenderer.on('ai:thinking-done', handler)
     return () => { ipcRenderer.removeListener('ai:thinking-done', handler) }
   },
@@ -307,7 +307,7 @@ const api: IPCAPI = {
     ipcRenderer.invoke('update:get-status'),
 
   onUpdateStatus: (callback: (status: UpdateStatus) => void) => {
-    const handler = (_event: any, status: UpdateStatus) => callback(status)
+    const handler = (_event: IpcRendererEvent, status: UpdateStatus) => callback(status)
     ipcRenderer.on('update:status', handler)
     return () => { ipcRenderer.removeListener('update:status', handler) }
   },
@@ -347,62 +347,62 @@ const api: IPCAPI = {
   agentApproveRewrite: (approvalId: string, approved: boolean) =>
     ipcRenderer.invoke('agent:approve-rewrite', approvalId, approved),
 
-  onAgentRewriteApproval: (callback: (data: { approvalId: string; taskId: string; score: any; strategy: string; instruction: string; round: number }) => void) => {
-    const handler = (_event: any, data: any) => callback(data)
+  onAgentRewriteApproval: (callback: (data: AgentRewriteApprovalEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: AgentRewriteApprovalEvent) => callback(data)
     ipcRenderer.on('agent:rewrite-approval', handler)
     return () => { ipcRenderer.removeListener('agent:rewrite-approval', handler) }
   },
 
   onAgentPhaseChange: (callback: (data: AgentPhaseChange) => void) => {
-    const handler = (_event: any, data: AgentPhaseChange) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AgentPhaseChange) => callback(data)
     ipcRenderer.on('agent:phase-change', handler)
     return () => { ipcRenderer.removeListener('agent:phase-change', handler) }
   },
 
   onAgentSubTaskUpdate: (callback: (data: AgentSubTaskUpdate) => void) => {
-    const handler = (_event: any, data: AgentSubTaskUpdate) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AgentSubTaskUpdate) => callback(data)
     ipcRenderer.on('agent:subtask-update', handler)
     return () => { ipcRenderer.removeListener('agent:subtask-update', handler) }
   },
 
   onAgentCriticResult: (callback: (data: AgentCriticResult) => void) => {
-    const handler = (_event: any, data: AgentCriticResult) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AgentCriticResult) => callback(data)
     ipcRenderer.on('agent:critic-result', handler)
     return () => { ipcRenderer.removeListener('agent:critic-result', handler) }
   },
 
   onAgentTaskComplete: (callback: (data: AgentTaskComplete) => void) => {
-    const handler = (_event: any, data: AgentTaskComplete) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AgentTaskComplete) => callback(data)
     ipcRenderer.on('agent:task-complete', handler)
     return () => { ipcRenderer.removeListener('agent:task-complete', handler) }
   },
 
   onAgentChunk: (callback: (data: { streamId: string; chunk: string }) => void) => {
-    const handler = (_event: any, data: { streamId: string; chunk: string }) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: { streamId: string; chunk: string }) => callback(data)
     ipcRenderer.on('agent:chunk', handler)
     return () => { ipcRenderer.removeListener('agent:chunk', handler) }
   },
 
   onAgentThinkingChunk: (callback: (data: { streamId: string; chunk: string }) => void) => {
-    const handler = (_event: any, data: { streamId: string; chunk: string }) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: { streamId: string; chunk: string }) => callback(data)
     ipcRenderer.on('agent:thinking-chunk', handler)
     return () => { ipcRenderer.removeListener('agent:thinking-chunk', handler) }
   },
 
   onAgentThinkingDone: (callback: (data: { streamId: string }) => void) => {
-    const handler = (_event: any, data: { streamId: string }) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: { streamId: string }) => callback(data)
     ipcRenderer.on('agent:thinking-done', handler)
     return () => { ipcRenderer.removeListener('agent:thinking-done', handler) }
   },
 
   onAgentFlowUpdate: (callback: (data: AgentFlowSnapshot) => void) => {
-    const handler = (_event: any, data: AgentFlowSnapshot) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: AgentFlowSnapshot) => callback(data)
     ipcRenderer.on('agent:flow-update', handler)
     return () => { ipcRenderer.removeListener('agent:flow-update', handler) }
   },
 
   onAgentTrajectory: (callback: (data: WritingTrajectory) => void) => {
-    const handler = (_event: any, data: WritingTrajectory) => callback(data)
+    const handler = (_event: IpcRendererEvent, data: WritingTrajectory) => callback(data)
     ipcRenderer.on('agent:trajectory', handler)
     return () => { ipcRenderer.removeListener('agent:trajectory', handler) }
   },

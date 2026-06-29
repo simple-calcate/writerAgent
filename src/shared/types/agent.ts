@@ -286,3 +286,19 @@ export interface ProjectMemory {
   dialogue: DialogueSummaryEntry[]
   lastUpdated: string
 }
+
+// agentRoute 返回的 result 联合类型（对应 task-router 三条 pipeline）
+export type AgentRouteResult =
+  | { pipeline: 'writing'; streamId: string }
+  | { pipeline: 'analysis'; result: AnalysisResult }
+  | { pipeline: 'chat'; streamId: string }
+
+// agent:rewrite-approval 事件载荷
+export interface AgentRewriteApprovalEvent {
+  approvalId: string
+  taskId: string
+  score: CriticScore
+  strategy: string
+  instruction: string
+  round: number
+}

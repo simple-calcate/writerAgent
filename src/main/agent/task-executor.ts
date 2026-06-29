@@ -1,4 +1,5 @@
 import type { SubTask, AgentResult, AgentExecutionContext } from '../../shared/types'
+import { errorMessage } from '../utils/errors'
 import { executeWriter } from './writer'
 import { executeCritic } from './critic'
 import { executePlanner } from './planner'
@@ -76,9 +77,9 @@ async function executeLayer(
         task.status = 'done'
         completedTasks.set(task.id, result)
         onTaskUpdate?.(task.id, 'done', result)
-      } catch (err: any) {
+      } catch (err) {
         task.status = 'failed'
-        task.result = { agentRole: task.agentRole, success: false, content: '', error: err.message }
+        task.result = { agentRole: task.agentRole, success: false, content: '', error: errorMessage(err) }
         onTaskUpdate?.(task.id, 'failed', task.result)
       }
     })
@@ -94,9 +95,9 @@ async function executeLayer(
       task.status = 'done'
       completedTasks.set(task.id, result)
       onTaskUpdate?.(task.id, 'done', result)
-    } catch (err: any) {
+    } catch (err) {
       task.status = 'failed'
-      task.result = { agentRole: task.agentRole, success: false, content: '', error: err.message }
+      task.result = { agentRole: task.agentRole, success: false, content: '', error: errorMessage(err) }
       onTaskUpdate?.(task.id, 'failed', task.result)
     }
   }

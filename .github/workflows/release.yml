@@ -42,7 +42,14 @@ jobs:
       - name: Read version from tag
         id: version
         shell: bash
-        run: echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          echo "VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          # 自动识别预发布版本（含 -beta / -rc / -alpha / -dev）
+          if [[ "${GITHUB_REF#refs/tags/}" =~ -(beta|rc|alpha|dev)\.?[0-9]*$ ]]; then
+            echo "IS_PRERELEASE=true" >> $GITHUB_OUTPUT
+          else
+            echo "IS_PRERELEASE=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Build & package (electron-builder)
         # 跳过 obfuscate（开源项目，混淆拖慢构建；如需混淆改用 npm run dist）
@@ -58,6 +65,7 @@ jobs:
           tag_name: ${{ steps.version.outputs.VERSION }}
           name: ${{ steps.version.outputs.VERSION }}
           generate_release_notes: true
+          prerelease: ${{ steps.version.outputs.IS_PRERELEASE }}
           files: |
             release/novel-writer-setup-*.exe
             release/novel-writer-portable-*.exe

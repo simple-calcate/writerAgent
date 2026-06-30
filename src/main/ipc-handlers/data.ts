@@ -28,7 +28,7 @@ export function registerDataHandlers(mainWindow: BrowserWindow): void {
   ipcMain.handle('rename-chapter', (_e, id: string, title: string) => renameChapter(id, title))
   ipcMain.handle('update-chapter', (_e, id: string, data) => updateChapter(id, data))
   ipcMain.handle('delete-chapter', (_e, id: string) => deleteChapter(id))
-  ipcMain.handle('update-chapter-summary', (_e, chapterId: string, summary: string | null) => updateChapterSummary(chapterId, summary))
+  ipcMain.handle('update-chapter-summary', (_e, chapterId: string, summary: string | null, contentHash?: string | null) => updateChapterSummary(chapterId, summary, contentHash))
 
   // Versions
   ipcMain.handle('get-versions', (_e, chapterId: string) => getVersions(chapterId))

@@ -106,6 +106,45 @@ export interface AIThinkingChunk {
 
 export interface AIThinkingDone {}
 
+// ─── 批量摘要生成事件 ───
+
+export interface SummaryBatchProgressEvent {
+  /** 本次批量任务的 ID，前端据此过滤事件 */
+  batchId: string
+  /** 当前章节序号（1-based） */
+  current: number
+  /** 总章节数 */
+  total: number
+  /** 当前章节 ID */
+  chapterId: string
+  /** 当前章节标题（用于 UI 显示） */
+  chapterTitle: string
+  /** 已成功数 */
+  succeeded: number
+  /** 已失败数 */
+  failed: number
+  /** 已跳过数（如开启了"跳过最新"） */
+  skipped: number
+}
+
+export interface SummaryBatchDoneEvent {
+  batchId: string
+  total: number
+  succeeded: number
+  failed: number
+  skipped: number
+  /** 是否被用户中途取消 */
+  cancelled: boolean
+  /** 失败章节明细（章节 ID + 错误信息） */
+  failures: { chapterId: string; chapterTitle: string; error: string }[]
+}
+
+export interface SummaryBatchErrorEvent {
+  batchId: string
+  /** 致命错误（如配置缺失），批量任务直接终止 */
+  error: string
+}
+
 // ─── Reasoning 事件载荷 ───
 
 export interface ReasoningStartEvent {

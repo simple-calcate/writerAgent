@@ -125,10 +125,16 @@ export function deleteChapter(id: string): void {
   save()
 }
 
-export function updateChapterSummary(chapterId: string, summary: string | null): void {
+export function updateChapterSummary(chapterId: string, summary: string | null, contentHash?: string | null): void {
   const chapter = getStore().chapters.find(c => c.id === chapterId)
   if (!chapter) return
   chapter.summaryResult = summary
+  // summary 为 null 表示清除摘要，同时清除指纹；否则记录当前内容指纹（传 undefined 保留旧指纹）
+  if (summary === null) {
+    chapter.summaryOfContentHash = null
+  } else if (contentHash !== undefined) {
+    chapter.summaryOfContentHash = contentHash
+  }
   chapter.updatedAt = new Date().toISOString()
   save()
 }

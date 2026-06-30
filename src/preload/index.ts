@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain, AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete, WACState, AgentFlowSnapshot, WritingTrajectory, FeatureSkillIds, ProjectReasoningConfig, ReasoningStartEvent, ReasoningStepStartEvent, ReasoningStepDoneEvent, ReasoningStepErrorEvent, ReasoningDoneEvent, AgentRewriteApprovalEvent } from '../shared/types'
+import type { IPCAPI, ExportOptions, BookAIConfig, DialogueLevel, Conversation, DialogueStreamChunk, DialogueStreamDone, DialogueStreamError, DialogueToolStart, DialogueToolDone, DialogueToolApproval, DialogueToolApprovalResponse, DialogueThinkingChunk, DialogueThinkingDone, AIThinkingChunk, AIThinkingDone, SummaryBatchProgressEvent, SummaryBatchDoneEvent, SummaryBatchErrorEvent, Outline, ImportPreview, ImportConfirmResult, WritingSkill, UpdateStatus, ReasoningChain, AgentPhaseChange, AgentSubTaskUpdate, AgentCriticResult, AgentTaskComplete, WACState, AgentFlowSnapshot, WritingTrajectory, FeatureSkillIds, ProjectReasoningConfig, ReasoningStartEvent, ReasoningStepStartEvent, ReasoningStepDoneEvent, ReasoningStepErrorEvent, ReasoningDoneEvent, AgentRewriteApprovalEvent } from '../shared/types'
 
 const api: IPCAPI = {
   // AI
@@ -14,6 +14,12 @@ const api: IPCAPI = {
 
   refineSummary: (content: string, aiConfig?: Partial<BookAIConfig>) =>
     ipcRenderer.invoke('refine-summary', content, aiConfig),
+
+  summarizeBatch: (chapterIds: string[], options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) =>
+    ipcRenderer.invoke('summarize-batch', chapterIds, options),
+
+  summarizeBatchCancel: (batchId: string) =>
+    ipcRenderer.invoke('summarize-batch-cancel', batchId),
 
   // Config
   getLLMConfig: () =>
@@ -88,8 +94,8 @@ const api: IPCAPI = {
   deleteChapter: (id: string) =>
     ipcRenderer.invoke('delete-chapter', id),
 
-  updateChapterSummary: (chapterId: string, summary: string | null) =>
-    ipcRenderer.invoke('update-chapter-summary', chapterId, summary),
+  updateChapterSummary: (chapterId: string, summary: string | null, contentHash?: string | null) =>
+    ipcRenderer.invoke('update-chapter-summary', chapterId, summary, contentHash),
 
   // Versions
   getVersions: (chapterId: string) =>
@@ -273,6 +279,25 @@ const api: IPCAPI = {
 
   aiCancel: () =>
     ipcRenderer.invoke('ai:cancel'),
+
+  // 批量摘要事件
+  onSummaryBatchProgress: (callback: (data: SummaryBatchProgressEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: SummaryBatchProgressEvent) => callback(data)
+    ipcRenderer.on('summary-batch:progress', handler)
+    return () => { ipcRenderer.removeListener('summary-batch:progress', handler) }
+  },
+
+  onSummaryBatchDone: (callback: (data: SummaryBatchDoneEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: SummaryBatchDoneEvent) => callback(data)
+    ipcRenderer.on('summary-batch:done', handler)
+    return () => { ipcRenderer.removeListener('summary-batch:done', handler) }
+  },
+
+  onSummaryBatchError: (callback: (data: SummaryBatchErrorEvent) => void) => {
+    const handler = (_event: IpcRendererEvent, data: SummaryBatchErrorEvent) => callback(data)
+    ipcRenderer.on('summary-batch:error', handler)
+    return () => { ipcRenderer.removeListener('summary-batch:error', handler) }
+  },
 
   // Outlines
   getOutline: (level: DialogueLevel, entityId: string) =>

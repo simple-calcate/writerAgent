@@ -11,6 +11,7 @@ import type {
   DialogueToolApproval, DialogueToolApprovalResponse,
   DialogueThinkingChunk, DialogueThinkingDone,
   AIThinkingChunk, AIThinkingDone,
+  SummaryBatchProgressEvent, SummaryBatchDoneEvent, SummaryBatchErrorEvent,
   ReasoningStartEvent, ReasoningStepStartEvent, ReasoningStepDoneEvent,
   ReasoningStepErrorEvent, ReasoningDoneEvent
 } from './dialogue'
@@ -26,6 +27,10 @@ export interface IPCAPI {
   polishText: (original: string, context: string) => Promise<PolishResult>
   summarizeChapter: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<string>
   refineSummary: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<string>
+  /** 批量生成章节摘要。返回 batchId，进度通过 onSummaryBatchProgress 监听 */
+  summarizeBatch: (chapterIds: string[], options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) => Promise<{ batchId: string; total: number; skipped: number }>
+  /** 取消正在进行的批量摘要任务 */
+  summarizeBatchCancel: (batchId: string) => Promise<void>
 
   // Config
   getLLMConfig: () => Promise<LLMConfig>
@@ -60,7 +65,7 @@ export interface IPCAPI {
   renameChapter: (id: string, title: string) => Promise<void>
   updateChapter: (id: string, data: Partial<Chapter>) => Promise<void>
   deleteChapter: (id: string) => Promise<void>
-  updateChapterSummary: (chapterId: string, summary: string | null) => Promise<void>
+  updateChapterSummary: (chapterId: string, summary: string | null, contentHash?: string | null) => Promise<void>
 
   // Versions
   getVersions: (chapterId: string) => Promise<VersionSnapshot[]>
@@ -119,6 +124,11 @@ export interface IPCAPI {
   onAIThinkingChunk: (callback: (data: AIThinkingChunk) => void) => () => void
   onAIThinkingDone: (callback: (data: AIThinkingDone) => void) => () => void
   aiCancel: () => Promise<void>
+
+  // 批量摘要事件
+  onSummaryBatchProgress: (callback: (data: SummaryBatchProgressEvent) => void) => () => void
+  onSummaryBatchDone: (callback: (data: SummaryBatchDoneEvent) => void) => () => void
+  onSummaryBatchError: (callback: (data: SummaryBatchErrorEvent) => void) => () => void
 
   // Outlines
   getOutline: (level: DialogueLevel, entityId: string) => Promise<Outline | undefined>

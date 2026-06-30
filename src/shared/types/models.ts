@@ -120,6 +120,7 @@ export interface Chapter {
   content: string
   polishingMarks: PolishMark[]
   summaryResult: string | null // 保存的摘要结果
+  summaryOfContentHash?: string | null // 生成摘要时的内容指纹；与当前 content 比较可知摘要是否过期
   orderIndex: number
   createdAt: string
   updatedAt: string

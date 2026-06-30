@@ -70,28 +70,33 @@ export function VolumeLevel() {
   // 批量摘要的统计预览（仅用于面板提示）
   const batchPreview = (() => {
     const targetChapters = batchRange === 'volume' ? volumeChapters : chapters
-    if (targetChapters.length === 0) return { total: 0, toGen: 0, skip: 0 }
+    // 其他卷或未分卷的章节数（选"全部"时用于显示明细）
+    const otherCount = Math.max(0, chapters.length - volumeChapters.length)
+    if (targetChapters.length === 0) return { total: 0, toGen: 0, skip: 0, other: otherCount }
     const toGen = skipFresh
       ? targetChapters.filter(c => c.content.trim() && getSummaryStatus(c) !== 'fresh').length
       : targetChapters.filter(c => c.content.trim()).length
     return {
       total: targetChapters.length,
       toGen,
-      skip: targetChapters.length - toGen
+      skip: targetChapters.length - toGen,
+      other: otherCount
     }
   })()
 
   // 批量精炼的统计预览
   const refinePreview = (() => {
     const targetChapters = refineRange === 'volume' ? volumeChapters : chapters
-    if (targetChapters.length === 0) return { total: 0, toGen: 0, skip: 0 }
+    const otherCount = Math.max(0, chapters.length - volumeChapters.length)
+    if (targetChapters.length === 0) return { total: 0, toGen: 0, skip: 0, other: otherCount }
     const toGen = refineSkipFresh
       ? targetChapters.filter(c => c.content.trim() && getSummaryStatus(c) !== 'fresh').length
       : targetChapters.filter(c => c.content.trim()).length
     return {
       total: targetChapters.length,
       toGen,
-      skip: targetChapters.length - toGen
+      skip: targetChapters.length - toGen,
+      other: otherCount
     }
   })()
 
@@ -174,9 +179,9 @@ export function VolumeLevel() {
                 <div className="text-[10px] text-[var(--nw-text-muted)] leading-relaxed">
                   {batchPreview.total === 0
                     ? '当前范围无章节'
-                    : `将生成 ${batchPreview.toGen} 章${
-                        batchPreview.skip > 0 ? `（跳过 ${batchPreview.skip} 章已最新或空）` : ''
-                      }`}
+                    : batchRange === 'all' && batchPreview.other > 0
+                      ? `本书共 ${batchPreview.total} 章（当前卷 ${volumeChapters.length} + 其他卷/未分卷 ${batchPreview.other}）\n将生成 ${batchPreview.toGen} 章${batchPreview.skip > 0 ? `（跳过 ${batchPreview.skip} 章已最新或空）` : ''}`
+                      : `将生成 ${batchPreview.toGen} 章${batchPreview.skip > 0 ? `（跳过 ${batchPreview.skip} 章已最新或空）` : ''}`}
                 </div>
 
                 <div className="flex gap-1.5 pt-1">
@@ -258,12 +263,12 @@ export function VolumeLevel() {
                   <span>跳过摘要仍最新的章节</span>
                 </label>
 
-                <div className="text-[10px] text-[var(--nw-text-muted)] leading-relaxed">
+                <div className="text-[10px] text-[var(--nw-text-muted)] leading-relaxed whitespace-pre-line">
                   {refinePreview.total === 0
                     ? '当前范围无章节'
-                    : `将精炼 ${refinePreview.toGen} 章${
-                        refinePreview.skip > 0 ? `（跳过 ${refinePreview.skip} 章已最新或空）` : ''
-                      }`}
+                    : refineRange === 'all' && refinePreview.other > 0
+                      ? `本书共 ${refinePreview.total} 章（当前卷 ${volumeChapters.length} + 其他卷/未分卷 ${refinePreview.other}）\n将精炼 ${refinePreview.toGen} 章${refinePreview.skip > 0 ? `（跳过 ${refinePreview.skip} 章已最新或空）` : ''}`
+                      : `将精炼 ${refinePreview.toGen} 章${refinePreview.skip > 0 ? `（跳过 ${refinePreview.skip} 章已最新或空）` : ''}`}
                 </div>
 
                 <div className="flex gap-1.5 pt-1">

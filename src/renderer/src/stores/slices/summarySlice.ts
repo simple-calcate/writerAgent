@@ -1,5 +1,5 @@
 import type { StateCreator } from 'zustand'
-import { contentHash } from '../../../../shared/utils/contentHash'
+import { contentHash, getSummaryStatus } from '../../../../shared/utils/contentHash'
 import type { ChapterSlice } from './chapterSlice'
 import type { ProjectSlice } from './projectSlice'
 import type { UISlice } from './uiSlice'
@@ -16,6 +16,13 @@ export interface BatchProgress {
   skipped: number
 }
 
+export interface BatchResult {
+  succeeded: number
+  failed: number
+  skipped: number
+  cancelled: boolean
+}
+
 export interface SummarySlice {
   // State
   isSummarizing: boolean
@@ -28,8 +35,13 @@ export interface SummarySlice {
   isBatchSummarizing: boolean
   batchProgress: BatchProgress | null
   batchError: string | null
-  /** 上一次批量完成的统计（用于结果提示） */
-  batchResult: { succeeded: number; failed: number; skipped: number; cancelled: boolean } | null
+  batchResult: BatchResult | null
+
+  // 批量精炼状态
+  isBatchRefining: boolean
+  batchRefineProgress: BatchProgress | null
+  batchRefineError: string | null
+  batchRefineResult: BatchResult | null
 
   // Actions
   summarizeChapter: () => Promise<void>
@@ -43,6 +55,13 @@ export interface SummarySlice {
   cancelBatchSummarize: () => Promise<void>
   /** 清除批量结果提示 */
   clearBatchResult: () => void
+
+  /** 批量精炼章节总结 */
+  refineBatch: (chapterIds: string[], options?: { skipFresh?: boolean }) => Promise<void>
+  /** 取消正在进行的批量精炼 */
+  cancelBatchRefine: () => Promise<void>
+  /** 清除批量精炼结果提示 */
+  clearBatchRefineResult: () => void
 }
 
 export const createSummarySlice: StateCreator<
@@ -61,6 +80,11 @@ export const createSummarySlice: StateCreator<
   batchProgress: null,
   batchError: null,
   batchResult: null,
+
+  isBatchRefining: false,
+  batchRefineProgress: null,
+  batchRefineError: null,
+  batchRefineResult: null,
 
   summarizeChapter: async () => {
     const { summaryResult } = get()
@@ -319,5 +343,143 @@ export const createSummarySlice: StateCreator<
 
   clearBatchResult: () => {
     set({ batchResult: null, batchError: null } as any)
+  },
+
+  refineBatch: async (chapterIds, options) => {
+    if (get().isBatchRefining) return
+
+    const { chapters } = get() as any
+    // 预过滤目标章节（保留顺序）
+    const skipFresh = options?.skipFresh ?? true
+    const targets: { id: string; title: string; content: string }[] = []
+    let skipped = 0
+    for (const id of chapterIds) {
+      const ch = chapters.find((c: any) => c.id === id)
+      if (!ch) { skipped++; continue }
+      if (!ch.content.trim()) { skipped++; continue }
+      if (skipFresh && getSummaryStatus(ch) === 'fresh') { skipped++; continue }
+      targets.push({ id: ch.id, title: ch.title, content: ch.content })
+    }
+
+    set({
+      isBatchRefining: true,
+      batchRefineProgress: null,
+      batchRefineError: null,
+      batchRefineResult: null,
+      aiIsThinking: false,
+      aiThinkingText: ''
+    } as any)
+
+    const unsubChunk = window.api.onAIThinkingChunk((data) => {
+      set(s => ({ aiIsThinking: true, aiThinkingText: (s as any).aiThinkingText + data.chunk }) as any)
+    })
+    const unsubDone = window.api.onAIThinkingDone(() => {
+      set({ aiIsThinking: false } as any)
+    })
+
+    // 前端取消标志：cancel 时置 true，循环每章开头检查
+    let cancelled = false
+    // 把 cancel flag 挂到 store 上供 cancelBatchRefine 修改
+    ;(get() as any)._batchRefineCancelFlag = () => { cancelled = true }
+
+    const mergedAI = (get() as any).currentProject?.aiConfig
+
+    try {
+      // 全部被跳过 → 直接结束
+      if (targets.length === 0) {
+        set({
+          isBatchRefining: false,
+          batchRefineProgress: null,
+          batchRefineResult: { succeeded: 0, failed: 0, skipped, cancelled: false }
+        } as any)
+        return
+      }
+
+      let succeeded = 0
+      let failed = 0
+      const failures: { chapterId: string; chapterTitle: string; error: string }[] = []
+
+      for (let i = 0; i < targets.length; i++) {
+        if (cancelled) break
+        const target = targets[i]
+
+        // 进度更新（开始处理前）
+        set({
+          batchRefineProgress: {
+            batchId: 'refine_batch',
+            current: i,
+            total: targets.length,
+            chapterId: target.id,
+            chapterTitle: target.title,
+            succeeded,
+            failed,
+            skipped
+          },
+          aiThinkingText: ''
+        } as any)
+
+        try {
+          const result = await window.api.refineSummary(target.content, mergedAI)
+          if (cancelled) break
+          const hash = contentHash(target.content)
+          await window.api.updateChapterSummary(target.id, result, hash)
+          // 同步 store 中该章节
+          set(s => ({
+            chapters: s.chapters.map(c => c.id === target.id ? { ...c, summaryResult: result, summaryOfContentHash: hash } : c)
+          } as any))
+          succeeded++
+        } catch (e) {
+          if (cancelled) break
+          failed++
+          const msg = e instanceof Error ? e.message : String(e)
+          failures.push({ chapterId: target.id, chapterTitle: target.title, error: msg })
+        }
+
+        // 单章完成后更新进度
+        set({
+          batchRefineProgress: {
+            batchId: 'refine_batch',
+            current: i + 1,
+            total: targets.length,
+            chapterId: target.id,
+            chapterTitle: target.title,
+            succeeded,
+            failed,
+            skipped
+          }
+        } as any)
+      }
+
+      set({
+        isBatchRefining: false,
+        batchRefineProgress: null,
+        batchRefineResult: { succeeded, failed, skipped, cancelled }
+      } as any)
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      set({
+        isBatchRefining: false,
+        batchRefineProgress: null,
+        batchRefineError: msg,
+        batchRefineResult: null
+      } as any)
+    } finally {
+      ;(get() as any)._batchRefineCancelFlag = null
+      unsubChunk()
+      unsubDone()
+      set({ aiIsThinking: false, aiThinkingText: '' } as any)
+    }
+  },
+
+  cancelBatchRefine: async () => {
+    // 触发前端取消标志
+    const flag = (get() as any)._batchRefineCancelFlag
+    if (typeof flag === 'function') flag()
+    // 同时中断当前正在进行的单章 refine IPC
+    await window.api.aiCancel()
+  },
+
+  clearBatchRefineResult: () => {
+    set({ batchRefineResult: null, batchRefineError: null } as any)
   }
 })

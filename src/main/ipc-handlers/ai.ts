@@ -358,7 +358,7 @@ export function registerAIHandlers(
    * 启动批量章节摘要生成。立即返回 batchId，实际生成在后台异步进行，
    * 进度通过 'summary-batch:progress' 事件推送，完成推送 'summary-batch:done'。
    */
-  ipcMain.handle('summarize-batch', async (_e, chapterIds: string[], options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) => {
+  ipcMain.handle('summarize-batch', async (_e, chapterIds: string[], projectId: string, options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) => {
     const config = resolveFeatureConfig('summary')
     if (!config) throw new Error('摘要功能未启用，请在设置中开启')
     if (!config.apiKey) throw new Error('请先在设置中配置 API Key')
@@ -374,28 +374,24 @@ export function registerAIHandlers(
 
     const skipFresh = options?.skipFresh ?? false
 
-    // 收集章节及其所属项目
-    const allProjects = getProjects()
+    // 只在指定项目范围内查找章节（防止跨书）
+    const project = getProjects().find(p => p.id === projectId)
+    if (!project) throw new Error('找不到当前项目')
+    const projectChapters = getChapters(projectId)
+
     const targets: { chapter: Chapter; project: { id: string; aiConfig: BookAIConfig } }[] = []
     let skipped = 0
 
     for (const id of chapterIds) {
-      let found: { chapter: Chapter; project: { id: string; aiConfig: BookAIConfig } } | null = null
-      for (const p of allProjects) {
-        const ch = getChapters(p.id).find(c => c.id === id)
-        if (ch) {
-          found = { chapter: ch, project: { id: p.id, aiConfig: p.aiConfig } }
-          break
-        }
-      }
-      if (!found) { skipped++; continue }
+      const ch = projectChapters.find(c => c.id === id)
+      if (!ch) { skipped++; continue }
 
       // 空内容跳过
-      if (!found.chapter.content.trim()) { skipped++; continue }
+      if (!ch.content.trim()) { skipped++; continue }
       // 启用"跳过最新"时，摘要仍最新的章节跳过
-      if (skipFresh && !isSummaryStale(found.chapter)) { skipped++; continue }
+      if (skipFresh && !isSummaryStale(ch)) { skipped++; continue }
 
-      targets.push(found)
+      targets.push({ chapter: ch, project: { id: project.id, aiConfig: project.aiConfig } })
     }
 
     const batchId = `batch_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`

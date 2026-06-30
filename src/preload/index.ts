@@ -15,8 +15,8 @@ const api: IPCAPI = {
   refineSummary: (content: string, aiConfig?: Partial<BookAIConfig>) =>
     ipcRenderer.invoke('refine-summary', content, aiConfig),
 
-  summarizeBatch: (chapterIds: string[], options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) =>
-    ipcRenderer.invoke('summarize-batch', chapterIds, options),
+  summarizeBatch: (chapterIds: string[], projectId: string, options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) =>
+    ipcRenderer.invoke('summarize-batch', chapterIds, projectId, options),
 
   summarizeBatchCancel: (batchId: string) =>
     ipcRenderer.invoke('summarize-batch-cancel', batchId),

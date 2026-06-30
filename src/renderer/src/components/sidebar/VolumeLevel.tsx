@@ -52,8 +52,10 @@ export function VolumeLevel() {
     const targetChapters = batchRange === 'volume' ? volumeChapters : chapters
     const ids = targetChapters.map(c => c.id)
     if (ids.length === 0) return
+    const projectId = (useAppStore.getState() as any).currentProject?.id
+    if (!projectId) return
     setShowBatchPanel(false)
-    void summarizeBatch(ids, { skipFresh })
+    void summarizeBatch(ids, projectId, { skipFresh })
   }
 
   // 启动批量精炼
@@ -155,7 +157,7 @@ export function VolumeLevel() {
                       onChange={() => setBatchRange('all')}
                       className="accent-[var(--nw-accent)]"
                     />
-                    <span>全部章节（{chapters.length} 章）</span>
+                    <span>本书全部章节（{chapters.length} 章）</span>
                   </label>
                 </div>
 
@@ -242,7 +244,7 @@ export function VolumeLevel() {
                       onChange={() => setRefineRange('all')}
                       className="accent-orange-400"
                     />
-                    <span>全部章节（{chapters.length} 章）</span>
+                    <span>本书全部章节（{chapters.length} 章）</span>
                   </label>
                 </div>
 

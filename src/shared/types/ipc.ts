@@ -27,8 +27,8 @@ export interface IPCAPI {
   polishText: (original: string, context: string) => Promise<PolishResult>
   summarizeChapter: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<string>
   refineSummary: (content: string, aiConfig?: Partial<BookAIConfig>) => Promise<string>
-  /** 批量生成章节摘要。返回 batchId，进度通过 onSummaryBatchProgress 监听 */
-  summarizeBatch: (chapterIds: string[], options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) => Promise<{ batchId: string; total: number; skipped: number }>
+  /** 批量生成章节摘要。返回 batchId，进度通过 onSummaryBatchProgress 监听。projectId 用于限定查找范围，防止跨书 */
+  summarizeBatch: (chapterIds: string[], projectId: string, options?: { skipFresh?: boolean; aiConfig?: Partial<BookAIConfig> }) => Promise<{ batchId: string; total: number; skipped: number }>
   /** 取消正在进行的批量摘要任务 */
   summarizeBatchCancel: (batchId: string) => Promise<void>
 

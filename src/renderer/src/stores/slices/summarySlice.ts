@@ -50,7 +50,7 @@ export interface SummarySlice {
   refineVolumeSummaries: () => Promise<void>
 
   /** 批量生成章节摘要。chapterIds 为空时使用当前卷所有章节 */
-  summarizeBatch: (chapterIds: string[], options?: { skipFresh?: boolean }) => Promise<void>
+  summarizeBatch: (chapterIds: string[], projectId: string, options?: { skipFresh?: boolean }) => Promise<void>
   /** 取消正在进行的批量摘要 */
   cancelBatchSummarize: () => Promise<void>
   /** 清除批量结果提示 */
@@ -218,7 +218,7 @@ export const createSummarySlice: StateCreator<
     }
   },
 
-  summarizeBatch: async (chapterIds, options) => {
+  summarizeBatch: async (chapterIds, projectId, options) => {
     // 批量任务进行中时不允许重复触发
     if (get().isBatchSummarizing) return
 
@@ -257,7 +257,7 @@ export const createSummarySlice: StateCreator<
 
     try {
       const mergedAI = (get() as any).currentProject?.aiConfig
-      const res = await window.api.summarizeBatch(chapterIds, {
+      const res = await window.api.summarizeBatch(chapterIds, projectId, {
         skipFresh: options?.skipFresh ?? true,
         aiConfig: mergedAI
       })

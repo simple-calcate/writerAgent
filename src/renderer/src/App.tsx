@@ -22,8 +22,10 @@ const ReasoningPanel = lazy(() => import('./components/ReasoningPanel'))
 
 const MIN_SIDEBAR = 160
 const MAX_SIDEBAR = 400
-const MIN_RIGHT = 240
-const MAX_RIGHT = 800
+const DEFAULT_SIDEBAR = 256
+const MIN_RIGHT = 300
+const MAX_RIGHT = 1400
+const DEFAULT_RIGHT = 460
 
 function loadWidth(key: string, fallback: number): number {
   try {
@@ -61,7 +63,7 @@ export default function App() {
   } = useAppStore()
 
   const [sidebarWidth, setSidebarWidth] = useState(() => loadWidth('nw-sidebar-w', 256))
-  const [rightWidth, setRightWidth] = useState(() => loadWidth('nw-right-w', 320))
+  const [rightWidth, setRightWidth] = useState(() => loadWidth('nw-right-w', DEFAULT_RIGHT))
   const [whatsNewVersion, setWhatsNewVersion] = useState<string | null>(null)
   const [ready, setReady] = useState(false)
 
@@ -113,6 +115,11 @@ export default function App() {
     })
   }, [])
 
+  const handleSidebarReset = useCallback(() => {
+    setSidebarWidth(DEFAULT_SIDEBAR)
+    localStorage.setItem('nw-sidebar-w', String(DEFAULT_SIDEBAR))
+  }, [])
+
   const handleRightResize = useCallback((delta: number) => {
     setRightWidth(prev => {
       const next = prev - delta
@@ -124,6 +131,11 @@ export default function App() {
       localStorage.setItem('nw-right-w', String(clamped))
       return clamped
     })
+  }, [])
+
+  const handleRightReset = useCallback(() => {
+    setRightWidth(DEFAULT_RIGHT)
+    localStorage.setItem('nw-right-w', String(DEFAULT_RIGHT))
   }, [])
 
   return (
@@ -166,7 +178,7 @@ export default function App() {
             <ErrorBoundary name="侧栏">
               <Sidebar width={sidebarWidth} />
             </ErrorBoundary>
-            <ResizeHandle onResize={handleSidebarResize} />
+            <ResizeHandle onResize={handleSidebarResize} onDoubleClick={handleSidebarReset} />
           </>
         )}
 
@@ -206,7 +218,7 @@ export default function App() {
           </ErrorBoundary>
         )}
 
-        {rightPanel && <ResizeHandle onResize={handleRightResize} />}
+        {rightPanel && <ResizeHandle onResize={handleRightResize} onDoubleClick={handleRightReset} />}
         <ErrorBoundary name="右侧面板">
           <RightPanel width={rightWidth} />
         </ErrorBoundary>

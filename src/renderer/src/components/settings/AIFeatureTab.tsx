@@ -1,4 +1,4 @@
-import type { LLMConfig, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, ContinuationConfig, APIProfile, ContextConfig, AgentFeatureConfig } from '../../../../shared/types'
+import type { LLMConfig, AIFeatureConfig, ThinkingDepth, ThinkingDepthPreset, ContinuationConfig, APIProfile, ContextConfig, AgentFeatureConfig, ApprovalMode } from '../../../../shared/types'
 import { DEFAULT_CONTINUATION_CONFIG, DEFAULT_CONTEXT_CONFIG, DEFAULT_AGENT_FEATURE_CONFIG } from '../../../../shared/types'
 import { FEATURE_LIST, THINKING_PRESETS } from '../Settings'
 import ContextConfigSection from './ContextConfigSection'
@@ -19,8 +19,55 @@ export default function AIFeatureTab({
   handleBindProfile,
   getProfileName
 }: AIFeatureTabProps) {
+  const approvalMode: ApprovalMode = form.approvalMode ?? 'smart'
+
+  const setApprovalMode = (mode: ApprovalMode) => {
+    setForm(prev => ({ ...prev, approvalMode: mode }))
+  }
+
   return (
     <div className="space-y-3">
+      {/* 工具确认模式 */}
+      <div className="px-3 py-3 rounded-lg border border-white/15 bg-[var(--nw-surface-2)]/30">
+        <div className="flex items-center gap-2 mb-2.5">
+          <div className="w-1 h-5 bg-amber-500 rounded-full" />
+          <div>
+            <p className="text-sm text-[var(--nw-text-primary)] font-medium">工具确认模式</p>
+            <p className="text-[10px] text-[var(--nw-text-muted)] mt-0.5">控制 AI 调用工具时何时需要你手动确认</p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => setApprovalMode('smart')}
+            className={`text-left px-3 py-2.5 rounded-md border transition-all duration-200 ${
+              approvalMode === 'smart'
+                ? 'border-amber-500/50 bg-amber-500/10 shadow-[0_0_0_1px_rgba(245,158,11,0.2)]'
+                : 'border-white/10 bg-[var(--nw-surface-2)]/50 hover:border-white/20'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[11px] font-medium text-[var(--nw-text-primary)]">智能模式</span>
+              {approvalMode === 'smart' && <span className="text-[9px] px-1 py-0.5 bg-amber-500/20 text-amber-400 rounded-full">默认</span>}
+            </div>
+            <p className="text-[10px] text-[var(--nw-text-muted)] leading-relaxed">仅写入/修改操作需确认，查看章节内容等只读操作自动放行，对话更流畅</p>
+          </button>
+          <button
+            onClick={() => setApprovalMode('strict')}
+            className={`text-left px-3 py-2.5 rounded-md border transition-all duration-200 ${
+              approvalMode === 'strict'
+                ? 'border-red-500/50 bg-red-500/10 shadow-[0_0_0_1px_rgba(239,68,68,0.2)]'
+                : 'border-white/10 bg-[var(--nw-surface-2)]/50 hover:border-white/20'
+            }`}
+          >
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className="text-[11px] font-medium text-[var(--nw-text-primary)]">严格模式</span>
+              {approvalMode === 'strict' && <span className="text-[9px] px-1 py-0.5 bg-red-500/20 text-red-400 rounded-full">已启用</span>}
+            </div>
+            <p className="text-[10px] text-[var(--nw-text-muted)] leading-relaxed">所有标记工具（含查看章节内容）都需确认，每次操作完全可控</p>
+          </button>
+        </div>
+      </div>
+
       {FEATURE_LIST.map(feat => {
         const entry = form.aiFeatures[feat.key]
         const isAgent = feat.key === 'agent'

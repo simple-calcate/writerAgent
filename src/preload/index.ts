@@ -118,6 +118,12 @@ const api: IPCAPI = {
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) =>
     ipcRenderer.invoke('import-book-confirm', bookName, chapters),
 
+  onImportBookProgress: (callback: (progress: { imported: number; total: number; percent: number }) => void) => {
+    const handler = (_e: unknown, progress: { imported: number; total: number; percent: number }) => callback(progress)
+    ipcRenderer.on('import-book:progress', handler)
+    return () => ipcRenderer.removeListener('import-book:progress', handler)
+  },
+
   // Skills
   getSkills: () =>
     ipcRenderer.invoke('get-skills'),

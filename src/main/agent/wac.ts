@@ -151,15 +151,26 @@ export class WriterAgentController {
       return finalContent
 
     } catch (err) {
+      const errMessage = err instanceof Error ? err.message : String(err)
       const errorMsg = errorMessage(err) || 'Agent 执行失败'
-      log.error(`[WAC] 任务失败: ${errorMsg}`)
-      // 桥接回前端对话系统：使用前端传来的 streamId
-      this.mainWindow.webContents.send('dialogue:error', { streamId: streamId || task.id, error: errorMsg })
-      if (this.abortController?.signal.aborted) {
+      const isCancelled = this.abortController?.signal.aborted || errMessage === '任务已取消'
+      log.error(`[WAC] 任务失败: ${errorMsg} (cancelled=${isCancelled})`)
+
+      if (isCancelled) {
+        // 取消时也要发 done，否则前端 isStreaming 永久卡死
         this.stateMachine.forceTransition('idle')
         finalizeTask(task, this.state, this.stateMachine)
-        throw new Error('任务已取消')
+        this.mainWindow.webContents.send('dialogue:done', {
+          streamId: streamId || task.id,
+          fullText: '',
+          cancelled: true
+        })
+        log.debug(`[WAC] 任务取消，已发送 dialogue:done(cancelled=true)`)
+        return ''
       }
+
+      // 真正的错误：发 error 事件让前端重置
+      this.mainWindow.webContents.send('dialogue:error', { streamId: streamId || task.id, error: errorMsg })
       this.stateMachine.forceTransition('idle')
       finalizeTask(task, this.state, this.stateMachine)
       throw err

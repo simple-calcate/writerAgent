@@ -59,6 +59,7 @@ export interface DialogueStreamDone {
   streamId: string
   fullText: string
   reasoningContext?: string  // 推理链执行结果（用于保存到对话消息中）
+  cancelled?: boolean  // 任务被取消时为 true，前端应跳过保存空消息
 }
 
 export interface DialogueStreamError {

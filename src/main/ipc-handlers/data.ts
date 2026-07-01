@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { writeFileSync, mkdirSync, readFileSync } from 'fs'
-import { getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, updateProjectReasoningConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills, saveReasoningChain, deleteReasoningChain } from '../store/db'
+import { getProjects, createProject, renameProject, deleteProject, updateProjectAIConfig, updateProjectEnabledSkills, updateProjectFeatureSkillIds, updateProjectReasoningConfig, getVolumes, createVolume, renameVolume, updateVolume, deleteVolume, getChapters, createChapter, batchCreateChapters, renameChapter, updateChapter, deleteChapter, updateChapterSummary, getVersions, saveVersion, deleteVersion, getOutline, saveOutline, deleteOutline, getSkills, saveSkill, deleteSkill, saveSkills, saveReasoningChain, deleteReasoningChain } from '../store/db'
 import { getReasoningChains } from '../llm/reasoning-chains'
 import { parseTxtContent } from '../import-parser'
 import type { ExportOptions, BookAIConfig, DialogueLevel, WritingSkill, ReasoningChain } from '../../shared/types'
@@ -108,18 +108,36 @@ export function registerDataHandlers(mainWindow: BrowserWindow): void {
   })
 
   ipcMain.handle('import-book-confirm', async (_e, bookName: string, chapters: { title: string; content: string }[]) => {
+    if (chapters.length === 0) {
+      return { project: null, volume: null, chapterCount: 0 }
+    }
+
     const project = createProject(bookName)
     const volume = createVolume(project.id, '第一卷')
 
-    for (let i = 0; i < chapters.length; i++) {
-      const ch = chapters[i]
-      const chapter = createChapter(project.id, ch.title, volume.id)
-      if (chapter) {
-        updateChapter(chapter.id, { content: ch.content })
-      }
+    // 大书分批导入：每批 BATCH_SIZE 章插入 + save 一次
+    // 每批之间用 await setImmediate 让出主进程事件循环，避免长时间阻塞 UI
+    const BATCH_SIZE = 200
+    const total = chapters.length
+    let imported = 0
+
+    for (let start = 0; start < total; start += BATCH_SIZE) {
+      const slice = chapters.slice(start, start + BATCH_SIZE)
+      const created = batchCreateChapters(project.id, volume.id, slice)
+      imported += created
+
+      // 通知前端进度
+      mainWindow.webContents.send('import-book:progress', {
+        imported,
+        total,
+        percent: Math.round((imported / total) * 100)
+      })
+
+      // 让出事件循环，让渲染进程能刷新进度 UI
+      await new Promise(resolve => setImmediate(resolve))
     }
 
-    return { project, volume, chapterCount: chapters.length }
+    return { project, volume, chapterCount: imported }
   })
 
   // Outlines

@@ -96,6 +96,72 @@ export function createChapter(projectId: string, title: string, volumeId?: strin
   return chapter
 }
 
+/**
+ * 批量创建章节（用于导入大书，避免逐章 save 导致主进程阻塞）
+ *
+ * - 同卷同名章节自动跳过（标题加序号后缀避免冲突）
+ * - orderIndex 从当前最大值 +1 开始连续递增
+ * - 全部章节插入完毕后只 save 一次
+ *
+ * @param projectId 项目 ID
+ * @param volumeId 所属卷 ID
+ * @param chapters 章节列表（title + content）
+ * @returns 实际创建的章节数
+ */
+export function batchCreateChapters(
+  projectId: string,
+  volumeId: string | null,
+  chapters: { title: string; content: string }[]
+): number {
+  if (chapters.length === 0) return 0
+
+  const store = getStore()
+  const now = new Date().toISOString()
+
+  // 当前项目最大 orderIndex
+  let maxOrder = store.chapters
+    .filter(c => c.projectId === projectId)
+    .reduce((max, c) => Math.max(max, c.orderIndex), -1)
+
+  // 同卷已有标题集合，用于去重
+  const existingTitles = new Set(
+    store.chapters
+      .filter(c => c.projectId === projectId && c.volumeId === (volumeId || null))
+      .map(c => c.title)
+  )
+
+  let created = 0
+  for (const ch of chapters) {
+    let title = ch.title
+    // 标题冲突时加序号后缀
+    if (existingTitles.has(title)) {
+      let suffix = 2
+      while (existingTitles.has(`${title} (${suffix})`)) suffix++
+      title = `${title} (${suffix})`
+    }
+    existingTitles.add(title)
+    maxOrder += 1
+
+    store.chapters.push({
+      id: randomUUID(),
+      projectId,
+      volumeId: volumeId || null,
+      title,
+      content: ch.content,
+      polishingMarks: [],
+      summaryResult: null,
+      orderIndex: maxOrder,
+      createdAt: now,
+      updatedAt: now
+    })
+    created++
+  }
+
+  // 全部插入完只 save 一次
+  save()
+  return created
+}
+
 export function renameChapter(id: string, title: string): void {
   const chapter = getStore().chapters.find(c => c.id === id)
   if (!chapter) return

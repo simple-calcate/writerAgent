@@ -15,6 +15,27 @@ import { log } from '../utils/logger'
 
 const MAX_REWRITE_ROUNDS = 2
 
+/** 打分最小内容长度阈值（字符数）。短于这个值不值得打分 */
+const CRITIC_MIN_LENGTH = 800
+
+/**
+ * 判断是否值得运行 Critic Loop。
+ * 很多场景打分纯属浪费时间：
+ *  - 局部编辑/润色（edit）：用户只想改一小段
+ *  - 局部重写（revise）：同上
+ *  - 续写但内容较短（continue + 短文本）
+ *  - 任何短于阈值的输出
+ */
+function shouldRunCritic(task: WritingTask, content: string): boolean {
+  if (!content) return false
+  if (task.intent === 'chat' || task.intent === 'summarize') return false
+  // 局部修改类不打分
+  if (task.intent === 'edit' || task.intent === 'revise') return false
+  // 短内容不值得打分
+  if (content.length < CRITIC_MIN_LENGTH) return false
+  return true
+}
+
 export async function executeWithCriticLoop(
   task: WritingTask,
   context: AgentExecutionContext,
@@ -57,7 +78,7 @@ export async function executeWithCriticLoop(
     }
   }
 
-  if (lastWriterContent && task.intent !== 'chat') {
+  if (shouldRunCritic(task, lastWriterContent)) {
     log.debug(`[WAC] → Critic Agent 启动...`)
     stateMachine.transition('critic_check', { hasContent: true })
     task.phase = 'critic_check'

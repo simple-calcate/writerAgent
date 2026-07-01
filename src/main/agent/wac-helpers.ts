@@ -106,6 +106,8 @@ export function formatCriticFeedback(score: CriticScore): string {
 export function isSimpleTask(plan: { intent: AgentIntent; subTasks: SubTask[] }): boolean {
   if (plan.subTasks.length === 1 && plan.subTasks[0].agentRole === 'writer') return true
   if (plan.intent === 'chat' || plan.intent === 'summarize') return true
+  // 局部修改/续写一般不需要复杂的多轮打分循环
+  if (plan.intent === 'edit' || plan.intent === 'revise') return true
   return false
 }
 

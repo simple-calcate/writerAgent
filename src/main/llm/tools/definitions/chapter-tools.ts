@@ -129,5 +129,28 @@ export const chapterToolDefinitions: OpenAI.ChatCompletionTool[] = [
         }
       }
     }
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'search_content',
+      description: '在指定范围内搜索关键词，返回匹配位置及上下文片段。用于查找特定角色、场景、伏笔、道具等的描写位置。支持三种范围：(1) chapter 章节级——搜索指定章节或当前章节；(2) volume 卷级——搜索指定卷或当前卷的所有章节；(3) book 全书级——搜索当前项目所有章节，结果按卷→章节→匹配位置分层。支持多关键词同时搜索：matchMode="or" 时行包含任一关键词即匹配（适合搜角色别名/相关词组），"and" 时行必须同时包含所有关键词（适合查共现关系）。只读操作，无需用户确认。',
+      parameters: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: '搜索关键词。支持多关键词同时搜索，用 | 分隔（如 "林婉儿|林姑娘|大小姐"），会被拆分为数组按 matchMode 匹配'
+          },
+          scope: { type: 'string', enum: ['chapter', 'volume', 'book'], description: '搜索范围，默认 chapter' },
+          chapterId: { type: 'string', description: '章节 ID（scope=chapter 时可选，不传则搜索当前章节）' },
+          volumeId: { type: 'string', description: '卷 ID（scope=volume 时可选，不传则搜索当前卷）' },
+          matchMode: { type: 'string', enum: ['or', 'and'], description: '多关键词匹配模式：or=任一命中即匹配（默认），and=全部命中才匹配' },
+          contextLines: { type: 'number', description: '每个匹配位置返回的上下文行数（默认 5，范围 0-20）' },
+          maxMatches: { type: 'number', description: '每章最大返回区间数（默认 chapter=5 / volume=3 / book=3，最大 20）' }
+        },
+        required: ['query']
+      }
+    }
   }
 ]

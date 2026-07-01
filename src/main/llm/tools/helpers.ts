@@ -1,4 +1,6 @@
 import type { Chapter } from '../../../shared/types'
+import type { ApprovalMode } from '../../../shared/types'
+import { getLLMConfig } from '../../store/db'
 
 export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   summarize_chapter: '章节摘要',
@@ -24,17 +26,48 @@ export const TOOL_DISPLAY_NAMES: Record<string, string> = {
   toggle_reasoning_context: '调整推理上下文',
   bind_reasoning_to_tool: '绑定推理链到工具',
   list_tool_bindings: '查看工具绑定',
-  web_search: '联网搜索'
+  web_search: '联网搜索',
+  search_content: '搜索正文内容'
 }
 
-// Tools that always need user approval
-const WRITE_TOOLS = new Set(['create_chapter', 'create_volume', 'rename_chapter', 'write_outline', 'write_volume_outline', 'write_chapter_outline', 'read_chapter_content', 'write_chapter_content', 'extract_skill', 'refine_skill', 'toggle_feature_skill', 'batch_refine_summaries', 'create_reasoning_chain', 'update_reasoning_chain', 'delete_reasoning_chain', 'toggle_reasoning_context', 'bind_reasoning_to_tool'])
+// 真正写入/修改/删除类工具 —— 任何模式下都需要用户确认
+const MUTATING_TOOLS = new Set([
+  'create_chapter', 'create_volume', 'rename_chapter',
+  'write_outline', 'write_volume_outline', 'write_chapter_outline',
+  'write_chapter_content',
+  'extract_skill', 'refine_skill', 'toggle_feature_skill',
+  'batch_refine_summaries',
+  'create_reasoning_chain', 'update_reasoning_chain', 'delete_reasoning_chain',
+  'toggle_reasoning_context', 'bind_reasoning_to_tool'
+])
+
+// 只读但严格模式下需要确认的工具（智能模式自动放行）
+const STRICT_ONLY_TOOLS = new Set([
+  'read_chapter_content'
+])
 
 // Tools that can use cache
 const CACHEABLE_TOOLS = new Set(['summarize_chapter', 'refine_summary'])
 
+/**
+ * 判断工具是否需要用户确认。
+ * - smart 模式（默认）：仅 MUTATING_TOOLS 需确认
+ * - strict 模式：MUTATING_TOOLS + STRICT_ONLY_TOOLS 都需确认
+ */
 export function needsApproval(toolName: string): boolean {
-  return WRITE_TOOLS.has(toolName)
+  if (MUTATING_TOOLS.has(toolName)) return true
+  const mode = getCurrentApprovalMode()
+  if (mode === 'strict') return STRICT_ONLY_TOOLS.has(toolName)
+  return false
+}
+
+/** 读取当前确认模式（未配置时默认 smart） */
+export function getCurrentApprovalMode(): ApprovalMode {
+  try {
+    return getLLMConfig().approvalMode ?? 'smart'
+  } catch {
+    return 'smart'
+  }
 }
 
 export function isCacheable(toolName: string): boolean {

@@ -14,7 +14,7 @@ import MultiAgentCanvas from '../dialogue/MultiAgentCanvas'
 import MemoryGraphView from '../dialogue/MemoryGraphView'
 import ConflictResolver from '../dialogue/ConflictResolver'
 import ExecutionInspector from '../dialogue/ExecutionInspector'
-import { LEVEL_META, formatTime, estimateMessageTokens, extractQuestionGroups } from './helpers'
+import { LEVEL_META, formatTime, estimateMessageTokens, extractQuestionGroups, stripQuestionTags } from './helpers'
 import InputDock from './InputDock'
 
 // ═══════════════════════════════════════════════════════
@@ -55,7 +55,7 @@ function MessageCard({ msg, onDelete }: { msg: any; onDelete: (id: string) => vo
         {isUser ? (
           <p className="text-[12px] text-[var(--nw-text-secondary)] leading-relaxed whitespace-pre-wrap">{msg.content}</p>
         ) : (
-          <div className="text-[12px] leading-relaxed">{renderMarkdown(msg.content)}</div>
+          <div className="text-[12px] leading-relaxed">{renderMarkdown(stripQuestionTags(msg.content))}</div>
         )}
       </div>
     </div>

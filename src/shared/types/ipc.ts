@@ -78,6 +78,7 @@ export interface IPCAPI {
   // Import
   importBookPreview: () => Promise<ImportPreview | null>
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
+  onImportBookProgress: (callback: (progress: { imported: number; total: number; percent: number }) => void) => () => void
 
   // Skills
   getSkills: () => Promise<WritingSkill[]>

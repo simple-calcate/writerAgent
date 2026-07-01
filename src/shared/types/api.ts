@@ -175,7 +175,15 @@ export interface LLMConfig {
   braveSearchApiKey?: string  // 已废弃，保留向后兼容
   searchEngineConfig?: SearchEngineConfig  // 搜索引擎配置
   agentConfig?: AgentFeatureConfig  // Agent 专项配置
+  approvalMode?: ApprovalMode  // 工具确认模式，默认 smart
 }
+
+/**
+ * 工具确认模式
+ * - smart（默认）：仅写入/修改类工具需用户确认，只读工具自动放行
+ * - strict：所有标记工具（含只读查看）都需用户确认
+ */
+export type ApprovalMode = 'smart' | 'strict'
 
 // AI 高级配置（书籍/卷级别可设）
 export interface AIFeatureAdvancedConfig {

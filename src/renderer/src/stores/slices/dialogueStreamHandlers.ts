@@ -78,6 +78,20 @@ export const createStreamDoneHandler = (set: any, get: () => DialogueSliceWithHa
   const { activeStreamId, dialogueMessages, dialogueLevel, dialogueEntityId, streamingText, streamingToolCalls, thinkingText } = get()
   if (data.streamId !== activeStreamId) return
 
+  // 任务被取消：重置 streaming 状态，但不保存空消息
+  if (data.cancelled) {
+    set({
+      isStreaming: false,
+      streamingText: '',
+      isThinking: false,
+      thinkingText: '',
+      activeStreamId: null,
+      streamingToolCalls: [],
+      planModeActive: false
+    })
+    return
+  }
+
   const assistantMsg: ConversationMessage = {
     id: crypto.randomUUID(),
     role: 'assistant',

@@ -7,11 +7,14 @@ export interface ImportSlice {
   // State
   importPreview: ImportPreview | null
   showImportPreview: boolean
+  /** 导入进度（0-100），null 表示未在导入 */
+  importProgress: { imported: number; total: number; percent: number } | null
 
   // Actions
   importBookPreview: () => Promise<ImportPreview | null>
   importBookConfirm: (bookName: string, chapters: { title: string; content: string }[]) => Promise<ImportConfirmResult>
   closeImportPreview: () => void
+  setImportProgress: (progress: { imported: number; total: number; percent: number } | null) => void
 }
 
 export const createImportSlice: StateCreator<
@@ -22,6 +25,7 @@ export const createImportSlice: StateCreator<
 > = (set, get) => ({
   importPreview: null,
   showImportPreview: false,
+  importProgress: null,
 
   importBookPreview: async () => {
     const preview = await window.api.importBookPreview()
@@ -32,14 +36,21 @@ export const createImportSlice: StateCreator<
   },
 
   importBookConfirm: async (bookName, chapters) => {
-    const result = await window.api.importBookConfirm(bookName, chapters)
-    set({ importPreview: null, showImportPreview: false })
-    await get().loadProjects()
-    set({ currentProject: result.project, navLevel: 'project' } as any)
-    await get().loadVolumes(result.project.id)
-    await get().loadChapters(result.project.id)
-    return result
+    set({ importProgress: { imported: 0, total: chapters.length, percent: 0 } })
+    try {
+      const result = await window.api.importBookConfirm(bookName, chapters)
+      set({ importPreview: null, showImportPreview: false })
+      await get().loadProjects()
+      set({ currentProject: result.project, navLevel: 'project' } as any)
+      await get().loadVolumes(result.project.id)
+      await get().loadChapters(result.project.id)
+      return result
+    } finally {
+      set({ importProgress: null })
+    }
   },
 
-  closeImportPreview: () => set({ importPreview: null, showImportPreview: false })
+  closeImportPreview: () => set({ importPreview: null, showImportPreview: false }),
+
+  setImportProgress: (progress) => set({ importProgress: progress })
 })

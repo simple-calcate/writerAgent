@@ -4,6 +4,29 @@ import { polishText } from '../../client-polish'
 import { refineSummary } from '../../refine-summary'
 import { updateChapter, saveVersion, updateChapterSummary } from '../../../store/db'
 import { TRUNCATE } from '../../constants'
+import {
+  searchInChapter,
+  searchInChapters,
+  searchInBook,
+  formatChapterResult,
+  formatVolumeResult,
+  formatBookResult,
+  type SearchOptions
+} from '../search-content'
+
+/**
+ * 将工具参数 query 字符串解析为关键词数组
+ *
+ * 支持 "a|b|c" 多关键词语法，| 为分隔符。
+ * 空段被过滤，重复项被去重。
+ */
+function parseQueries(query: string): string[] {
+  return query
+    .split('|')
+    .map(s => s.trim())
+    .filter(s => s.length > 0)
+    .filter((s, i, arr) => arr.indexOf(s) === i)
+}
 
 export interface ChapterToolParams {
   config: LLMConfigSingle
@@ -105,6 +128,81 @@ export async function handleChapterTools(
       }
 
       return `已对卷「${targetVolume.name}」的 ${volChapters.length} 个章节进行精炼总结：\n\n${results.join('\n')}`
+    }
+
+    case 'search_content': {
+      if (!args.query) return '错误：未提供搜索关键词'
+      const scope = (args.scope as 'chapter' | 'volume' | 'book') || 'chapter'
+      const matchMode = args.matchMode === 'and' ? 'and' : 'or' as const
+      const options: SearchOptions = { matchMode }
+      if (args.contextLines !== undefined) {
+        options.contextLines = parseInt(String(args.contextLines)) || undefined
+      }
+      if (args.maxMatches !== undefined) {
+        options.maxMatches = parseInt(String(args.maxMatches)) || undefined
+      }
+
+      // query 支持 "a|b|c" 多关键词语法
+      const queries = parseQueries(args.query)
+      if (queries.length === 0) return '错误：未提供有效搜索关键词'
+
+      // 章节级
+      if (scope === 'chapter') {
+        const target = args.chapterId
+          ? allChapters.find(c => c.id === args.chapterId)
+          : targetChapter
+        if (!target) return '错误：找不到指定章节'
+        const content = target.content
+        if (!content) return `章节「${target.title}」暂无内容`
+        const result = searchInChapter(content, queries, options)
+        return formatChapterResult(target.title, queries, content, result, matchMode)
+      }
+
+      // 卷级
+      if (scope === 'volume') {
+        const { volume, allVolumes } = params as any
+        const targetVolumeId = args.volumeId || volume?.id
+        if (!targetVolumeId) return '错误：未指定卷 ID，且当前没有上下文卷'
+        const targetVolume = allVolumes.find((v: Volume) => v.id === targetVolumeId)
+        if (!targetVolume) return '错误：找不到指定卷'
+        const volChapters = allChapters
+          .filter(c => c.volumeId === targetVolumeId)
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+        if (volChapters.length === 0) return `卷「${targetVolume.name}」下没有章节`
+
+        const entries = searchInChapters(volChapters, queries, options)
+        if (entries.length === 0) {
+          const label = queries.map(q => `「${q}」`).join(' / ')
+          return `在卷「${targetVolume.name}」中未找到 ${label}`
+        }
+
+        const contentsById = new Map<string, string>()
+        for (const ch of volChapters) {
+          if (ch.content) contentsById.set(ch.id, ch.content)
+        }
+        return formatVolumeResult(targetVolume.name, queries, entries, contentsById, matchMode)
+      }
+
+      // 全书级
+      // scope === 'book'
+      const { allVolumes } = params as any
+      const projectChapters = allChapters
+        .filter(c => c.projectId === params.projectId)
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+
+      if (projectChapters.length === 0) return '当前项目没有章节'
+
+      const bookResult = searchInBook(projectChapters, allVolumes as Volume[], queries, options)
+      if (bookResult.totalMatches === 0) {
+        const label = queries.map(q => `「${q}」`).join(' / ')
+        return `全书未找到 ${label}`
+      }
+
+      const contentsById = new Map<string, string>()
+      for (const ch of projectChapters) {
+        if (ch.content) contentsById.set(ch.id, ch.content)
+      }
+      return formatBookResult(queries, bookResult, contentsById, matchMode)
     }
 
     default:

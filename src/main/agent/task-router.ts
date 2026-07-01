@@ -40,10 +40,9 @@ export async function routeRequest(
       const streamId = ctx.streamId || `agent_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
       getWAC().processRequest(input, ctx.project, ctx.volume, ctx.chapter, ctx.level, streamId)
         .catch(err => {
-          if (err.message !== '任务已取消') {
-            log.error('[Router] Writing pipeline error:', err)
-            ctx.mainWindow.webContents.send('dialogue:error', { streamId, error: err.message })
-          }
+          // wac.ts 已经处理了 cancelled 和正常错误的 done/error 发送，
+          // 这里只做兜底日志，不再重复发事件（避免覆盖 wac.ts 已发的 cancelled done）
+          log.error('[Router] Writing pipeline error:', err)
         })
       return { classification, result: { pipeline: 'writing', streamId } }
     }
